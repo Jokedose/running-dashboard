@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
-import { Activity, CalendarDays, Footprints, Gauge, LogOut, ShieldCheck, Trophy } from "lucide-react";
+import { Activity, CalendarDays, Footprints, Gauge, Github, LogOut, ShieldCheck, Trophy } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "./supabase";
 import "./styles.css";
@@ -131,21 +131,19 @@ function useHashRoute() {
 }
 
 function Login() {
-  const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
+  async function loginWithGithub() {
     setBusy(true);
     setMessage("");
     const redirectTo = `${window.location.origin}/running-dashboard/`;
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo },
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "github",
+      options: { redirectTo },
     });
     setBusy(false);
-    setMessage(error ? error.message : "ส่ง Magic Link แล้ว ตรวจอีเมลเพื่อเข้าสู่ dashboard");
+    if (error) setMessage(error.message);
   }
 
   return (
@@ -157,16 +155,10 @@ function Login() {
         {!supabaseConfigured ? (
           <div className="notice">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</div>
         ) : (
-          <form onSubmit={submit}>
-            <input
-              type="email"
-              placeholder="อีเมล Supabase"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-            <button disabled={busy}>{busy ? "กำลังส่ง..." : "ส่ง Magic Link"}</button>
-          </form>
+          <button className="github-login" disabled={busy} onClick={loginWithGithub}>
+            <Github size={20} />
+            {busy ? "กำลังพาไป GitHub..." : "เข้าสู่ระบบด้วย GitHub"}
+          </button>
         )}
         {message && <div className="notice">{message}</div>}
       </section>
@@ -224,7 +216,7 @@ function Layout({
             <p>Private dashboard</p>
             <h1>{navItems.find((item) => item.key === route)?.label ?? "Dashboard"}</h1>
           </div>
-          <span>{session.user.email}</span>
+          <span>{session.user.email ?? session.user.user_metadata?.user_name ?? "GitHub user"}</span>
         </header>
         {children}
       </main>

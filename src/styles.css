@@ -74,6 +74,14 @@ button {
   cursor: pointer;
 }
 
+.github-login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #172026;
+}
+
 .notice {
   border: 1px solid #f0b6c4;
   background: #fff1f4;
