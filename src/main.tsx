@@ -85,6 +85,12 @@ type DashboardData = {
   race: RaceReadiness | null;
 };
 
+type Profile = {
+  user_id: string;
+  display_name: string | null;
+  timezone: string | null;
+};
+
 const emptyData: DashboardData = {
   daily: [],
   runs: [],
@@ -131,7 +137,8 @@ function useHashRoute() {
 }
 
 function Login() {
-  const [message, setMessage] = useState("");
+  const initialError = useMemo(() => authErrorMessage(), []);
+  const [message, setMessage] = useState(initialError);
   const [busy, setBusy] = useState(false);
 
   async function loginWithGithub() {
@@ -151,7 +158,7 @@ function Login() {
       <section className="login-panel">
         <div className="brand-mark">10K</div>
         <h1>Running Dashboard</h1>
-        <p>เข้าสู่ระบบเพื่อดูข้อมูล readiness, Zone 2, แผน 10K และรองเท้าวิ่งส่วนตัว</p>
+        <p>เข้าสู่ระบบด้วย GitHub ที่ถูกเพิ่มไว้ใน Supabase แล้วเท่านั้น</p>
         {!supabaseConfigured ? (
           <div className="notice">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</div>
         ) : (
@@ -164,6 +171,17 @@ function Login() {
       </section>
     </main>
   );
+}
+
+function authErrorMessage() {
+  const params = new URLSearchParams(`${window.location.search}&${window.location.hash.replace(/^#/, "")}`);
+  const code = params.get("error_code");
+  const description = params.get("error_description");
+  if (code === "signup_disabled") {
+    return "บัญชีนี้ยังไม่ได้ถูกเพิ่มใน Supabase ให้เพิ่ม email ใน Authentication > Users และสร้าง profile row ก่อน";
+  }
+  if (description) return description.replaceAll("+", " ");
+  return "";
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
@@ -388,6 +406,8 @@ function ListCard({ title, items }: { title: string; items: string[] }) {
 function App() {
   const route = useHashRoute();
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [authMessage, setAuthMessage] = useState("");
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
 
@@ -409,6 +429,29 @@ function App() {
   useEffect(() => {
     if (!session) {
       setData(emptyData);
+      setProfile(null);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("user_id,display_name,timezone")
+      .eq("user_id", session.user.id)
+      .maybeSingle()
+      .then(async ({ data: profileRow, error }) => {
+        if (error || !profileRow) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
+          setData(emptyData);
+          setAuthMessage("บัญชีนี้ไม่ได้รับอนุญาต ให้เพิ่ม user และ profile ผ่าน Supabase ก่อน");
+          return;
+        }
+        setProfile(profileRow as Profile);
+      });
+  }, [session]);
+
+  useEffect(() => {
+    if (!session || !profile) {
       return;
     }
     Promise.all([
@@ -426,7 +469,7 @@ function App() {
         race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
       });
     });
-  }, [session]);
+  }, [session, profile]);
 
   const page = useMemo(() => {
     if (route === "race") return <Race data={data} />;
@@ -438,12 +481,22 @@ function App() {
   }, [data, route]);
 
   if (loading) return <main className="login-shell">กำลังโหลด...</main>;
-  if (!session) return <Login />;
+  if (!session) return <LoginMessage message={authMessage} />;
+  if (!profile) return <main className="login-shell">กำลังตรวจสอบสิทธิ์...</main>;
 
   return (
     <Layout session={session} route={route} onLogout={() => supabase.auth.signOut()}>
       {page}
     </Layout>
+  );
+}
+
+function LoginMessage({ message }: { message: string }) {
+  return (
+    <>
+      <Login />
+      {message && <div className="floating-notice">{message}</div>}
+    </>
   );
 }
 
