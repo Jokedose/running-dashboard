@@ -74,34 +74,12 @@ button {
   cursor: pointer;
 }
 
-.github-login {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  background: #172026;
-}
-
 .notice {
   border: 1px solid #f0b6c4;
   background: #fff1f4;
   padding: 12px;
   border-radius: 8px;
   color: #8d1231;
-}
-
-.floating-notice {
-  position: fixed;
-  left: 50%;
-  bottom: 24px;
-  transform: translateX(-50%);
-  width: min(520px, calc(100vw - 32px));
-  border: 1px solid #f0b6c4;
-  background: #fff1f4;
-  color: #8d1231;
-  padding: 12px 14px;
-  border-radius: 8px;
-  box-shadow: 0 12px 28px rgba(23, 32, 38, 0.14);
 }
 
 .app-shell {

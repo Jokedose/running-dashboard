@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { Activity, CalendarDays, Footprints, Gauge, Github, LogOut, ShieldCheck, Trophy } from "lucide-react";
+import { Activity, CalendarDays, Footprints, Gauge, LogOut, ShieldCheck, Trophy } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -85,12 +85,6 @@ type DashboardData = {
   race: RaceReadiness | null;
 };
 
-type Profile = {
-  user_id: string;
-  display_name: string | null;
-  timezone: string | null;
-};
-
 const emptyData: DashboardData = {
   daily: [],
   runs: [],
@@ -137,20 +131,23 @@ function useHashRoute() {
 }
 
 function Login() {
-  const initialError = useMemo(() => authErrorMessage(), []);
-  const [message, setMessage] = useState(initialError);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function loginWithGithub() {
+  async function loginWithPassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setBusy(true);
     setMessage("");
-    const redirectTo = `${window.location.origin}/running-dashboard/`;
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: { redirectTo },
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
     setBusy(false);
-    if (error) setMessage(error.message);
+    if (error) {
+      setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจ email/password หรือเพิ่ม user ใน Supabase ก่อน");
+    }
   }
 
   return (
@@ -158,30 +155,34 @@ function Login() {
       <section className="login-panel">
         <div className="brand-mark">10K</div>
         <h1>Running Dashboard</h1>
-        <p>เข้าสู่ระบบด้วย GitHub ที่ถูกเพิ่มไว้ใน Supabase แล้วเท่านั้น</p>
+        <p>เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น</p>
         {!supabaseConfigured ? (
           <div className="notice">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</div>
         ) : (
-          <button className="github-login" disabled={busy} onClick={loginWithGithub}>
-            <Github size={20} />
-            {busy ? "กำลังพาไป GitHub..." : "เข้าสู่ระบบด้วย GitHub"}
-          </button>
+          <form onSubmit={loginWithPassword}>
+            <input
+              type="email"
+              placeholder="อีเมล Supabase"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
+            <input
+              type="password"
+              placeholder="รหัสผ่าน"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+            <button disabled={busy}>{busy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}</button>
+          </form>
         )}
         {message && <div className="notice">{message}</div>}
       </section>
     </main>
   );
-}
-
-function authErrorMessage() {
-  const params = new URLSearchParams(`${window.location.search}&${window.location.hash.replace(/^#/, "")}`);
-  const code = params.get("error_code");
-  const description = params.get("error_description");
-  if (code === "signup_disabled") {
-    return "บัญชีนี้ยังไม่ได้ถูกเพิ่มใน Supabase ให้เพิ่ม email ใน Authentication > Users และสร้าง profile row ก่อน";
-  }
-  if (description) return description.replaceAll("+", " ");
-  return "";
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail?: string }) {
@@ -234,7 +235,7 @@ function Layout({
             <p>Private dashboard</p>
             <h1>{navItems.find((item) => item.key === route)?.label ?? "Dashboard"}</h1>
           </div>
-          <span>{session.user.email ?? session.user.user_metadata?.user_name ?? "GitHub user"}</span>
+          <span>{session.user.email ?? "Supabase user"}</span>
         </header>
         {children}
       </main>
@@ -406,8 +407,6 @@ function ListCard({ title, items }: { title: string; items: string[] }) {
 function App() {
   const route = useHashRoute();
   const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [authMessage, setAuthMessage] = useState("");
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loading, setLoading] = useState(true);
 
@@ -429,29 +428,6 @@ function App() {
   useEffect(() => {
     if (!session) {
       setData(emptyData);
-      setProfile(null);
-      return;
-    }
-    supabase
-      .from("profiles")
-      .select("user_id,display_name,timezone")
-      .eq("user_id", session.user.id)
-      .maybeSingle()
-      .then(async ({ data: profileRow, error }) => {
-        if (error || !profileRow) {
-          await supabase.auth.signOut();
-          setSession(null);
-          setProfile(null);
-          setData(emptyData);
-          setAuthMessage("บัญชีนี้ไม่ได้รับอนุญาต ให้เพิ่ม user และ profile ผ่าน Supabase ก่อน");
-          return;
-        }
-        setProfile(profileRow as Profile);
-      });
-  }, [session]);
-
-  useEffect(() => {
-    if (!session || !profile) {
       return;
     }
     Promise.all([
@@ -469,7 +445,7 @@ function App() {
         race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
       });
     });
-  }, [session, profile]);
+  }, [session]);
 
   const page = useMemo(() => {
     if (route === "race") return <Race data={data} />;
@@ -481,22 +457,12 @@ function App() {
   }, [data, route]);
 
   if (loading) return <main className="login-shell">กำลังโหลด...</main>;
-  if (!session) return <LoginMessage message={authMessage} />;
-  if (!profile) return <main className="login-shell">กำลังตรวจสอบสิทธิ์...</main>;
+  if (!session) return <Login />;
 
   return (
     <Layout session={session} route={route} onLogout={() => supabase.auth.signOut()}>
       {page}
     </Layout>
-  );
-}
-
-function LoginMessage({ message }: { message: string }) {
-  return (
-    <>
-      <Login />
-      {message && <div className="floating-notice">{message}</div>}
-    </>
   );
 }
 
