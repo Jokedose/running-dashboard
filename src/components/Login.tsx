@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { BrandLogo } from "./BrandLogo";
 import { supabase, supabaseConfigured } from "../supabase";
 
 export function Login() {
@@ -20,7 +21,7 @@ export function Login() {
   return (
     <main className="login-shell">
       <section className="login-panel">
-        <div className="brand-mark">10K</div>
+        <BrandLogo />
         <h1>Running Dashboard</h1>
         <p>เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น</p>
         {!supabaseConfigured ? (

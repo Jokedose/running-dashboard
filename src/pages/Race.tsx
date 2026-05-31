@@ -9,11 +9,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { BrandLogo } from "../components/BrandLogo";
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
 import { chartMargin } from "../utils/data";
-import { raceTime, shortDate } from "../utils/format";
+import { pace, raceTime, shortDate } from "../utils/format";
 
 const RACE_DATE = "2026-07-19";
 const TARGET_MINUTES = 90;
@@ -24,9 +25,14 @@ type ProjectionPoint = {
   label: string;
   session: string;
   distance: number;
-  estimate: number;
+  actual: number | null;
+  expected: number;
   target: number;
   cutoff: number;
+};
+
+type ActualProjectionPoint = Omit<ProjectionPoint, "expected"> & {
+  actual: number;
 };
 
 function projectionPenalty(run: RunLog) {
@@ -49,7 +55,7 @@ function estimate10kMinutes(run: RunLog) {
 }
 
 function raceProjection(runs: RunLog[]) {
-  const bestByDate = new Map<string, ProjectionPoint>();
+  const bestByDate = new Map<string, ActualProjectionPoint>();
   runs.forEach((run) => {
     const estimate = estimate10kMinutes(run);
     if (estimate == null || !run.run_date || !run.distance_km) return;
@@ -59,54 +65,116 @@ function raceProjection(runs: RunLog[]) {
       label: shortDate(run.run_date),
       session: run.session_type ?? "-",
       distance: run.distance_km,
-      estimate: Number(estimate.toFixed(1)),
+      actual: Number(estimate.toFixed(1)),
       target: TARGET_MINUTES,
       cutoff: CUTOFF_MINUTES,
     };
-    if (!current || next.distance > current.distance || next.estimate < current.estimate) {
+    if (!current || next.distance > current.distance || next.actual < current.actual) {
       bestByDate.set(run.run_date, next);
     }
   });
   return [...bestByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
-function planForecast(points: ProjectionPoint[], daysLeft: number | null) {
+function expectedAt(date: string, startDate: string, startValue: number, raceDate: string) {
+  const start = new Date(startDate).getTime();
+  const end = new Date(raceDate).getTime();
+  const current = new Date(date).getTime();
+  const progress = end === start ? 1 : Math.max(0, Math.min(1, (current - start) / (end - start)));
+  return startValue + (TARGET_MINUTES - startValue) * progress;
+}
+
+function chartProjection(points: ActualProjectionPoint[], raceDate: string) {
+  if (!points.length) return [];
+  const startDate = points[0].date;
+  const startValue = Math.max(points[0].actual, CUTOFF_MINUTES);
+  const rows: ProjectionPoint[] = points.map((point) => ({
+    ...point,
+    expected: Number(expectedAt(point.date, startDate, startValue, raceDate).toFixed(1)),
+  }));
+  rows.push({
+    date: raceDate,
+    label: "19/07",
+    session: "Race day target",
+    distance: 10,
+    actual: null,
+    expected: TARGET_MINUTES,
+    target: TARGET_MINUTES,
+    cutoff: CUTOFF_MINUTES,
+  });
+  return rows;
+}
+
+function planForecast(points: ActualProjectionPoint[], daysLeft: number | null) {
   if (!points.length) return null;
   const longOrRecent = points.filter((point) => point.distance >= 8 || point.date >= "2026-04-01");
-  const baseline = Math.min(...(longOrRecent.length ? longOrRecent : points).map((point) => point.estimate));
+  const baseline = Math.min(...(longOrRecent.length ? longOrRecent : points).map((point) => point.actual));
   const weeksLeft = daysLeft == null ? 0 : Math.max(0, daysLeft / 7);
   const expectedGain = Math.min(8, weeksLeft * 0.8);
   return Math.max(TARGET_MINUTES, baseline - expectedGain);
+}
+
+function finishPace(value: number | null | undefined) {
+  return value == null ? "-" : pace((value * 60) / 10);
 }
 
 export function Race({ data }: { data: DashboardData }) {
   const race = data.race;
   const raceDate = race?.race_date ?? RACE_DATE;
   const daysLeft = Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000);
-  const projection = raceProjection(data.runs);
-  const latestPoint = projection.at(-1);
-  const bestPoint = projection.reduce<ProjectionPoint | null>(
-    (best, point) => (!best || point.estimate < best.estimate ? point : best),
+  const actualProjection = raceProjection(data.runs);
+  const projection = chartProjection(actualProjection, raceDate);
+  const latestPoint = actualProjection.at(-1);
+  const latestExpected = projection.find((point) => point.date === latestPoint?.date)?.expected ?? null;
+  const bestPoint = actualProjection.reduce<ActualProjectionPoint | null>(
+    (best, point) => (!best || point.actual < best.actual ? point : best),
     null,
   );
-  const forecast = planForecast(projection, daysLeft);
+  const forecast = planForecast(actualProjection, daysLeft);
   const forecastDelta = forecast == null ? null : forecast - CUTOFF_MINUTES;
+  const latestGap = latestPoint && latestExpected ? latestPoint.actual - latestExpected : null;
 
   return (
     <section className="page-stack">
+      <div className="race-hero-card">
+        <BrandLogo />
+        <div>
+          <p>10K Race Progress</p>
+          <h2>เส้นทางสู่วันที่ 19 กรกฎาคม</h2>
+          <span>เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือ pace/เวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า 1:30</span>
+        </div>
+      </div>
+
       <div className="metric-grid">
         <MetricCard label="Countdown" value={`${daysLeft} วัน`} detail={raceDate} icon={Clock3} tone="hot" />
         <MetricCard label="Readiness" value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`} detail="race score" icon={Trophy} tone="good" />
         <MetricCard label="คาดการณ์วันแข่ง" value={raceTime(forecast)} detail={forecastDelta == null ? undefined : forecastDelta <= 0 ? `เร็วกว่า cutoff ${Math.abs(forecastDelta).toFixed(1)} นาที` : `ช้ากว่า cutoff ${forecastDelta.toFixed(1)} นาที`} icon={Activity} tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"} />
-        <MetricCard label="ตำแหน่งล่าสุด" value={raceTime(latestPoint?.estimate)} detail={latestPoint ? `${latestPoint.date} · ${latestPoint.session}` : undefined} icon={Gauge} />
+        <MetricCard label="ตำแหน่งล่าสุด" value={raceTime(latestPoint?.actual)} detail={latestPoint ? `${finishPace(latestPoint.actual)} · ${latestPoint.date}` : undefined} icon={Gauge} />
       </div>
 
       <div className="content-grid">
-        <Panel title="กราฟเป้าหมาย 10K" subtitle="เส้น projection จากผลซ้อมรายวัน เทียบเป้า 1:30 และ cutoff 2:00" className="span-12">
-          <div className="race-summary-row">
-            <span>ล่าสุด: {latestPoint ? `${raceTime(latestPoint.estimate)} จาก ${latestPoint.distance.toFixed(2)} km` : "-"}</span>
-            <span>ดีที่สุดในข้อมูล: {bestPoint ? `${raceTime(bestPoint.estimate)} วันที่ ${bestPoint.date}` : "-"}</span>
-            <span>เป้าวันแข่ง: 1:30:00 · Cutoff: 2:00:00</span>
+        <Panel title="กราฟเป้าหมาย 10K" subtitle="เปรียบเทียบสถานะจริงกับเส้นพัฒนาที่ควรเป็นจนถึงวันแข่ง" className="span-12 race-panel">
+          <div className="race-stat-grid">
+            <div>
+              <span>สถานะล่าสุด</span>
+              <strong>{raceTime(latestPoint?.actual)}</strong>
+              <small>{latestPoint ? `${latestPoint.distance.toFixed(2)} km · ${latestPoint.session}` : "-"}</small>
+            </div>
+            <div>
+              <span>ควรอยู่แถวนี้</span>
+              <strong>{raceTime(latestExpected)}</strong>
+              <small>{latestGap == null ? "-" : latestGap > 0 ? `ยังช้ากว่าเส้นแผน ${latestGap.toFixed(1)} นาที` : `เร็วกว่าเส้นแผน ${Math.abs(latestGap).toFixed(1)} นาที`}</small>
+            </div>
+            <div>
+              <span>pace ปัจจุบัน</span>
+              <strong>{finishPace(latestPoint?.actual)}</strong>
+              <small>ถ้าคง effort นี้ถึง 10K</small>
+            </div>
+            <div>
+              <span>pace เป้าหมาย</span>
+              <strong>9:00/km</strong>
+              <small>1:30:00 สำหรับ 10K</small>
+            </div>
           </div>
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={projection} margin={chartMargin}>
@@ -122,11 +190,12 @@ export function Race({ data }: { data: DashboardData }) {
               />
               <ReferenceLine y={TARGET_MINUTES} stroke="#2a7f62" strokeDasharray="5 5" label="1:30" />
               <ReferenceLine y={CUTOFF_MINUTES} stroke="#cf244f" strokeDasharray="5 5" label="2:00 cutoff" />
-              <Line type="monotone" dataKey="estimate" name="คาดการณ์ 10K" stroke="#172026" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="expected" name="เส้นพัฒนาที่ควรเป็น" stroke="#0b73e0" strokeWidth={2.5} strokeDasharray="8 8" dot={false} />
+              <Line type="monotone" dataKey="actual" name="สถานะจริงจากผลซ้อม" stroke="#172026" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 7 }} connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
           <p className="chart-note">
-            สูตรนี้เป็น projection จากการซ้อม ไม่ใช่ race prediction ทางการ: pace ปัจจุบันคูณ 10K แล้วเพิ่ม/ลด penalty ตามระยะซ้อม, Z2 และ drift เพื่อสะท้อนความพร้อม endurance
+            เส้นทึบคำนวณจาก pace ของ session ที่ระยะอย่างน้อย 4 km แล้วปรับด้วยระยะ, Z2 และ drift ส่วนเส้นประเป็นเส้นเป้าหมายที่ค่อย ๆ ลดเวลาจบไปสู่ 1:30:00 ในวันแข่ง
           </p>
         </Panel>
 

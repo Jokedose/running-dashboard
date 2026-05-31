@@ -1,6 +1,7 @@
 import type { Session } from "@supabase/supabase-js";
 import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
+import { BrandLogo } from "./BrandLogo";
 import type { NavItem } from "../types";
 
 export function Layout({
@@ -21,7 +22,7 @@ export function Layout({
     <div className="app-shell">
       <aside>
         <div className="app-title">
-          <span>10K</span>
+          <BrandLogo compact />
           <strong>Running</strong>
         </div>
         <nav>
