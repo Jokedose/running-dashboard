@@ -16,6 +16,15 @@ export function minutes(value: number | null | undefined) {
   return value == null ? "-" : `${Math.round(value)} นาที`;
 }
 
+export function raceTime(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  const totalSeconds = Math.round(value * 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutesPart = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${hours}:${String(minutesPart).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export function percent(value: number | null | undefined) {
   return value == null ? "-" : `${value.toFixed(1)}%`;
 }

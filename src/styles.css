@@ -402,6 +402,32 @@ header span {
   color: var(--color-warning);
 }
 
+.race-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: var(--space-3);
+}
+
+.race-summary-row span {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius);
+  background: #edf3ef;
+  color: #34464c;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.chart-note {
+  margin: var(--space-2) 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .clean-list {
   margin: 0;
   padding-left: 18px;
