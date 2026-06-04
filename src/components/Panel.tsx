@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Paper, Typography } from "@mui/material";
 
 export function Panel({
   title,
@@ -12,15 +13,17 @@ export function Panel({
   className?: string;
 }) {
   return (
-    <section className={`panel ${className}`}>
+    <Paper component="section" className={`panel ${className}`} variant="outlined">
       <div className="panel-head">
         <div>
-          <h2>{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
+          <Typography component="h2" variant="h6">
+            {title}
+          </Typography>
+          {subtitle && <Typography variant="body2">{subtitle}</Typography>}
         </div>
       </div>
       {children}
-    </section>
+    </Paper>
   );
 }
 

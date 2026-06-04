@@ -1,11 +1,12 @@
+import { Paper, Typography } from "@mui/material";
 import { ShieldCheck } from "lucide-react";
 
 export function EmptyState() {
   return (
-    <div className="empty-state">
+    <Paper className="empty-state" variant="outlined">
       <ShieldCheck size={26} />
-      <strong>ยังไม่มีข้อมูล dashboard</strong>
-      <p>sync Supabase จาก repo private ก่อน แล้วกลับมา refresh หน้านี้</p>
-    </div>
+      <Typography component="strong">ยังไม่มีข้อมูล dashboard</Typography>
+      <Typography variant="body2">sync Supabase จาก repo private ก่อน แล้วกลับมา refresh หน้านี้</Typography>
+    </Paper>
   );
 }

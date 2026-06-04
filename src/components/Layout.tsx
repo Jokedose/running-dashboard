@@ -1,4 +1,5 @@
 import type { Session } from "@supabase/supabase-js";
+import { Box, Button, Typography } from "@mui/material";
 import { LogOut } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "./BrandLogo";
@@ -18,14 +19,15 @@ export function Layout({
   children: ReactNode;
 }) {
   const title = navItems.find((item) => item.key === route)?.label ?? "Dashboard";
+
   return (
-    <div className="app-shell">
-      <aside>
-        <div className="app-title">
+    <Box className="app-shell">
+      <Box component="aside">
+        <Box className="app-title">
           <BrandLogo compact />
-          <strong>Running</strong>
-        </div>
-        <nav>
+          <Typography component="strong">Running</Typography>
+        </Box>
+        <Box component="nav">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -35,22 +37,27 @@ export function Layout({
               </a>
             );
           })}
-        </nav>
-        <button className="logout" onClick={onLogout}>
-          <LogOut size={18} />
+        </Box>
+        <Button className="logout" onClick={onLogout} startIcon={<LogOut size={18} />}>
           ออกจากระบบ
-        </button>
-      </aside>
-      <main>
-        <header>
-          <div>
-            <p>Private training dashboard</p>
-            <h1>{title}</h1>
-          </div>
-          <span>{session.user.email ?? "Supabase user"}</span>
-        </header>
+        </Button>
+      </Box>
+      <Box component="main">
+        <Box component="header">
+          <Box>
+            <Typography component="p" variant="body2">
+              Private training dashboard
+            </Typography>
+            <Typography component="h1" variant="h4">
+              {title}
+            </Typography>
+          </Box>
+          <Typography component="span" variant="body2">
+            {session.user.email ?? "Supabase user"}
+          </Typography>
+        </Box>
         {children}
-      </main>
-    </div>
+      </Box>
+    </Box>
   );
 }

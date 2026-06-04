@@ -1,5 +1,6 @@
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { Alert, Button, Stack, TextField, Typography } from "@mui/material";
 import { BrandLogo } from "./BrandLogo";
 import { supabase, supabaseConfigured } from "../supabase";
 
@@ -15,40 +16,50 @@ export function Login() {
     setMessage("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจ email/password หรือเพิ่ม user ใน Supabase ก่อน");
+    if (error) {
+      setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจ email/password หรือเพิ่ม user ใน Supabase ก่อน");
+    }
   }
 
   return (
     <main className="login-shell">
-      <section className="login-panel">
+      <Stack component="section" className="login-panel">
         <BrandLogo />
-        <h1>Running Dashboard</h1>
-        <p>เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น</p>
+        <Typography component="h1" variant="h3">
+          Running Dashboard
+        </Typography>
+        <Typography>
+          เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น
+        </Typography>
         {!supabaseConfigured ? (
-          <div className="notice">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</div>
+          <Alert severity="warning">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</Alert>
         ) : (
-          <form onSubmit={loginWithPassword}>
-            <input
+          <Stack component="form" onSubmit={loginWithPassword} spacing={1.25}>
+            <TextField
               type="email"
-              placeholder="อีเมล Supabase"
+              label="อีเมล Supabase"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="email"
               required
+              fullWidth
             />
-            <input
+            <TextField
               type="password"
-              placeholder="รหัสผ่าน"
+              label="รหัสผ่าน"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               required
+              fullWidth
             />
-            <button disabled={busy}>{busy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}</button>
-          </form>
+            <Button disabled={busy} type="submit" variant="contained" color="secondary">
+              {busy ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+            </Button>
+          </Stack>
         )}
-        {message && <div className="notice">{message}</div>}
-      </section>
+        {message && <Alert severity="error">{message}</Alert>}
+      </Stack>
     </main>
   );
 }

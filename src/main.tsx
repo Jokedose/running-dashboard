@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
+import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
 import { Activity, CalendarDays, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
@@ -18,6 +19,7 @@ import type {
 } from "./types";
 import { emptyData } from "./utils/data";
 import { useHashRoute } from "./hooks/useHashRoute";
+import { theme } from "./theme";
 import "./styles.css";
 
 const navItems: NavItem[] = [
@@ -37,6 +39,17 @@ const Today = lazy(() => import("./pages/Today").then((module) => ({ default: mo
 const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: module.Trends })));
 const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: module.Weekly })));
 const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
+
+function LoadingScreen({ label }: { label: string }) {
+  return (
+    <main className="login-shell">
+      <Box sx={{ display: "grid", placeItems: "center", gap: 1.5 }}>
+        <CircularProgress size={28} />
+        {label}
+      </Box>
+    </main>
+  );
+}
 
 function App() {
   const route = useHashRoute();
@@ -106,9 +119,9 @@ function App() {
     return <Today data={data} />;
   }, [data, hasData, loadState, route]);
 
-  if (loading) return <main className="login-shell">กำลังโหลด...</main>;
+  if (loading) return <LoadingScreen label="กำลังโหลด..." />;
   if (!session) return <Login />;
-  if (loadState === "loading") return <main className="login-shell">กำลังโหลด dashboard...</main>;
+  if (loadState === "loading") return <LoadingScreen label="กำลังโหลด dashboard..." />;
   if (loadState === "error") {
     return <main className="login-shell">อ่านข้อมูลจาก Supabase ไม่สำเร็จ ตรวจ RLS และ table grants</main>;
   }
@@ -120,4 +133,9 @@ function App() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ThemeProvider theme={theme}>
+    <CssBaseline />
+    <App />
+  </ThemeProvider>,
+);

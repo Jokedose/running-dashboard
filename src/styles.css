@@ -41,12 +41,12 @@ body {
   margin: 0;
 }
 
-button,
-input {
+button:not(.MuiButtonBase-root),
+input:not(.MuiInputBase-input) {
   font: inherit;
 }
 
-button {
+button:not(.MuiButtonBase-root) {
   min-height: 44px;
   border: 0;
   border-radius: var(--radius);
@@ -56,12 +56,12 @@ button {
   cursor: pointer;
 }
 
-button:disabled {
+button:not(.MuiButtonBase-root):disabled {
   cursor: not-allowed;
   opacity: 0.65;
 }
 
-input {
+input:not(.MuiInputBase-input) {
   min-height: 48px;
   width: 100%;
   border: 1px solid #d4dad6;
@@ -71,7 +71,7 @@ input {
   background: #ffffff;
 }
 
-input:focus {
+input:not(.MuiInputBase-input):focus {
   outline: 3px solid rgba(42, 127, 98, 0.16);
   border-color: var(--color-primary);
 }

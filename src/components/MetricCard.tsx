@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { Card, Stack, Typography } from "@mui/material";
 
 export function MetricCard({
   label,
@@ -14,13 +15,23 @@ export function MetricCard({
   tone?: "neutral" | "good" | "warn" | "hot";
 }) {
   return (
-    <div className={`metric-card ${tone}`}>
+    <Card className={`metric-card ${tone}`} variant="outlined">
       <div className="metric-top">
-        <span>{label}</span>
+        <Typography component="span" variant="body2">
+          {label}
+        </Typography>
         {Icon && <Icon size={18} />}
       </div>
-      <strong>{value}</strong>
-      {detail && <small>{detail}</small>}
-    </div>
+      <Stack spacing={0.5}>
+        <Typography component="strong" variant="h5">
+          {value}
+        </Typography>
+        {detail && (
+          <Typography component="small" variant="caption">
+            {detail}
+          </Typography>
+        )}
+      </Stack>
+    </Card>
   );
 }
