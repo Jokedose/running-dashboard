@@ -1,9 +1,11 @@
 import { Activity, Brain, HeartPulse, Moon } from "lucide-react";
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
+import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
-import { average, chartMargin, latest } from "../utils/data";
+import { average, latest } from "../utils/data";
 import { km, minutes, pace, percent, shortDate } from "../utils/format";
 
 function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
@@ -98,18 +100,20 @@ export function Today({ data }: { data: DashboardData }) {
         <Panel title="HRV · Sleep (14 วัน)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={recentDaily} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 12]} />
-              <Tooltip />
-              <Bar yAxisId="right" dataKey="sleepHours" fill="#d8eee5" radius={[4, 4, 0, 0]} name="นอน (ชม.)" />
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis yAxisId="left" {...chartAxis} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 12]} {...chartAxis} />
+              <ChartTooltip />
+              <Bar yAxisId="right" dataKey="sleepHours" fill="url(#sleepBar)" radius={[6, 6, 0, 0]} name="นอน (ชม.)" />
               <Line
                 yAxisId="left"
                 dataKey="hrv"
-                stroke="#2a7f62"
-                strokeWidth={2.5}
-                dot={{ r: 3 }}
+                stroke={chartColors.primary}
+                strokeWidth={3}
+                dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 name="HRV ms"
                 connectNulls={false}
               />
@@ -120,24 +124,28 @@ export function Today({ data }: { data: DashboardData }) {
         <Panel title="Progress snapshot" subtitle="ระยะและ Z2 จาก run logs ล่าสุด" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" />
-              <Tooltip />
-              <Bar yAxisId="left" dataKey="distance" fill="#2a7f62" radius={[6, 6, 0, 0]} name="ระยะ km" />
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis yAxisId="left" {...chartAxis} />
+              <YAxis yAxisId="right" orientation="right" {...chartAxis} />
+              <ChartTooltip />
+              <Bar yAxisId="left" dataKey="distance" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
               <Line
                 yAxisId="right"
                 dataKey="z2"
-                stroke="#cf244f"
-                strokeWidth={2.5}
-                dot={{ r: 3 }}
+                stroke={chartColors.accent}
+                strokeWidth={3}
+                dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 name="Z2 %"
                 connectNulls={false}
               />
             </ComposedChart>
           </ResponsiveContainer>
         </Panel>
+
+        <CoreFeatures />
       </div>
     </section>
   );

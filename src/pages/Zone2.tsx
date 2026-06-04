@@ -7,14 +7,14 @@ import {
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
-import { average, chartMargin, latest } from "../utils/data";
+import { average, latest } from "../utils/data";
 import { pace, paceMinutes, percent, shortDate } from "../utils/format";
 
 export function Zone2({ data }: { data: DashboardData }) {
@@ -47,15 +47,15 @@ export function Zone2({ data }: { data: DashboardData }) {
         <Panel title="Z2 stability" subtitle="Z2 %, drift และ decoupling — เส้นประคือเป้าหมาย" className="span-12">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={rows} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
-              <ReferenceLine y={80} stroke="#2a7f62" strokeDasharray="4 4" label={{ value: "Z2 80%", position: "insideTopLeft", fontSize: 11, fill: "#2a7f62" }} />
-              <ReferenceLine y={5} stroke="#cf244f" strokeDasharray="4 4" label={{ value: "drift 5", position: "insideBottomLeft", fontSize: 11, fill: "#cf244f" }} />
-              <Line dataKey="z2" stroke="#2a7f62" strokeWidth={2.5} dot={{ r: 3 }} name="Z2 %" />
-              <Line dataKey="drift" stroke="#cf244f" strokeWidth={2} dot={false} name="Drift bpm" />
-              <Line dataKey="decoupling" stroke="#695d46" strokeWidth={2} dot={false} name="Decoupling %" />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis {...chartAxis} />
+              <ChartTooltip />
+              <ReferenceLine y={80} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: "Z2 80%", position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
+              <ReferenceLine y={5} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "drift 5", position: "insideBottomLeft", fontSize: 11, fill: chartColors.accent }} />
+              <Line dataKey="z2" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} name="Z2 %" />
+              <Line dataKey="drift" stroke={chartColors.accent} strokeWidth={2.5} dot={false} name="Drift bpm" />
+              <Line dataKey="decoupling" stroke={chartColors.brown} strokeWidth={2.5} strokeDasharray="4 5" dot={false} name="Decoupling %" />
             </LineChart>
           </ResponsiveContainer>
         </Panel>
@@ -63,12 +63,13 @@ export function Zone2({ data }: { data: DashboardData }) {
         <Panel title="Pace trend" subtitle="ค่า pace ยิ่งต่ำยิ่งเร็ว · เป้า 7:00/km" className="span-12">
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={rows} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="date" />
-              <YAxis reversed domain={["dataMin - 1", "dataMax + 1"]} />
-              <Tooltip formatter={(value) => [`${Number(value).toFixed(2)} min/km`, "Pace"]} />
-              <ReferenceLine y={7} stroke="#cf244f" strokeDasharray="5 5" label={{ value: "เป้า 7:00", position: "insideTopRight", fontSize: 11, fill: "#cf244f" }} />
-              <Area dataKey="pace" stroke="#2a7f62" fill="#d8eee5" strokeWidth={2.5} name="Pace min/km" />
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis reversed domain={["dataMin - 1", "dataMax + 1"]} {...chartAxis} />
+              <ChartTooltip formatter={(value) => [`${Number(value).toFixed(2)} min/km`, "Pace"]} />
+              <ReferenceLine y={7} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "เป้า 7:00", position: "insideTopRight", fontSize: 11, fill: chartColors.accent }} />
+              <Area dataKey="pace" stroke={chartColors.primary} fill="url(#paceArea)" strokeWidth={3} name="Pace min/km" activeDot={{ r: 6, strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         </Panel>

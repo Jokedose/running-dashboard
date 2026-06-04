@@ -5,15 +5,14 @@ import {
   LineChart,
   ReferenceLine,
   ResponsiveContainer,
-  Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import { BrandLogo } from "../components/BrandLogo";
+import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
-import { chartMargin } from "../utils/data";
 import { pace, raceTime, shortDate } from "../utils/format";
 
 const RACE_DATE = "2026-07-19";
@@ -178,20 +177,29 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
           <ResponsiveContainer width="100%" height={320}>
             <LineChart data={projection} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" />
-              <YAxis domain={[80, "dataMax + 10"]} tickFormatter={(value) => raceTime(Number(value)).slice(0, 4)} />
-              <Tooltip
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="label" {...chartAxis} />
+              <YAxis domain={[80, "dataMax + 10"]} tickFormatter={(value) => raceTime(Number(value)).slice(0, 4)} {...chartAxis} />
+              <ChartTooltip
                 formatter={(value, name) => [raceTime(Number(value)), name]}
                 labelFormatter={(_, payload) => {
                   const point = payload?.[0]?.payload as ProjectionPoint | undefined;
                   return point ? `${point.date} · ${point.session} · ${point.distance.toFixed(2)} km` : "";
                 }}
               />
-              <ReferenceLine y={TARGET_MINUTES} stroke="#2a7f62" strokeDasharray="5 5" label="1:30" />
-              <ReferenceLine y={CUTOFF_MINUTES} stroke="#cf244f" strokeDasharray="5 5" label="2:00 cutoff" />
-              <Line type="monotone" dataKey="expected" name="เส้นพัฒนาที่ควรเป็น" stroke="#0b73e0" strokeWidth={2.5} strokeDasharray="8 8" dot={false} />
-              <Line type="monotone" dataKey="actual" name="สถานะจริงจากผลซ้อม" stroke="#172026" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 7 }} connectNulls={false} />
+              <ReferenceLine y={TARGET_MINUTES} stroke={chartColors.primary} strokeDasharray="6 6" label="1:30" />
+              <ReferenceLine y={CUTOFF_MINUTES} stroke={chartColors.accent} strokeDasharray="6 6" label="2:00 cutoff" />
+              <Line type="monotone" dataKey="expected" name="เส้นพัฒนาที่ควรเป็น" stroke={chartColors.blue} strokeWidth={3} strokeDasharray="8 8" dot={false} />
+              <Line
+                type="monotone"
+                dataKey="actual"
+                name="สถานะจริงจากผลซ้อม"
+                stroke={chartColors.ink}
+                strokeWidth={3.5}
+                dot={{ r: 4, fill: chartColors.ink, strokeWidth: 0 }}
+                activeDot={{ r: 7, strokeWidth: 0 }}
+                connectNulls={false}
+              />
             </LineChart>
           </ResponsiveContainer>
           <p className="chart-note">

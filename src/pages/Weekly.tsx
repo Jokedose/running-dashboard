@@ -1,9 +1,10 @@
 import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock3 } from "lucide-react";
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
-import { chartMargin, latest } from "../utils/data";
+import { latest } from "../utils/data";
 import { km, minutes } from "../utils/format";
 
 export function Weekly({ data }: { data: DashboardData }) {
@@ -34,18 +35,20 @@ export function Weekly({ data }: { data: DashboardData }) {
         <Panel title="Weekly volume trend" subtitle="ระยะและ quality runs รายสัปดาห์" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="week" />
-              <YAxis yAxisId="left" />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 8]} />
-              <Tooltip />
-              <Bar yAxisId="left" dataKey="km" fill="#2a7f62" radius={[4, 4, 0, 0]} name="ระยะ km" />
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="week" {...chartAxis} />
+              <YAxis yAxisId="left" {...chartAxis} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 8]} {...chartAxis} />
+              <ChartTooltip />
+              <Bar yAxisId="left" dataKey="km" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
               <Line
                 yAxisId="right"
                 dataKey="quality"
-                stroke="#cf244f"
-                strokeWidth={2}
-                dot={{ r: 3 }}
+                stroke={chartColors.accent}
+                strokeWidth={3}
+                dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }}
+                activeDot={{ r: 6, strokeWidth: 0 }}
                 name="Quality runs"
                 connectNulls={false}
               />

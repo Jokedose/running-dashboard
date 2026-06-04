@@ -589,6 +589,76 @@ header span {
   font-size: 12px;
 }
 
+.recharts-surface {
+  overflow: visible;
+}
+
+.chart-tooltip {
+  min-width: 148px;
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid rgba(23, 32, 38, 0.1);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 30px rgba(23, 32, 38, 0.12);
+  color: var(--color-ink);
+}
+
+.chart-tooltip strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.chart-tooltip span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.chart-tooltip i {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.feature-card {
+  min-height: 142px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.feature-card svg {
+  color: var(--color-primary);
+}
+
+.feature-card strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .shoe-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -718,6 +788,10 @@ td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .span-4,
   .span-5,
   .span-6,
@@ -756,7 +830,8 @@ td {
 
   .metric-grid,
   .shoe-grid,
-  .race-stat-grid {
+  .race-stat-grid,
+  .feature-grid {
     grid-template-columns: 1fr;
   }
 
