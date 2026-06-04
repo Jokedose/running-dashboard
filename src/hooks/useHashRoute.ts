@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
 export function useHashRoute() {
-  const [route, setRoute] = useState(() => window.location.hash.replace("#/", "") || "today");
+  const [route, setRoute] = useState(() => window.location.hash.replace("#/", "") || "plan");
 
   useEffect(() => {
-    const onHash = () => setRoute(window.location.hash.replace("#/", "") || "today");
+    const onHash = () => setRoute(window.location.hash.replace("#/", "") || "plan");
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);

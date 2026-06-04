@@ -25,7 +25,7 @@ export function Layout({
       <Box component="aside">
         <Box className="app-title">
           <BrandLogo compact />
-          <Typography component="strong">Running</Typography>
+          <Typography component="strong">วิ่ง</Typography>
         </Box>
         <Box component="nav">
           {navItems.map((item) => {
@@ -46,14 +46,14 @@ export function Layout({
         <Box component="header">
           <Box>
             <Typography component="p" variant="body2">
-              Private training dashboard
+              แดชบอร์ดซ้อมวิ่งส่วนตัว
             </Typography>
             <Typography component="h1" variant="h4">
               {title}
             </Typography>
           </Box>
           <Typography component="span" variant="body2">
-            {session.user.email ?? "Supabase user"}
+            {session.user.email ?? "ผู้ใช้ Supabase"}
           </Typography>
         </Box>
         {children}

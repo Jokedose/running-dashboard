@@ -53,7 +53,7 @@ export function Trends({ data }: { data: DashboardData }) {
           icon={Brain}
         />
         <MetricCard
-          label="Sleep เฉลี่ย"
+          label="การนอนเฉลี่ย"
           value={avgSleepMin == null ? "-" : minutes(avgSleepMin)}
           detail="ทุก daily log"
           icon={Moon}
@@ -78,7 +78,7 @@ export function Trends({ data }: { data: DashboardData }) {
                 strokeWidth={3}
                 dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
-                name="Quality runs"
+                name="ซ้อมคุณภาพ"
                 connectNulls={false}
               />
               <Line
@@ -88,14 +88,14 @@ export function Trends({ data }: { data: DashboardData }) {
                 strokeWidth={2.5}
                 strokeDasharray="6 6"
                 dot={false}
-                name="Long runs"
+                name="วิ่งยาว"
                 connectNulls={false}
               />
             </ComposedChart>
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="HRV · Training load" subtitle="30 วันล่าสุด — HRV ms (เส้นทึบ) · Load ratio (เส้นประ)" className="span-6">
+        <Panel title="HRV · โหลดการซ้อม" subtitle="30 วันล่าสุด — HRV ms (เส้นทึบ) · อัตราโหลด (เส้นประ)" className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={hrvRows} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
@@ -126,7 +126,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Sleep quality" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · Sleep score (เส้น)" className="span-6">
+        <Panel title="คุณภาพการนอน" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={sleepRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -143,7 +143,7 @@ export function Trends({ data }: { data: DashboardData }) {
                 strokeWidth={3}
                 dot={{ r: 3, fill: chartColors.blue, strokeWidth: 0 }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
-                name="Sleep score"
+                name="คะแนนการนอน"
                 connectNulls={false}
               />
             </ComposedChart>

@@ -3,32 +3,32 @@ import { Panel } from "./Panel";
 
 const features = [
   {
-    title: "Readiness cockpit",
+    title: "ศูนย์พร้อมซ้อม",
     detail: "รวม recovery, sleep, HRV, RHR และ load ratio เป็นคำตอบว่าวันนี้ควรซ้อมแค่ไหน",
     icon: ShieldCheck,
   },
   {
-    title: "Training load",
+    title: "โหลดการซ้อม",
     detail: "ดู volume รายสัปดาห์, long run, quality run และสัญญาณเพิ่มโหลดเร็วเกินไป",
     icon: Activity,
   },
   {
-    title: "Zone 2 engine",
+    title: "ฐานแอโรบิก Zone 2",
     detail: "ติดตาม Z2 %, drift, decoupling และ pace เพื่อให้ aerobic base โตแบบวัดผลได้",
     icon: Gauge,
   },
   {
-    title: "Race readiness",
+    title: "ความพร้อมวันแข่ง",
     detail: "คาดการณ์ 10K จากผลซ้อมจริง เทียบเป้า เวลา cutoff และ gap ที่ต้องปิดก่อนวันแข่ง",
     icon: Trophy,
   },
   {
-    title: "Recovery trend",
+    title: "แนวโน้มฟื้นตัว",
     detail: "ดู HRV, sleep score และ resting HR เป็น trend เพื่อจับ fatigue ก่อนเจ็บหรือหลุดแผน",
     icon: Brain,
   },
   {
-    title: "Gear rotation",
+    title: "รอบใช้งานรองเท้า",
     detail: "คุมระยะรองเท้า บทบาทของแต่ละคู่ และสัญญาณใกล้ถึงรอบเปลี่ยน",
     icon: Footprints,
   },
@@ -36,7 +36,7 @@ const features = [
 
 export function CoreFeatures() {
   return (
-    <Panel title="Core features" subtitle="แกนหลักที่ dashboard ควรตอบให้ได้ทุกสัปดาห์" className="span-12">
+    <Panel title="ฟีเจอร์หลัก" subtitle="แกนหลักที่แดชบอร์ดควรตอบให้ได้ทุกสัปดาห์" className="span-12">
       <div className="feature-grid">
         {features.map((feature) => {
           const Icon = feature.icon;

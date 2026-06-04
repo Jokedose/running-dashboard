@@ -6,6 +6,7 @@ export const emptyData: DashboardData = {
   weekly: [],
   gear: [],
   race: null,
+  plan: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

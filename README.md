@@ -1,4 +1,4 @@
-# Running Dashboard
+# แดชบอร์ดวิ่ง
 
 Public GitHub Pages frontend สำหรับดูข้อมูลวิ่งส่วนตัวหลัง login ด้วย Supabase email/password
 

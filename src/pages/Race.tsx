@@ -94,7 +94,7 @@ function chartProjection(points: ActualProjectionPoint[], raceDate: string) {
   rows.push({
     date: raceDate,
     label: "19/07",
-    session: "Race day target",
+    session: "เป้าวันแข่ง",
     distance: 10,
     actual: null,
     expected: TARGET_MINUTES,
@@ -138,15 +138,15 @@ export function Race({ data }: { data: DashboardData }) {
       <div className="race-hero-card">
         <BrandLogo />
         <div>
-          <p>10K Race Progress</p>
+          <p>ความคืบหน้า 10K</p>
           <h2>เส้นทางสู่วันที่ 19 กรกฎาคม</h2>
           <span>เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือ pace/เวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า 1:30</span>
         </div>
       </div>
 
       <div className="metric-grid">
-        <MetricCard label="Countdown" value={`${daysLeft} วัน`} detail={raceDate} icon={Clock3} tone="hot" />
-        <MetricCard label="Readiness" value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`} detail="race score" icon={Trophy} tone="good" />
+        <MetricCard label="นับถอยหลัง" value={`${daysLeft} วัน`} detail={raceDate} icon={Clock3} tone="hot" />
+        <MetricCard label="ความพร้อม" value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`} detail="คะแนนวันแข่ง" icon={Trophy} tone="good" />
         <MetricCard label="คาดการณ์วันแข่ง" value={raceTime(forecast)} detail={forecastDelta == null ? undefined : forecastDelta <= 0 ? `เร็วกว่า cutoff ${Math.abs(forecastDelta).toFixed(1)} นาที` : `ช้ากว่า cutoff ${forecastDelta.toFixed(1)} นาที`} icon={Activity} tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"} />
         <MetricCard label="ตำแหน่งล่าสุด" value={raceTime(latestPoint?.actual)} detail={latestPoint ? `${finishPace(latestPoint.actual)} · ${latestPoint.date}` : undefined} icon={Gauge} />
       </div>
@@ -188,7 +188,7 @@ export function Race({ data }: { data: DashboardData }) {
                 }}
               />
               <ReferenceLine y={TARGET_MINUTES} stroke={chartColors.primary} strokeDasharray="6 6" label="1:30" />
-              <ReferenceLine y={CUTOFF_MINUTES} stroke={chartColors.accent} strokeDasharray="6 6" label="2:00 cutoff" />
+              <ReferenceLine y={CUTOFF_MINUTES} stroke={chartColors.accent} strokeDasharray="6 6" label="เส้นตัดตัว 2:00" />
               <Line type="monotone" dataKey="expected" name="เส้นพัฒนาที่ควรเป็น" stroke={chartColors.blue} strokeWidth={3} strokeDasharray="8 8" dot={false} />
               <Line
                 type="monotone"
@@ -207,7 +207,7 @@ export function Race({ data }: { data: DashboardData }) {
           </p>
         </Panel>
 
-        <Panel title="Race decision" subtitle="แนวทางวันแข่ง" className="span-12">
+        <Panel title="แนวทางตัดสินใจวันแข่ง" subtitle="แนวทางวันแข่ง" className="span-12">
           <div className="coach-card race-decision">
             <p>{race?.race_decision ?? "-"}</p>
           </div>

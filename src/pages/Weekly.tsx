@@ -49,7 +49,7 @@ export function Weekly({ data }: { data: DashboardData }) {
                 strokeWidth={3}
                 dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
-                name="Quality runs"
+                name="ซ้อมคุณภาพ"
                 connectNulls={false}
               />
             </ComposedChart>
@@ -64,7 +64,7 @@ export function Weekly({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Readiness issues" subtitle="ธงเตือนประจำสัปดาห์" className="span-4">
+        <Panel title="ธงเตือนความพร้อม" subtitle="ธงเตือนประจำสัปดาห์" className="span-4">
           <div className="issue-card">
             <AlertTriangle size={22} />
             <p>{week?.readiness_issues || "ไม่พบ readiness issue เพิ่มเติม"}</p>

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarDays, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -15,6 +15,7 @@ import type {
   NavItem,
   RaceReadiness,
   RunLog,
+  TrainingPlan,
   WeeklySummary,
 } from "./types";
 import { emptyData } from "./utils/data";
@@ -23,6 +24,7 @@ import { theme } from "./theme";
 import "./styles.css";
 
 const navItems: NavItem[] = [
+  { key: "plan", label: "แผน", icon: CalendarCheck },
   { key: "today", label: "วันนี้", icon: CalendarDays },
   { key: "race", label: "10K", icon: Trophy },
   { key: "zone2", label: "Zone 2", icon: Gauge },
@@ -34,6 +36,7 @@ const navItems: NavItem[] = [
 
 const Activities = lazy(() => import("./pages/Activities").then((module) => ({ default: module.Activities })));
 const Gear = lazy(() => import("./pages/Gear").then((module) => ({ default: module.Gear })));
+const Plan = lazy(() => import("./pages/Plan").then((module) => ({ default: module.Plan })));
 const Race = lazy(() => import("./pages/Race").then((module) => ({ default: module.Race })));
 const Today = lazy(() => import("./pages/Today").then((module) => ({ default: module.Today })));
 const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: module.Trends })));
@@ -90,7 +93,8 @@ function App() {
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
       supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
       supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(1),
-    ]).then(([daily, runs, weekly, gear, race]) => {
+      supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
+    ]).then(([daily, runs, weekly, gear, race, plan]) => {
       if (daily.error || runs.error || weekly.error || gear.error || race.error) {
         setLoadState("error");
         return;
@@ -102,21 +106,23 @@ function App() {
         weekly: (weekly.data ?? []) as WeeklySummary[],
         gear: (gear.data ?? []) as GearMileage[],
         race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
+        plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
       });
       setLoadState("ready");
     });
   }, [session]);
 
-  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race);
+  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race || data.plan.length);
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;
+    if (route === "plan") return <Plan data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
     if (route === "trends") return <Trends data={data} />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "activities") return <Activities data={data} />;
-    return <Today data={data} />;
+    return <Plan data={data} />;
   }, [data, hasData, loadState, route]);
 
   if (loading) return <LoadingScreen label="กำลังโหลด..." />;

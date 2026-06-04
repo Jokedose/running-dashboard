@@ -544,6 +544,73 @@ header span {
   background: linear-gradient(135deg, rgba(207, 36, 79, 0.07) 0%, transparent 46%), var(--color-panel);
 }
 
+.plan-hero {
+  min-height: 164px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(42, 127, 98, 0.11) 0%, transparent 48%),
+    linear-gradient(180deg, #ffffff, #f7fbf4);
+  box-shadow: var(--shadow-panel);
+}
+
+.plan-hero.good {
+  border-color: #add9c9;
+}
+
+.plan-hero.warn {
+  border-color: #eed28b;
+  background:
+    linear-gradient(135deg, rgba(200, 148, 0, 0.11) 0%, transparent 48%),
+    linear-gradient(180deg, #ffffff, #fffdf4);
+}
+
+.plan-hero.hot {
+  border-color: #efb4c3;
+  background:
+    linear-gradient(135deg, rgba(207, 36, 79, 0.09) 0%, transparent 48%),
+    linear-gradient(180deg, #ffffff, #fff7f9);
+}
+
+.plan-hero h2 {
+  margin: 4px 0 8px;
+  font-size: 32px;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.plan-hero p {
+  margin: 0;
+  color: var(--color-muted);
+  line-height: 1.55;
+}
+
+.plan-hero-metrics {
+  min-width: 260px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.plan-hero-metrics span {
+  min-height: 72px;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--color-ink);
+  font-size: 18px;
+  font-weight: 750;
+  text-align: center;
+}
+
 .readiness-status-badge {
   display: inline-flex;
   align-items: center;
@@ -657,6 +724,72 @@ header span {
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.plan-focus-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.plan-focus-card {
+  min-height: 122px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: var(--space-3);
+  border: 1px solid var(--color-line-soft);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.plan-focus-card.high,
+.plan-focus-card.race {
+  border-color: #efb4c3;
+}
+
+.plan-focus-card span {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-focus-card strong {
+  line-height: 1.25;
+}
+
+.plan-focus-card p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.table-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  background: #edf3ef;
+  color: #34464c;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.table-status.done {
+  background: #d8eee5;
+  color: #1a6847;
+}
+
+.table-status.skipped {
+  background: #fee2e8;
+  color: #9d1c37;
+}
+
+.table-status.adjusted {
+  background: #fef3c7;
+  color: #7a5300;
 }
 
 .shoe-grid {
@@ -792,6 +925,15 @@ td {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .plan-hero {
+    align-items: stretch;
+    display: grid;
+  }
+
+  .plan-hero-metrics {
+    min-width: 0;
+  }
+
   .span-4,
   .span-5,
   .span-6,
@@ -831,7 +973,8 @@ td {
   .metric-grid,
   .shoe-grid,
   .race-stat-grid,
-  .feature-grid {
+  .feature-grid,
+  .plan-focus-grid {
     grid-template-columns: 1fr;
   }
 
@@ -858,6 +1001,18 @@ td {
 
   .race-hero-card h2 {
     font-size: 24px;
+  }
+
+  .plan-hero {
+    padding: 14px;
+  }
+
+  .plan-hero h2 {
+    font-size: 24px;
+  }
+
+  .plan-hero-metrics {
+    grid-template-columns: 1fr;
   }
 }
 

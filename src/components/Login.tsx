@@ -26,7 +26,7 @@ export function Login() {
       <Stack component="section" className="login-panel">
         <BrandLogo />
         <Typography component="h1" variant="h3">
-          Running Dashboard
+          แดชบอร์ดวิ่ง
         </Typography>
         <Typography>
           เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น

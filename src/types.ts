@@ -71,12 +71,30 @@ export type RaceReadiness = {
   race_decision: string | null;
 };
 
+export type TrainingPlan = {
+  id: string;
+  plan_date: string;
+  week_id: string | null;
+  title: string;
+  session_type: string | null;
+  target_distance_km: number | null;
+  target_duration_min: number | null;
+  target_pace_sec_per_km: number | null;
+  intensity: string | null;
+  planned_shoe: string | null;
+  priority: "low" | "normal" | "high" | "race" | null;
+  status: "planned" | "done" | "skipped" | "adjusted" | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
   weekly: WeeklySummary[];
   gear: GearMileage[];
   race: RaceReadiness | null;
+  plan: TrainingPlan[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";

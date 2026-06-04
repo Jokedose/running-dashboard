@@ -57,13 +57,13 @@ export function Today({ data }: { data: DashboardData }) {
 
       <div className="metric-grid">
         <MetricCard
-          label="Recovery"
+          label="การฟื้นตัว"
           value={today?.recovery_percent == null ? "-" : `${today.recovery_percent}%`}
-          detail="COROS recovery"
+          detail="ค่าฟื้นตัวจาก COROS"
           icon={HeartPulse}
         />
         <MetricCard
-          label="Sleep"
+          label="การนอน"
           value={today?.sleep_minutes == null ? "-" : minutes(today.sleep_minutes)}
           detail={today?.sleep_score == null ? undefined : `score ${today.sleep_score}`}
           icon={Moon}
@@ -97,7 +97,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="HRV · Sleep (14 วัน)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
+        <Panel title="HRV · การนอน (14 วัน)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={recentDaily} margin={chartMargin}>
               <ChartGradientDefs />
@@ -121,7 +121,7 @@ export function Today({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Progress snapshot" subtitle="ระยะและ Z2 จาก run logs ล่าสุด" className="span-12">
+        <Panel title="ภาพรวมความคืบหน้า" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs />
