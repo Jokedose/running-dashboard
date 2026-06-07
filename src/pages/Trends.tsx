@@ -45,23 +45,23 @@ export function Trends({ data }: { data: DashboardData }) {
     <section className="page-stack">
       <div className="metric-grid">
         <MetricCard label="สัปดาห์ทั้งหมด" value={String(totalWeeks)} detail="ที่บันทึกไว้" icon={TrendingUp} />
-        <MetricCard label="ระยะ/สัปดาห์" value={km(avgWeeklyKm)} detail="เฉลี่ยทุก week" icon={Activity} />
+        <MetricCard label="ระยะ/สัปดาห์" value={km(avgWeeklyKm)} detail="เฉลี่ยทุกสัปดาห์" icon={Activity} />
         <MetricCard
           label="HRV เฉลี่ย"
           value={avgHrv == null ? "-" : `${avgHrv.toFixed(0)} ms`}
-          detail="ทุก daily log"
+          detail="ทุกบันทึกรายวัน"
           icon={Brain}
         />
         <MetricCard
           label="การนอนเฉลี่ย"
           value={avgSleepMin == null ? "-" : minutes(avgSleepMin)}
-          detail="ทุก daily log"
+          detail="ทุกบันทึกรายวัน"
           icon={Moon}
         />
       </div>
 
       <div className="content-grid">
-        <Panel title="Weekly volume" subtitle="ระยะรวมและ quality runs รายสัปดาห์ (สูงสุด 20 สัปดาห์)" className="span-12">
+        <Panel title="ระยะรายสัปดาห์" subtitle="ระยะรวมและซ้อมคุณภาพรายสัปดาห์ (สูงสุด 20 สัปดาห์)" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -119,7 +119,7 @@ export function Trends({ data }: { data: DashboardData }) {
                 strokeWidth={2.5}
                 strokeDasharray="6 6"
                 dot={false}
-                name="Load ratio"
+                name="อัตราโหลด"
                 connectNulls={false}
               />
             </ComposedChart>

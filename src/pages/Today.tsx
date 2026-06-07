@@ -7,6 +7,7 @@ import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
 import { km, minutes, pace, percent, shortDate } from "../utils/format";
+import { thaiText } from "../utils/thaiText";
 
 function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
   const s = (status ?? "").toLowerCase();
@@ -44,14 +45,14 @@ export function Today({ data }: { data: DashboardData }) {
   return (
     <section className="page-stack">
       <div className={`readiness-hero ${tone}`}>
-        <span className="readiness-status-badge">{today?.readiness_status ?? "ไม่มีข้อมูล"}</span>
-        <p className="readiness-session">{today?.planned_session ?? "ยังไม่มีแผนวันนี้"}</p>
-        <p className="readiness-rec">{today?.recommendation ?? "-"}</p>
+        <span className="readiness-status-badge">{thaiText(today?.readiness_status, "ไม่มีข้อมูล")}</span>
+        <p className="readiness-session">{thaiText(today?.planned_session, "ยังไม่มีแผนวันนี้")}</p>
+        <p className="readiness-rec">{thaiText(today?.recommendation)}</p>
         <div className="chip-row">
-          <span>รองเท้า: {today?.recommended_shoe ?? "-"}</span>
-          <span>Load: {today?.load_ratio?.toFixed(2) ?? "-"}</span>
-          <span>RHR: {today?.resting_hr_bpm ?? "-"} bpm</span>
-          {today?.tags?.map((tag) => <span key={tag}>{tag}</span>)}
+          <span>รองเท้า: {thaiText(today?.recommended_shoe)}</span>
+          <span>โหลด: {today?.load_ratio?.toFixed(2) ?? "-"}</span>
+          <span>ชีพจรพัก: {today?.resting_hr_bpm ?? "-"} bpm</span>
+          {today?.tags?.map((tag) => <span key={tag}>{thaiText(tag)}</span>)}
         </div>
       </div>
 
@@ -65,7 +66,7 @@ export function Today({ data }: { data: DashboardData }) {
         <MetricCard
           label="การนอน"
           value={today?.sleep_minutes == null ? "-" : minutes(today.sleep_minutes)}
-          detail={today?.sleep_score == null ? undefined : `score ${today.sleep_score}`}
+          detail={today?.sleep_score == null ? undefined : `คะแนน ${today.sleep_score}`}
           icon={Moon}
         />
         <MetricCard
@@ -84,16 +85,16 @@ export function Today({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="วิ่งล่าสุด" subtitle={lastRun?.run_date ?? "ยังไม่มี run log"} className="span-5">
+        <Panel title="วิ่งล่าสุด" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
-            <strong>{lastRun?.session_type ?? "-"}</strong>
+            <strong>{thaiText(lastRun?.session_type)}</strong>
             <div className="mini-metrics">
               <span>{km(lastRun?.distance_km)}</span>
               <span>{pace(lastRun?.pace_sec_per_km)}</span>
               <span>Z2 {percent(lastRun?.z2_percent)}</span>
-              {lastRun?.avg_hr_bpm != null && <span>HR {lastRun.avg_hr_bpm} bpm</span>}
+              {lastRun?.avg_hr_bpm != null && <span>ชีพจร {lastRun.avg_hr_bpm} bpm</span>}
             </div>
-            {lastRun?.note && <p className="run-note">{lastRun.note}</p>}
+            {lastRun?.note && <p className="run-note">{thaiText(lastRun.note)}</p>}
           </div>
         </Panel>
 

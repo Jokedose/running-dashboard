@@ -14,6 +14,7 @@ import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
 import { pace, raceTime, shortDate } from "../utils/format";
+import { thaiText } from "../utils/thaiText";
 
 const RACE_DATE = "2026-07-19";
 const TARGET_MINUTES = 90;
@@ -62,7 +63,7 @@ function raceProjection(runs: RunLog[]) {
     const next = {
       date: run.run_date,
       label: shortDate(run.run_date),
-      session: run.session_type ?? "-",
+      session: thaiText(run.session_type),
       distance: run.distance_km,
       actual: Number(estimate.toFixed(1)),
       target: TARGET_MINUTES,
@@ -140,14 +141,14 @@ export function Race({ data }: { data: DashboardData }) {
         <div>
           <p>ความคืบหน้า 10K</p>
           <h2>เส้นทางสู่วันที่ 19 กรกฎาคม</h2>
-          <span>เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือ pace/เวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า 1:30</span>
+          <span>เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือเพซ/เวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า 1:30</span>
         </div>
       </div>
 
       <div className="metric-grid">
         <MetricCard label="นับถอยหลัง" value={`${daysLeft} วัน`} detail={raceDate} icon={Clock3} tone="hot" />
         <MetricCard label="ความพร้อม" value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`} detail="คะแนนวันแข่ง" icon={Trophy} tone="good" />
-        <MetricCard label="คาดการณ์วันแข่ง" value={raceTime(forecast)} detail={forecastDelta == null ? undefined : forecastDelta <= 0 ? `เร็วกว่า cutoff ${Math.abs(forecastDelta).toFixed(1)} นาที` : `ช้ากว่า cutoff ${forecastDelta.toFixed(1)} นาที`} icon={Activity} tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"} />
+        <MetricCard label="คาดการณ์วันแข่ง" value={raceTime(forecast)} detail={forecastDelta == null ? undefined : forecastDelta <= 0 ? `เร็วกว่าเวลาตัดตัว ${Math.abs(forecastDelta).toFixed(1)} นาที` : `ช้ากว่าเวลาตัดตัว ${forecastDelta.toFixed(1)} นาที`} icon={Activity} tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"} />
         <MetricCard label="ตำแหน่งล่าสุด" value={raceTime(latestPoint?.actual)} detail={latestPoint ? `${finishPace(latestPoint.actual)} · ${latestPoint.date}` : undefined} icon={Gauge} />
       </div>
 
@@ -165,12 +166,12 @@ export function Race({ data }: { data: DashboardData }) {
               <small>{latestGap == null ? "-" : latestGap > 0 ? `ยังช้ากว่าเส้นแผน ${latestGap.toFixed(1)} นาที` : `เร็วกว่าเส้นแผน ${Math.abs(latestGap).toFixed(1)} นาที`}</small>
             </div>
             <div>
-              <span>pace ปัจจุบัน</span>
+              <span>เพซปัจจุบัน</span>
               <strong>{finishPace(latestPoint?.actual)}</strong>
-              <small>ถ้าคง effort นี้ถึง 10K</small>
+              <small>ถ้าคงความรู้สึกหนักนี้ถึง 10K</small>
             </div>
             <div>
-              <span>pace เป้าหมาย</span>
+              <span>เพซเป้าหมาย</span>
               <strong>9:00/km</strong>
               <small>1:30:00 สำหรับ 10K</small>
             </div>
@@ -203,17 +204,17 @@ export function Race({ data }: { data: DashboardData }) {
             </LineChart>
           </ResponsiveContainer>
           <p className="chart-note">
-            เส้นทึบคำนวณจาก pace ของ session ที่ระยะอย่างน้อย 4 km แล้วปรับด้วยระยะ, Z2 และ drift ส่วนเส้นประเป็นเส้นเป้าหมายที่ค่อย ๆ ลดเวลาจบไปสู่ 1:30:00 ในวันแข่ง
+            เส้นทึบคำนวณจากเพซของรายการซ้อมที่ระยะอย่างน้อย 4 km แล้วปรับด้วยระยะ, Z2 และการไหลของหัวใจ ส่วนเส้นประเป็นเส้นเป้าหมายที่ค่อย ๆ ลดเวลาจบไปสู่ 1:30:00 ในวันแข่ง
           </p>
         </Panel>
 
         <Panel title="แนวทางตัดสินใจวันแข่ง" subtitle="แนวทางวันแข่ง" className="span-12">
           <div className="coach-card race-decision">
-            <p>{race?.race_decision ?? "-"}</p>
+            <p>{thaiText(race?.race_decision)}</p>
           </div>
         </Panel>
-        <ListPanel title="จุดแข็ง" items={race?.strengths ?? []} className="span-6 good-list" />
-        <ListPanel title="ความเสี่ยง" items={race?.risks ?? []} className="span-6 warn-list" />
+        <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
+        <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
       </div>
     </section>
   );

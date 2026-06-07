@@ -18,7 +18,7 @@ export function Layout({
   onLogout: () => void;
   children: ReactNode;
 }) {
-  const title = navItems.find((item) => item.key === route)?.label ?? "Dashboard";
+  const title = navItems.find((item) => item.key === route)?.label ?? "แดชบอร์ด";
 
   return (
     <Box className="app-shell">

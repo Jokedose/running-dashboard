@@ -6,6 +6,7 @@ import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { latest } from "../utils/data";
 import { km, minutes } from "../utils/format";
+import { thaiText } from "../utils/thaiText";
 
 export function Weekly({ data }: { data: DashboardData }) {
   const week = latest(data.weekly, "week_id");
@@ -26,13 +27,13 @@ export function Weekly({ data }: { data: DashboardData }) {
         <MetricCard
           label="จำนวนครั้ง"
           value={week?.run_count == null ? "-" : String(week.run_count)}
-          detail={`long ${week?.long_run_count ?? 0} · quality ${week?.quality_count ?? 0}`}
+          detail={`วิ่งยาว ${week?.long_run_count ?? 0} · ซ้อมคุณภาพ ${week?.quality_count ?? 0}`}
           icon={CheckCircle2}
         />
       </div>
 
       <div className="content-grid">
-        <Panel title="Weekly volume trend" subtitle="ระยะและ quality runs รายสัปดาห์" className="span-12">
+        <Panel title="แนวโน้มระยะรายสัปดาห์" subtitle="ระยะและซ้อมคุณภาพรายสัปดาห์" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -56,10 +57,10 @@ export function Weekly({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Coach recommendation" subtitle="คำแนะนำปรับแผน" className="span-8">
+        <Panel title="คำแนะนำโค้ช" subtitle="คำแนะนำปรับแผน" className="span-8">
           <div className="coach-card">
             {(week?.coach_recommendation ?? "-").split("\n").map((line) => (
-              <p key={line}>{line}</p>
+              <p key={line}>{thaiText(line)}</p>
             ))}
           </div>
         </Panel>
@@ -67,7 +68,7 @@ export function Weekly({ data }: { data: DashboardData }) {
         <Panel title="ธงเตือนความพร้อม" subtitle="ธงเตือนประจำสัปดาห์" className="span-4">
           <div className="issue-card">
             <AlertTriangle size={22} />
-            <p>{week?.readiness_issues || "ไม่พบ readiness issue เพิ่มเติม"}</p>
+            <p>{thaiText(week?.readiness_issues, "ไม่พบธงเตือนความพร้อมเพิ่มเติม")}</p>
           </div>
         </Panel>
       </div>

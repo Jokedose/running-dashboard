@@ -27,9 +27,9 @@ const navItems: NavItem[] = [
   { key: "plan", label: "แผน", icon: CalendarCheck },
   { key: "today", label: "วันนี้", icon: CalendarDays },
   { key: "race", label: "10K", icon: Trophy },
-  { key: "zone2", label: "Zone 2", icon: Gauge },
+  { key: "zone2", label: "โซน 2", icon: Gauge },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
-  { key: "trends", label: "Trends", icon: TrendingUp },
+  { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "gear", label: "รองเท้า", icon: Footprints },
   { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
 ];
@@ -116,6 +116,7 @@ function App() {
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;
     if (route === "plan") return <Plan data={data} />;
+    if (route === "today") return <Today data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
@@ -127,9 +128,9 @@ function App() {
 
   if (loading) return <LoadingScreen label="กำลังโหลด..." />;
   if (!session) return <Login />;
-  if (loadState === "loading") return <LoadingScreen label="กำลังโหลด dashboard..." />;
+  if (loadState === "loading") return <LoadingScreen label="กำลังโหลดแดชบอร์ด..." />;
   if (loadState === "error") {
-    return <main className="login-shell">อ่านข้อมูลจาก Supabase ไม่สำเร็จ ตรวจ RLS และ table grants</main>;
+    return <main className="login-shell">อ่านข้อมูลจาก Supabase ไม่สำเร็จ ตรวจ RLS และสิทธิ์ของตาราง</main>;
   }
 
   return (

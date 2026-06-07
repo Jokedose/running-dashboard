@@ -17,7 +17,7 @@ export function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setBusy(false);
     if (error) {
-      setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจ email/password หรือเพิ่ม user ใน Supabase ก่อน");
+      setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจอีเมล/รหัสผ่าน หรือเพิ่มผู้ใช้ใน Supabase ก่อน");
     }
   }
 
@@ -29,7 +29,7 @@ export function Login() {
           แดชบอร์ดวิ่ง
         </Typography>
         <Typography>
-          เข้าสู่ระบบด้วย email/password ของ Supabase user ที่ถูกเพิ่มไว้แล้วเท่านั้น
+          เข้าสู่ระบบด้วยอีเมล/รหัสผ่านของผู้ใช้ Supabase ที่ถูกเพิ่มไว้แล้วเท่านั้น
         </Typography>
         {!supabaseConfigured ? (
           <Alert severity="warning">ยังไม่ได้ตั้งค่า VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY</Alert>
