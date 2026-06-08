@@ -1,10 +1,10 @@
-import { Activity, Brain, HeartPulse, Moon } from "lucide-react";
+import { Activity, AlertTriangle, Brain, HeartPulse, Moon, ShieldCheck } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData } from "../types";
+import type { DashboardData, RunLog } from "../types";
 import { average, latest } from "../utils/data";
 import { km, minutes, pace, percent, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
@@ -17,6 +17,50 @@ function readinessTone(status: string | null): "neutral" | "good" | "warn" | "ho
   return "neutral";
 }
 
+function runVerdict(run: RunLog | undefined) {
+  if (!run) {
+    return {
+      tone: "neutral" as const,
+      title: "ยังไม่มีผลวิ่งล่าสุด",
+      message: "เมื่อ sync run log แล้ว หน้านี้จะสรุปว่าผ่านแผนไหมและควรระวังอะไรต่อ",
+    };
+  }
+
+  const z2 = run.z2_percent ?? 0;
+  const drift = run.drift_bpm ?? 0;
+  const hasPain = Boolean(run.pain && !run.pain.includes("ไม่มี"));
+
+  if (hasPain) {
+    return {
+      tone: "warn" as const,
+      title: "ผ่าน แต่ต้องเช็กอาการขา",
+      message: "คุม easy ได้ดี แต่มี pain/soreness note ให้ดูอาการก่อน session คุณภาพครั้งถัดไป",
+    };
+  }
+
+  if (z2 >= 85 && drift <= 5) {
+    return {
+      tone: "good" as const,
+      title: "ผ่านตามแผน",
+      message: "Z2 และ drift อยู่ในเกณฑ์ดี เหมาะกับการสะสม aerobic base",
+    };
+  }
+
+  if (z2 >= 85) {
+    return {
+      tone: "warn" as const,
+      title: "ผ่าน แต่ drift สูง",
+      message: "Z2 ดีมาก แต่หัวใจไหลขึ้นช่วงท้าย ควรเน้น recovery และ hydration",
+    };
+  }
+
+  return {
+    tone: "neutral" as const,
+    title: "ต้องดูบริบทเพิ่ม",
+    message: "ข้อมูลล่าสุดยังไม่เข้าเกณฑ์ easy ชัดเจน ให้เทียบกับ RPE, อากาศ และ readiness ของวันนั้น",
+  };
+}
+
 export function Today({ data }: { data: DashboardData }) {
   const today = latest(data.daily, "log_date");
   const lastRun = latest(data.runs, "run_date");
@@ -24,6 +68,7 @@ export function Today({ data }: { data: DashboardData }) {
   const totalDistance = data.runs.reduce((sum, run) => sum + (run.distance_km ?? 0), 0);
   const avgZ2 = average(data.runs.map((run) => run.z2_percent));
   const tone = readinessTone(today?.readiness_status ?? null);
+  const verdict = runVerdict(lastRun);
 
   const latestHrv = today?.hrv_avg_ms;
   const avgHrv7 = average(data.daily.slice(-8, -1).map((d) => d.hrv_avg_ms));
@@ -90,11 +135,29 @@ export function Today({ data }: { data: DashboardData }) {
             <strong>{thaiText(lastRun?.session_type)}</strong>
             <div className="mini-metrics">
               <span>{km(lastRun?.distance_km)}</span>
+              <span>{minutes(lastRun?.duration_min)}</span>
               <span>{pace(lastRun?.pace_sec_per_km)}</span>
               <span>Z2 {percent(lastRun?.z2_percent)}</span>
               {lastRun?.avg_hr_bpm != null && <span>ชีพจร {lastRun.avg_hr_bpm} bpm</span>}
+              {lastRun?.drift_bpm != null && <span>Drift {lastRun.drift_bpm.toFixed(1)} bpm</span>}
             </div>
             {lastRun?.note && <p className="run-note">{thaiText(lastRun.note)}</p>}
+          </div>
+        </Panel>
+
+        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+          <div className={`coach-verdict ${verdict.tone}`}>
+            <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
+            <div>
+              <strong>{verdict.title}</strong>
+              <p>{verdict.message}</p>
+              <div className="mini-metrics">
+                <span>RPE {thaiText(lastRun?.rpe)}</span>
+                <span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
+                <span>Decoupling {percent(lastRun?.decoupling_percent)}</span>
+                <span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>
+              </div>
+            </div>
           </div>
         </Panel>
 
