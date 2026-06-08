@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { Box, Button, Typography } from "@mui/material";
-import { LogOut } from "lucide-react";
+import { LogOut, Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { BrandLogo } from "./BrandLogo";
 import type { NavItem } from "../types";
@@ -44,17 +44,29 @@ export function Layout({
       </Box>
       <Box component="main">
         <Box component="header" className="app-header">
-          <Box>
-            <Typography component="p" variant="body2">
-              แดชบอร์ดซ้อมวิ่งส่วนตัว
-            </Typography>
-            <Typography component="h1" variant="h4">
-              {title}
+          <Box className="mobile-storefront-top">
+            <Box className="mobile-search-pill">
+              <Search size={18} />
+              <span>ค้นหาแผนวิ่ง / ผลล่าสุด</span>
+            </Box>
+            <Button className="mobile-logout" onClick={onLogout} aria-label="ออกจากระบบ">
+              <LogOut size={18} />
+            </Button>
+          </Box>
+
+          <Box className="app-header-title">
+            <Box>
+              <Typography component="p" variant="body2">
+                แดชบอร์ดซ้อมวิ่งส่วนตัว
+              </Typography>
+              <Typography component="h1" variant="h4">
+                {title}
+              </Typography>
+            </Box>
+            <Typography component="span" variant="body2">
+              {session.user.email ?? "ผู้ใช้ Supabase"}
             </Typography>
           </Box>
-          <Typography component="span" variant="body2">
-            {session.user.email ?? "ผู้ใช้ Supabase"}
-          </Typography>
         </Box>
         {children}
       </Box>
