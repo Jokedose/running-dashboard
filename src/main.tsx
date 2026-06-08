@@ -25,12 +25,12 @@ import "./styles.css";
 import "./mobile-app.css";
 
 const navItems: NavItem[] = [
-  { key: "plan", label: "แผน", icon: CalendarCheck },
   { key: "today", label: "วันนี้", icon: CalendarDays },
-  { key: "race", label: "10K", icon: Trophy },
-  { key: "zone2", label: "โซน 2", icon: Gauge },
+  { key: "plan", label: "แผน", icon: CalendarCheck },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
-  { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
+  { key: "race", label: "10K", icon: Trophy },
+  { key: "zone2", label: "โซน2", icon: Gauge },
+  { key: "trends", label: "กราฟ", icon: TrendingUp },
   { key: "gear", label: "รองเท้า", icon: Footprints },
   { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
 ];
@@ -124,7 +124,7 @@ function App() {
     if (route === "trends") return <Trends data={data} />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "activities") return <Activities data={data} />;
-    return <Plan data={data} />;
+    return <Today data={data} />;
   }, [data, hasData, loadState, route]);
 
   if (loading) return <LoadingScreen label="กำลังโหลด..." />;
