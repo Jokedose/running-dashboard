@@ -1,8 +1,15 @@
 /* Mobile app polish layer. Imported after the base stylesheet. */
 :root {
-  --app-bottom-nav-height: 78px;
+  --app-bottom-nav-height: 72px;
   --app-glass: rgba(255, 255, 255, 0.84);
-  --app-glass-strong: rgba(255, 255, 255, 0.96);
+  --app-glass-strong: rgba(255, 255, 255, 0.98);
+  --app-brand: #e63b2e;
+  --app-brand-dark: #c92821;
+}
+
+.mobile-storefront-top,
+.mobile-logout {
+  display: none;
 }
 
 .coach-verdict {
@@ -72,9 +79,7 @@
 
 @media (max-width: 980px) {
   body {
-    background:
-      radial-gradient(circle at top, rgba(42, 127, 98, 0.14), transparent 34rem),
-      var(--color-page);
+    background: #f3f4f0;
   }
 
   .app-shell {
@@ -98,32 +103,29 @@
 
   .app-nav {
     position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 30;
-    height: var(--app-bottom-nav-height);
+    height: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom));
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(70px, 1fr);
-    gap: 6px;
-    overflow-x: auto;
-    padding: 8px;
-    border: 1px solid rgba(23, 32, 38, 0.08);
-    border-radius: 26px;
-    background: var(--app-glass-strong);
-    box-shadow: 0 18px 42px rgba(23, 32, 38, 0.18);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    overflow: visible;
+    padding: 6px 2px calc(6px + env(safe-area-inset-bottom));
+    border: 0;
+    border-top: 1px solid rgba(23, 32, 38, 0.08);
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: 0 -8px 24px rgba(23, 32, 38, 0.1);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
     scrollbar-width: none;
-    scroll-snap-type: x proximity;
-    overscroll-behavior-x: contain;
   }
 
   .app-nav::before,
   .app-nav::after {
-    content: "";
-    width: 2px;
+    display: none;
   }
 
   .app-nav::-webkit-scrollbar {
@@ -131,72 +133,127 @@
   }
 
   .app-nav a {
+    min-width: 0;
     min-height: 58px;
-    flex: 0 0 auto;
     display: grid;
     place-items: center;
     align-content: center;
-    gap: 4px;
-    padding: 6px 8px;
-    border-radius: 19px;
+    gap: 3px;
+    padding: 6px 2px;
+    border-radius: 14px;
     color: #6a777c;
     background: transparent;
     font-size: 11px;
-    font-weight: 850;
+    font-weight: 750;
     line-height: 1;
-    scroll-snap-align: center;
-    transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    transition: transform 140ms ease, color 140ms ease, background 140ms ease;
     -webkit-tap-highlight-color: transparent;
   }
 
   .app-nav a:active {
-    transform: scale(0.96);
+    transform: scale(0.95);
   }
 
   .app-nav a svg {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
+    stroke-width: 2.35;
   }
 
   .app-nav a.active {
-    min-width: 88px;
-    color: #ffffff;
-    background: linear-gradient(135deg, var(--color-primary), #1f624d);
-    box-shadow: 0 10px 24px rgba(42, 127, 98, 0.28);
+    color: var(--app-brand);
+    background: transparent;
+    box-shadow: none;
   }
 
   .app-nav a.active svg {
-    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));
+    filter: none;
+    fill: rgba(230, 59, 46, 0.1);
   }
 
   main {
-    padding: max(18px, env(safe-area-inset-top)) 16px calc(var(--app-bottom-nav-height) + 34px + env(safe-area-inset-bottom));
+    padding: 0 12px calc(var(--app-bottom-nav-height) + 16px + env(safe-area-inset-bottom));
   }
 
   .app-header {
     position: sticky;
     top: 0;
     z-index: 10;
-    margin: -18px -16px 16px;
-    padding: 18px 16px 14px;
-    border-bottom: 1px solid rgba(23, 32, 38, 0.06);
-    background: rgba(245, 246, 241, 0.84);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    display: grid;
+    gap: 14px;
+    margin: 0 -12px 14px;
+    padding: max(14px, env(safe-area-inset-top)) 14px 16px;
+    border: 0;
+    border-radius: 0 0 22px 22px;
+    background:
+      linear-gradient(180deg, var(--app-brand), var(--app-brand-dark));
+    color: #ffffff;
+    box-shadow: 0 12px 28px rgba(201, 40, 33, 0.2);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .mobile-storefront-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mobile-search-pill {
+    min-height: 44px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #c94a42;
+    box-shadow: 0 8px 18px rgba(93, 10, 6, 0.12);
+    font-size: 14px;
+    font-weight: 650;
+  }
+
+  .mobile-search-pill svg {
+    color: #9aa3a7;
+  }
+
+  .mobile-logout.MuiButtonBase-root {
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+  }
+
+  .app-header-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 14px;
   }
 
   header h1 {
-    font-size: 30px;
+    color: #ffffff;
+    font-size: 28px;
     letter-spacing: -0.03em;
   }
 
   header p,
   header span {
+    color: rgba(255, 255, 255, 0.82);
     font-size: 12px;
   }
 
+  header span {
+    max-width: 46%;
+    text-align: right;
+  }
+
   .page-stack {
-    gap: 14px;
+    gap: 12px;
   }
 
   .readiness-hero,
@@ -207,20 +264,20 @@
   .shoe-card,
   .metric-card,
   .empty-state {
-    border-radius: 22px;
-    box-shadow: 0 12px 34px rgba(23, 32, 38, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 8px 22px rgba(23, 32, 38, 0.07);
   }
 
   .readiness-hero,
   .plan-hero,
   .race-hero-card {
-    padding: 18px;
+    padding: 16px;
   }
 
   .readiness-session,
   .plan-hero h2,
   .race-hero-card h2 {
-    font-size: 24px;
+    font-size: 23px;
     letter-spacing: -0.02em;
   }
 
@@ -230,12 +287,12 @@
   }
 
   .metric-card {
-    min-height: 116px;
-    padding: 14px;
+    min-height: 112px;
+    padding: 13px;
   }
 
   .metric-card strong {
-    font-size: 25px;
+    font-size: 24px;
     letter-spacing: -0.02em;
   }
 
@@ -280,67 +337,62 @@
 
   .coach-verdict {
     min-height: auto;
-    border-radius: 20px;
+    border-radius: 14px;
     padding: 14px;
   }
 
   .coach-verdict-icon {
     width: 38px;
     height: 38px;
-    border-radius: 14px;
+    border-radius: 12px;
   }
 }
 
 @media (max-width: 620px) {
   :root {
-    --app-bottom-nav-height: 82px;
+    --app-bottom-nav-height: 70px;
   }
 
   .app-nav {
-    grid-auto-columns: minmax(64px, 1fr);
-    height: 78px;
-    left: 10px;
-    right: 10px;
-    bottom: calc(8px + env(safe-area-inset-bottom));
-    border-radius: 24px;
-    padding: 7px;
+    height: calc(var(--app-bottom-nav-height) + env(safe-area-inset-bottom));
+    padding: 5px 0 calc(5px + env(safe-area-inset-bottom));
   }
 
   .app-nav a {
-    min-height: 60px;
-    min-width: 64px;
+    min-height: 58px;
     font-size: 10.5px;
   }
 
-  .app-nav a.active {
-    min-width: 92px;
+  .app-nav a svg {
+    width: 21px;
+    height: 21px;
   }
 
   main {
-    padding-left: 14px;
-    padding-right: 14px;
+    padding-left: 10px;
+    padding-right: 10px;
   }
 
   .app-header {
-    margin-left: -14px;
-    margin-right: -14px;
-    padding-left: 14px;
-    padding-right: 14px;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 
-  header {
+  .app-header-title {
     display: grid;
     gap: 4px;
   }
 
   header h1 {
-    font-size: 28px;
+    font-size: 27px;
   }
 
   header span {
     max-width: 100%;
     text-align: left;
-    opacity: 0.78;
+    opacity: 0.82;
   }
 
   .metric-grid,
@@ -356,7 +408,7 @@
   }
 
   .metric-card {
-    min-height: 108px;
+    min-height: 104px;
   }
 
   .metric-card small {
@@ -369,13 +421,13 @@
   .panel,
   .table-panel,
   .shoe-card {
-    padding: 14px;
+    padding: 13px;
   }
 
   .readiness-session,
   .plan-hero h2,
   .race-hero-card h2 {
-    font-size: 22px;
+    font-size: 21px;
   }
 
   .coach-verdict {
@@ -384,18 +436,10 @@
 }
 
 @media (max-width: 420px) {
-  .app-nav {
-    grid-auto-columns: minmax(60px, 1fr);
-  }
-
   .app-nav a span {
-    max-width: 58px;
+    max-width: 62px;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .app-nav a.active span {
-    max-width: 76px;
   }
 
   .metric-card strong {
