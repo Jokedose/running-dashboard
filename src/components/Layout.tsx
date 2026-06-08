@@ -22,18 +22,18 @@ export function Layout({
 
   return (
     <Box className="app-shell">
-      <Box component="aside">
+      <Box component="aside" className="app-nav-shell">
         <Box className="app-title">
           <BrandLogo compact />
           <Typography component="strong">วิ่ง</Typography>
         </Box>
-        <Box component="nav">
+        <Box component="nav" className="app-nav">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <a className={route === item.key ? "active" : ""} href={`#/${item.key}`} key={item.key}>
+              <a className={route === item.key ? "active" : ""} href={`#/${item.key}`} key={item.key} aria-label={item.label}>
                 <Icon size={18} />
-                {item.label}
+                <span>{item.label}</span>
               </a>
             );
           })}
@@ -43,7 +43,7 @@ export function Layout({
         </Button>
       </Box>
       <Box component="main">
-        <Box component="header">
+        <Box component="header" className="app-header">
           <Box>
             <Typography component="p" variant="body2">
               แดชบอร์ดซ้อมวิ่งส่วนตัว
