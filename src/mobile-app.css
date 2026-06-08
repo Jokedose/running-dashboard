@@ -105,17 +105,25 @@
     height: var(--app-bottom-nav-height);
     display: grid;
     grid-auto-flow: column;
-    grid-auto-columns: minmax(66px, 1fr);
-    gap: 4px;
+    grid-auto-columns: minmax(70px, 1fr);
+    gap: 6px;
     overflow-x: auto;
     padding: 8px;
     border: 1px solid rgba(23, 32, 38, 0.08);
-    border-radius: 24px;
+    border-radius: 26px;
     background: var(--app-glass-strong);
     box-shadow: 0 18px 42px rgba(23, 32, 38, 0.18);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-x: contain;
+  }
+
+  .app-nav::before,
+  .app-nav::after {
+    content: "";
+    width: 2px;
   }
 
   .app-nav::-webkit-scrollbar {
@@ -130,12 +138,19 @@
     align-content: center;
     gap: 4px;
     padding: 6px 8px;
-    border-radius: 18px;
+    border-radius: 19px;
     color: #6a777c;
     background: transparent;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 850;
     line-height: 1;
+    scroll-snap-align: center;
+    transition: transform 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app-nav a:active {
+    transform: scale(0.96);
   }
 
   .app-nav a svg {
@@ -144,9 +159,14 @@
   }
 
   .app-nav a.active {
+    min-width: 88px;
     color: #ffffff;
     background: linear-gradient(135deg, var(--color-primary), #1f624d);
     box-shadow: 0 10px 24px rgba(42, 127, 98, 0.28);
+  }
+
+  .app-nav a.active svg {
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16));
   }
 
   main {
@@ -272,18 +292,28 @@
 }
 
 @media (max-width: 620px) {
+  :root {
+    --app-bottom-nav-height: 82px;
+  }
+
   .app-nav {
-    grid-auto-columns: minmax(62px, 1fr);
-    height: 74px;
+    grid-auto-columns: minmax(64px, 1fr);
+    height: 78px;
     left: 10px;
     right: 10px;
     bottom: calc(8px + env(safe-area-inset-bottom));
-    border-radius: 22px;
+    border-radius: 24px;
+    padding: 7px;
   }
 
   .app-nav a {
-    min-height: 54px;
+    min-height: 60px;
+    min-width: 64px;
     font-size: 10.5px;
+  }
+
+  .app-nav a.active {
+    min-width: 92px;
   }
 
   main {
@@ -355,13 +385,17 @@
 
 @media (max-width: 420px) {
   .app-nav {
-    grid-auto-columns: minmax(58px, 1fr);
+    grid-auto-columns: minmax(60px, 1fr);
   }
 
   .app-nav a span {
-    max-width: 54px;
+    max-width: 58px;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .app-nav a.active span {
+    max-width: 76px;
   }
 
   .metric-card strong {
