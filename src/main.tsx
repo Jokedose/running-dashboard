@@ -22,6 +22,7 @@ import { emptyData } from "./utils/data";
 import { useHashRoute } from "./hooks/useHashRoute";
 import { theme } from "./theme";
 import "./styles.css";
+import "./mobile-app.css";
 
 const navItems: NavItem[] = [
   { key: "plan", label: "แผน", icon: CalendarCheck },
