@@ -1,5 +1,5 @@
 import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock3 } from "lucide-react";
-import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
@@ -8,12 +8,72 @@ import { latest } from "../utils/data";
 import { km, minutes } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
-export function Weekly({ data }: { data: DashboardData }) {
-  const week = latest(data.weekly, "week_id");
+type WeekTotals = {
+  week_id: string;
+  total_distance_km: number | null;
+  total_duration_min: number | null;
+  run_count: number | null;
+  long_run_count: number | null;
+  quality_count: number | null;
+  readiness_issues: string | null;
+  coach_recommendation: string | null;
+};
 
-  const weekRows = data.weekly.slice(-16).map((w) => ({
+function isoWeekId(dateString: string) {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function buildWeekTotals(data: DashboardData) {
+  const runTotals = new Map<string, { distance: number; duration: number; runs: number }>();
+
+  for (const run of data.runs) {
+    const weekId = isoWeekId(run.run_date);
+    if (!weekId) continue;
+
+    const current = runTotals.get(weekId) ?? { distance: 0, duration: 0, runs: 0 };
+    runTotals.set(weekId, {
+      distance: current.distance + (run.distance_km ?? 0),
+      duration: current.duration + (run.duration_min ?? 0),
+      runs: current.runs + 1,
+    });
+  }
+
+  const summaryByWeek = new Map(data.weekly.map((week) => [week.week_id, week]));
+  const weekIds = new Set([...summaryByWeek.keys(), ...runTotals.keys()]);
+
+  return [...weekIds]
+    .map((weekId) => {
+      const summary = summaryByWeek.get(weekId);
+      const runs = runTotals.get(weekId);
+
+      return {
+        week_id: weekId,
+        total_distance_km: summary?.total_distance_km ?? runs?.distance ?? null,
+        total_duration_min: summary?.total_duration_min ?? runs?.duration ?? null,
+        run_count: summary?.run_count ?? runs?.runs ?? null,
+        long_run_count: summary?.long_run_count ?? null,
+        quality_count: summary?.quality_count ?? null,
+        readiness_issues: summary?.readiness_issues ?? null,
+        coach_recommendation: summary?.coach_recommendation ?? null,
+      };
+    })
+    .sort((a, b) => a.week_id.localeCompare(b.week_id));
+}
+
+export function Weekly({ data }: { data: DashboardData }) {
+  const summaryRows = buildWeekTotals(data);
+  const week = latest(summaryRows, "week_id");
+
+  const weekRows = summaryRows.slice(-16).map((w) => ({
     week: w.week_id.replace(/^\d{4}-/, ""),
     km: w.total_distance_km ?? 0,
+    hours: w.total_duration_min == null ? null : Number((w.total_duration_min / 60).toFixed(1)),
     runs: w.run_count ?? 0,
     quality: w.quality_count ?? 0,
   }));
@@ -40,17 +100,18 @@ export function Weekly({ data }: { data: DashboardData }) {
               <CartesianGrid {...chartGrid} />
               <XAxis dataKey="week" {...chartAxis} />
               <YAxis yAxisId="left" {...chartAxis} />
-              <YAxis yAxisId="right" orientation="right" domain={[0, 8]} {...chartAxis} />
+              <YAxis yAxisId="right" orientation="right" {...chartAxis} />
               <ChartTooltip />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ color: chartColors.muted, fontSize: 12, paddingBottom: 8 }} />
               <Bar yAxisId="left" dataKey="km" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
               <Line
                 yAxisId="right"
-                dataKey="quality"
+                dataKey="hours"
                 stroke={chartColors.accent}
                 strokeWidth={3}
                 dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }}
                 activeDot={{ r: 6, strokeWidth: 0 }}
-                name="ซ้อมคุณภาพ"
+                name="เวลา ชม."
                 connectNulls={false}
               />
             </ComposedChart>

@@ -18,6 +18,8 @@ import { average, latest } from "../utils/data";
 import { pace, paceMinutes, percent, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
+const TARGET_ZONE2_PACE_MIN = 7;
+
 export function Zone2({ data }: { data: DashboardData }) {
   const rows = data.runs
     .filter((run) => run.z2_percent != null || run.pace_sec_per_km != null || run.drift_bpm != null)
@@ -32,6 +34,12 @@ export function Zone2({ data }: { data: DashboardData }) {
   const latestRun = latest(data.runs, "run_date");
   const avgDrift = average(data.runs.map((run) => run.drift_bpm));
   const avgZ2 = average(data.runs.map((run) => run.z2_percent));
+  const paceValues = rows.map((row) => row.pace).filter((value): value is number => value != null);
+  const paceDomainValues = [...paceValues, TARGET_ZONE2_PACE_MIN];
+  const paceDomain =
+    paceDomainValues.length > 0
+      ? [Math.max(0, Math.floor(Math.min(...paceDomainValues) - 0.5)), Math.ceil(Math.max(...paceDomainValues) + 0.5)]
+      : [TARGET_ZONE2_PACE_MIN - 1, TARGET_ZONE2_PACE_MIN + 1];
   const driftTone: "neutral" | "good" | "warn" | "hot" =
     avgDrift == null ? "neutral" : avgDrift <= 5 ? "good" : avgDrift <= 8 ? "warn" : "hot";
 
@@ -67,9 +75,9 @@ export function Zone2({ data }: { data: DashboardData }) {
               <ChartGradientDefs />
               <CartesianGrid {...chartGrid} />
               <XAxis dataKey="date" {...chartAxis} />
-              <YAxis reversed domain={["dataMin - 1", "dataMax + 1"]} {...chartAxis} />
+              <YAxis reversed domain={paceDomain} {...chartAxis} />
               <ChartTooltip formatter={(value) => [`${Number(value).toFixed(2)} นาที/กม.`, "เพซ"]} />
-              <ReferenceLine y={7} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "เป้า 7:00", position: "insideTopRight", fontSize: 11, fill: chartColors.accent }} />
+              <ReferenceLine y={TARGET_ZONE2_PACE_MIN} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "เป้า 7:00", position: "insideTopRight", fontSize: 11, fill: chartColors.accent }} />
               <Area dataKey="pace" stroke={chartColors.primary} fill="url(#paceArea)" strokeWidth={3} name="เพซ นาที/กม." activeDot={{ r: 6, strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>

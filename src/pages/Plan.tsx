@@ -1,18 +1,34 @@
-import { Activity, CalendarCheck, Clock3, Flag, Footprints, Gauge } from "lucide-react";
+import { Activity, CalendarCheck, CheckCircle2, Clock3, Flag, Footprints, Gauge, HeartPulse, Trophy } from "lucide-react";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, TrainingPlan } from "../types";
 import { latest } from "../utils/data";
-import { km, minutes, pace } from "../utils/format";
+import { km, minutes, pace, percent, raceTime } from "../utils/format";
+import { thaiText } from "../utils/thaiText";
+
+const FALLBACK_RACE_DATE = "2026-07-19";
+const TARGET_MINUTES = 90;
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function daysUntil(date: string) {
+  return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000);
 }
 
 function statusTone(status: TrainingPlan["status"]): "neutral" | "good" | "warn" | "hot" {
   if (status === "done") return "good";
   if (status === "adjusted") return "warn";
   if (status === "skipped") return "hot";
+  return "neutral";
+}
+
+function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
+  const text = thaiText(status).toLowerCase();
+  if (text.includes("green") || text.includes("เขียว") || text.includes("ดี") || text.includes("ทำ")) return "good";
+  if (text.includes("yellow") || text.includes("เหลือง") || text.includes("ระวัง")) return "warn";
+  if (text.includes("red") || text.includes("แดง") || text.includes("พัก")) return "hot";
   return "neutral";
 }
 
@@ -30,26 +46,20 @@ function statusLabel(status: TrainingPlan["status"]) {
   return "ตามแผน";
 }
 
-function planDistance(rows: TrainingPlan[]) {
+function plannedDistance(rows: TrainingPlan[]) {
   const total = rows.reduce((sum, item) => sum + (item.target_distance_km ?? 0), 0);
   return total ? total : null;
 }
 
-function thaiPlanText(value: string | null | undefined) {
-  if (!value) return "-";
-  return value
-    .replaceAll("strides", "สไตรด์")
-    .replaceAll("drift", "การไหลของหัวใจ")
-    .replaceAll("mobility", "การเคลื่อนไหว")
-    .replaceAll("daily trainer", "รองเท้าซ้อมประจำวัน")
-    .replaceAll("light trainer", "รองเท้าเบา")
-    .replaceAll("race shoe", "รองเท้าวันแข่ง")
-    .replaceAll("easy", "เบา")
-    .replaceAll("tempo", "เทมโป")
-    .replaceAll("race", "แข่ง")
-    .replaceAll("ปิดท้ายด้วย สไตรด์", "ปิดท้ายด้วยสไตรด์")
-    .replaceAll("ถ้า การไหลของหัวใจ", "ถ้าการไหลของหัวใจ")
-    .replaceAll("หัวใจ ยัง", "หัวใจยัง");
+function completionLabel(rows: TrainingPlan[]) {
+  if (!rows.length) return "0/0";
+  const completed = rows.filter((item) => item.status === "done").length;
+  return `${completed}/${rows.length}`;
+}
+
+function weekProgress(rows: TrainingPlan[]) {
+  if (!rows.length) return 0;
+  return Math.round((rows.filter((item) => item.status === "done").length / rows.length) * 100);
 }
 
 export function Plan({ data }: { data: DashboardData }) {
@@ -60,115 +70,151 @@ export function Plan({ data }: { data: DashboardData }) {
   const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
   const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
   const nextKeySession = upcoming.find((item) => item.priority === "high" || item.priority === "race");
-  const plannedKm = planDistance(weekPlan);
-  const completed = weekPlan.filter((item) => item.status === "done").length;
+  const raceDate = data.race?.race_date ?? FALLBACK_RACE_DATE;
+  const raceCountdown = daysUntil(raceDate);
+  const todayReadiness = latest(data.daily, "log_date");
+  const latestRun = latest(data.runs, "run_date");
+  const plannedKm = plannedDistance(weekPlan);
+  const progress = weekProgress(weekPlan);
+  const heroTone = readinessTone(todayReadiness?.readiness_status ?? null);
 
   return (
-    <section className="page-stack">
-      <div className={`plan-hero ${statusTone(todayPlan?.status ?? null)}`}>
-        <div>
-          <span className="readiness-status-badge">แผนหลัก</span>
-          <h2>{todayPlan ? thaiPlanText(todayPlan.title) : "ยังไม่มีแผนในฐานข้อมูล"}</h2>
+    <section className="page-stack home-dashboard">
+      <div className={`home-hero ${heroTone}`}>
+        <div className="home-hero-copy">
+          <span className="readiness-status-badge">แผนหลัก 10K</span>
+          <h2>{todayPlan ? thaiText(todayPlan.title) : "แผน 10K พร้อมเริ่ม"}</h2>
           <p>
             {todayPlan
-              ? `${todayPlan.plan_date} · ${thaiPlanText(todayPlan.session_type ?? "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
-              : "สร้างตารางแผนซ้อมแล้วเพิ่มแผน เพื่อให้หน้านี้เป็นศูนย์กลางของสัปดาห์"}
+              ? `${todayPlan.plan_date} · ${thaiText(todayPlan.session_type ?? "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
+              : "เพิ่มแผนลง Supabase แล้วหน้านี้จะสรุปสิ่งที่ต้องทำถัดไปให้อัตโนมัติ"}
           </p>
+          <div className="hero-action-row">
+            <a href="#/today">ดูความพร้อมวันนี้</a>
+            <a href="#/race">ดูกราฟวันแข่ง</a>
+          </div>
         </div>
-        <div className="plan-hero-metrics">
-          <span>{km(todayPlan?.target_distance_km)}</span>
-          <span>{minutes(todayPlan?.target_duration_min)}</span>
-          <span>{pace(todayPlan?.target_pace_sec_per_km)}</span>
+
+        <div className="race-countdown">
+          <span>เหลือ</span>
+          <strong>{raceCountdown >= 0 ? raceCountdown : 0}</strong>
+          <small>วันถึง 10K</small>
+          <i>{raceDate}</i>
+        </div>
+      </div>
+
+      <div className="smart-strip">
+        <div>
+          <span>เป้าหมาย</span>
+          <strong>{raceTime(TARGET_MINUTES)}</strong>
+          <small>9:00/km</small>
+        </div>
+        <div>
+          <span>พร้อมซ้อม</span>
+          <strong>{todayReadiness?.recovery_percent == null ? "-" : `${todayReadiness.recovery_percent}%`}</strong>
+          <small>{thaiText(todayReadiness?.readiness_status, "ยังไม่มีข้อมูล")}</small>
+        </div>
+        <div>
+          <span>แผนสัปดาห์</span>
+          <strong>{completionLabel(weekPlan)}</strong>
+          <small>{activeWeek ?? "ยังไม่มีสัปดาห์"}</small>
         </div>
       </div>
 
       <div className="metric-grid">
-        <MetricCard label="แผนสัปดาห์นี้" value={activeWeek ?? "-"} detail={`${weekPlan.length} รายการซ้อม`} icon={CalendarCheck} />
-        <MetricCard label="ระยะตามแผน" value={km(plannedKm)} detail="รวมในสัปดาห์ที่เลือก" icon={Activity} />
-        <MetricCard label="ทำแล้ว" value={`${completed}/${weekPlan.length || 0}`} detail="รายการซ้อมที่เสร็จแล้ว" icon={Flag} tone={completed ? "good" : "neutral"} />
-        <MetricCard
-          label="ซ้อมสำคัญถัดไป"
-          value={nextKeySession?.session_type ?? "-"}
-          detail={nextKeySession ? `${nextKeySession.plan_date} · ${thaiPlanText(nextKeySession.title)}` : undefined}
-          icon={Gauge}
-          tone={nextKeySession?.priority === "race" ? "hot" : "warn"}
-        />
+        <MetricCard label="ระยะตามแผน" value={km(plannedKm)} detail="รวมในสัปดาห์นี้" icon={Activity} />
+        <MetricCard label="ความคืบหน้า" value={`${progress}%`} detail="รายการซ้อมที่ทำแล้ว" icon={CheckCircle2} tone={progress >= 60 ? "good" : "neutral"} />
+        <MetricCard label="วิ่งล่าสุด" value={km(latestRun?.distance_km)} detail={latestRun ? `${pace(latestRun.pace_sec_per_km)} · Z2 ${percent(latestRun.z2_percent)}` : undefined} icon={Gauge} />
+        <MetricCard label="ซ้อมสำคัญถัดไป" value={thaiText(nextKeySession?.session_type)} detail={nextKeySession ? `${nextKeySession.plan_date} · ${thaiText(nextKeySession.title)}` : undefined} icon={Trophy} tone={nextKeySession?.priority === "race" ? "hot" : "warn"} />
+      </div>
+
+      <div className="mobile-plan-stack">
+        <article className={`next-session-card ${statusTone(todayPlan?.status ?? null)}`}>
+          <div>
+            <span>รายการถัดไป</span>
+            <strong>{thaiText(todayPlan?.title, "ยังไม่มีแผน")}</strong>
+            <p>{todayPlan ? `${thaiText(todayPlan.intensity)} · ${statusLabel(todayPlan.status)}` : "เพิ่มรายการซ้อมเพื่อเริ่มติดตาม"}</p>
+          </div>
+          <div className="session-pills">
+            <span>
+              <Activity size={14} />
+              {km(todayPlan?.target_distance_km)}
+            </span>
+            <span>
+              <Clock3 size={14} />
+              {minutes(todayPlan?.target_duration_min)}
+            </span>
+            <span>
+              <Gauge size={14} />
+              {pace(todayPlan?.target_pace_sec_per_km)}
+            </span>
+            {todayPlan?.planned_shoe && (
+              <span>
+                <Footprints size={14} />
+                {thaiText(todayPlan.planned_shoe)}
+              </span>
+            )}
+          </div>
+          {todayPlan?.notes && <p className="run-note">{thaiText(todayPlan.notes)}</p>}
+        </article>
+
+        <article className={`readiness-mini ${heroTone}`}>
+          <HeartPulse size={20} />
+          <div>
+            <span>เช็กก่อนซ้อม</span>
+            <strong>{thaiText(todayReadiness?.planned_session, "ยังไม่มีแผนวันนี้")}</strong>
+            <p>{thaiText(todayReadiness?.recommendation, "ยังไม่มีคำแนะนำวันนี้")}</p>
+          </div>
+        </article>
       </div>
 
       <div className="content-grid">
-        <Panel title="วันนี้ / รายการถัดไป" subtitle={todayPlan?.plan_date ?? "ยังไม่มีข้อมูลในตารางแผนซ้อม"} className="span-5">
-          <div className="latest-run">
-            <strong>{thaiPlanText(todayPlan?.title)}</strong>
-            <div className="mini-metrics">
-              <span>{thaiPlanText(todayPlan?.session_type)}</span>
-              <span>{km(todayPlan?.target_distance_km)}</span>
-              <span>{minutes(todayPlan?.target_duration_min)}</span>
-              <span>{pace(todayPlan?.target_pace_sec_per_km)}</span>
-            </div>
-            <div className="chip-row">
-              <span>ความหนัก: {thaiPlanText(todayPlan?.intensity)}</span>
-              <span>ความสำคัญ: {priorityLabel(todayPlan?.priority ?? null)}</span>
-              <span>สถานะ: {statusLabel(todayPlan?.status ?? null)}</span>
-              {todayPlan?.planned_shoe && (
-                <span>
-                  <Footprints size={14} /> {thaiPlanText(todayPlan.planned_shoe)}
-                </span>
-              )}
-            </div>
-            {todayPlan?.notes && <p className="run-note">{thaiPlanText(todayPlan.notes)}</p>}
-          </div>
-        </Panel>
-
-        <Panel title="จุดเน้นของสัปดาห์" subtitle={activeWeek ?? "แสดงจากแผนที่กำลังจะมาถึง"} className="span-7">
-          <div className="plan-focus-grid">
+        <Panel title="โฟกัสสัปดาห์นี้" subtitle={activeWeek ?? "แสดงจากแผนที่กำลังจะมาถึง"} className="span-7">
+          <div className="plan-focus-grid smart-plan-grid">
             {weekPlan.slice(0, 4).map((item) => (
               <article className={`plan-focus-card ${item.priority ?? "normal"}`} key={item.id}>
                 <span>{item.plan_date}</span>
-                <strong>{thaiPlanText(item.title)}</strong>
-                <p>{thaiPlanText(item.notes ?? item.session_type)}</p>
+                <strong>{thaiText(item.title)}</strong>
+                <p>{thaiText(item.notes ?? item.session_type)}</p>
               </article>
             ))}
             {!weekPlan.length && <p className="run-note">ยังไม่มีแผนในฐานข้อมูล</p>}
           </div>
         </Panel>
 
-        <Panel title="ตารางซ้อมถัดไป" subtitle="อ่านจากตารางแผนซ้อมใน Supabase" className="span-12">
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>วันที่</th>
-                  <th>ประเภท</th>
-                  <th>แผน</th>
-                  <th>ระยะ</th>
-                  <th>เวลา</th>
-                  <th>เพซ</th>
-                  <th>รองเท้า</th>
-                  <th>สถานะ</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(upcoming.length ? upcoming : sortedPlan).slice(0, 14).map((item) => (
-                  <tr key={item.id}>
-                    <td>{item.plan_date}</td>
-                    <td>{thaiPlanText(item.session_type)}</td>
-                    <td>{thaiPlanText(item.title)}</td>
-                    <td>{km(item.target_distance_km)}</td>
-                    <td>{minutes(item.target_duration_min)}</td>
-                    <td>{pace(item.target_pace_sec_per_km)}</td>
-                    <td>{thaiPlanText(item.planned_shoe)}</td>
-                    <td>
-                      <span className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</span>
-                    </td>
-                  </tr>
-                ))}
-                {!sortedPlan.length && (
-                  <tr>
-                    <td colSpan={8}>ยังไม่มีข้อมูลแผนซ้อม</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <Panel title="สัญญาณสำคัญ" subtitle="ดูง่ายก่อนตัดสินใจซ้อม" className="span-5">
+          <div className="signal-list">
+            <div>
+              <CalendarCheck size={18} />
+              <span>สถานะแผน</span>
+              <strong>{statusLabel(todayPlan?.status ?? null)}</strong>
+            </div>
+            <div>
+              <Flag size={18} />
+              <span>ความสำคัญ</span>
+              <strong>{priorityLabel(todayPlan?.priority ?? null)}</strong>
+            </div>
+            <div>
+              <HeartPulse size={18} />
+              <span>โหลดวันนี้</span>
+              <strong>{todayReadiness?.load_ratio?.toFixed(2) ?? "-"}</strong>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="ตารางซ้อมถัดไป" subtitle="รายการสั้นสำหรับมือถือ แตะดูรายละเอียดได้ใน Supabase" className="span-12">
+          <div className="mobile-schedule-list">
+            {(upcoming.length ? upcoming : sortedPlan).slice(0, 8).map((item) => (
+              <article key={item.id}>
+                <time>{item.plan_date.slice(5)}</time>
+                <div>
+                  <strong>{thaiText(item.title)}</strong>
+                  <span>{thaiText(item.session_type)} · {km(item.target_distance_km)} · {pace(item.target_pace_sec_per_km)}</span>
+                </div>
+                <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
+              </article>
+            ))}
+            {!sortedPlan.length && <p className="run-note">ยังไม่มีข้อมูลแผนซ้อม</p>}
           </div>
         </Panel>
       </div>

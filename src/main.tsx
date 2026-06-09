@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, Footprints, Trophy } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -22,21 +22,26 @@ import { emptyData } from "./utils/data";
 import { useHashRoute } from "./hooks/useHashRoute";
 import { theme } from "./theme";
 import "./styles.css";
-import "./mobile-app.css";
 
 const navItems: NavItem[] = [
+  { key: "plan", label: "10K แผน", icon: CalendarCheck },
   { key: "today", label: "วันนี้", icon: CalendarDays },
-  { key: "plan", label: "แผน", icon: CalendarCheck },
+  { key: "race", label: "แข่ง", icon: Trophy },
+  { key: "zone2", label: "โซน 2", icon: Gauge },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
-  { key: "race", label: "10K", icon: Trophy },
+  { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "gear", label: "รองเท้า", icon: Footprints },
+  { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
 ];
 
+const Activities = lazy(() => import("./pages/Activities").then((module) => ({ default: module.Activities })));
 const Gear = lazy(() => import("./pages/Gear").then((module) => ({ default: module.Gear })));
 const Plan = lazy(() => import("./pages/Plan").then((module) => ({ default: module.Plan })));
 const Race = lazy(() => import("./pages/Race").then((module) => ({ default: module.Race })));
 const Today = lazy(() => import("./pages/Today").then((module) => ({ default: module.Today })));
+const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: module.Trends })));
 const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: module.Weekly })));
+const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -113,9 +118,12 @@ function App() {
     if (route === "plan") return <Plan data={data} />;
     if (route === "today") return <Today data={data} />;
     if (route === "race") return <Race data={data} />;
+    if (route === "zone2") return <Zone2 data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
+    if (route === "trends") return <Trends data={data} />;
     if (route === "gear") return <Gear data={data} />;
-    return <Today data={data} />;
+    if (route === "activities") return <Activities data={data} />;
+    return <Plan data={data} />;
   }, [data, hasData, loadState, route]);
 
   if (loading) return <LoadingScreen label="กำลังโหลด..." />;

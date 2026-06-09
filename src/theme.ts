@@ -4,24 +4,24 @@ export const theme = createTheme({
   palette: {
     mode: "light",
     background: {
-      default: "#f5f6f1",
-      paper: "rgba(255, 255, 255, 0.94)",
+      default: "#f2fbf8",
+      paper: "rgba(252, 255, 253, 0.96)",
     },
     primary: {
-      main: "#2a7f62",
-      light: "#d8eee5",
-      dark: "#1f664e",
+      main: "#3aa99e",
+      light: "#dff7f2",
+      dark: "#23746f",
     },
     secondary: {
-      main: "#cf244f",
+      main: "#69aee8",
     },
     text: {
-      primary: "#172026",
-      secondary: "#657176",
+      primary: "#183139",
+      secondary: "#668086",
     },
-    divider: "#dde4df",
+    divider: "#d8ece8",
     warning: {
-      main: "#7d4e00",
+      main: "#9a6a12",
     },
   },
   shape: {
@@ -46,7 +46,7 @@ export const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: "#f5f6f1",
+          backgroundColor: "#f2fbf8",
         },
       },
     },
