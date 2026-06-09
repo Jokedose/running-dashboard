@@ -1026,6 +1026,32 @@ button.mobile-sheet-backdrop {
   color: #34464c;
 }
 
+.plan-detail-block {
+  display: grid;
+  gap: 6px;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-line-soft);
+}
+
+.plan-detail-block p {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.plan-detail-block b {
+  color: var(--color-ink);
+  font-weight: 850;
+}
+
+.plan-detail-block small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
 .readiness-mini {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
@@ -1094,6 +1120,22 @@ button.mobile-sheet-backdrop {
 .mobile-schedule-list strong {
   display: block;
   line-height: 1.25;
+}
+
+.mobile-schedule-list span {
+  display: block;
+  margin-top: 2px;
+  line-height: 1.45;
+}
+
+.mobile-schedule-list em {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1.35;
 }
 
 .mobile-schedule-list small {
@@ -1239,6 +1281,13 @@ button.mobile-sheet-backdrop {
   color: var(--color-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.plan-focus-card small {
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .table-status {

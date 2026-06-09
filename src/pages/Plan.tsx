@@ -62,6 +62,30 @@ function weekProgress(rows: TrainingPlan[]) {
   return Math.round((rows.filter((item) => item.status === "done").length / rows.length) * 100);
 }
 
+function noteField(item: TrainingPlan | null | undefined, label: string) {
+  if (!item?.notes) return null;
+  const line = item.notes.split("\n").find((part) => part.trim().startsWith(`${label}:`));
+  return line?.split(":").slice(1).join(":").trim() || null;
+}
+
+function workoutDetail(item: TrainingPlan | null | undefined) {
+  return noteField(item, "รายการซ้อม") ?? item?.intensity ?? item?.session_type ?? null;
+}
+
+function passCriteria(item: TrainingPlan | null | undefined) {
+  return noteField(item, "เกณฑ์ผ่าน");
+}
+
+function sessionMeta(item: TrainingPlan) {
+  const values = [
+    item.target_distance_km ? km(item.target_distance_km) : null,
+    item.target_duration_min ? minutes(item.target_duration_min) : null,
+    item.target_pace_sec_per_km ? pace(item.target_pace_sec_per_km) : null,
+    item.planned_shoe,
+  ].filter(Boolean);
+  return values.join(" · ");
+}
+
 export function Plan({ data }: { data: DashboardData }) {
   const today = todayIso();
   const sortedPlan = [...data.plan].sort((a, b) => a.plan_date.localeCompare(b.plan_date));
@@ -133,7 +157,7 @@ export function Plan({ data }: { data: DashboardData }) {
           <div>
             <span>รายการถัดไป</span>
             <strong>{thaiText(todayPlan?.title, "ยังไม่มีแผน")}</strong>
-            <p>{todayPlan ? `${thaiText(todayPlan.intensity)} · ${statusLabel(todayPlan.status)}` : "เพิ่มรายการซ้อมเพื่อเริ่มติดตาม"}</p>
+            <p>{todayPlan ? workoutDetail(todayPlan) : "เพิ่มรายการซ้อมเพื่อเริ่มติดตาม"}</p>
           </div>
           <div className="session-pills">
             <span>
@@ -155,7 +179,21 @@ export function Plan({ data }: { data: DashboardData }) {
               </span>
             )}
           </div>
-          {todayPlan?.notes && <p className="run-note">{thaiText(todayPlan.notes)}</p>}
+          {todayPlan && (
+            <div className="plan-detail-block">
+              {noteField(todayPlan, "เป้าหมายหลัก") && (
+                <p>
+                  <b>เป้าหมาย:</b> {noteField(todayPlan, "เป้าหมายหลัก")}
+                </p>
+              )}
+              {passCriteria(todayPlan) && (
+                <p>
+                  <b>เกณฑ์ผ่าน:</b> {passCriteria(todayPlan)}
+                </p>
+              )}
+              <small>{statusLabel(todayPlan.status)} · {priorityLabel(todayPlan.priority)}</small>
+            </div>
+          )}
         </article>
 
         <article className={`readiness-mini ${heroTone}`}>
@@ -175,7 +213,8 @@ export function Plan({ data }: { data: DashboardData }) {
               <article className={`plan-focus-card ${item.priority ?? "normal"}`} key={item.id}>
                 <span>{item.plan_date}</span>
                 <strong>{thaiText(item.title)}</strong>
-                <p>{thaiText(item.notes ?? item.session_type)}</p>
+                <p>{workoutDetail(item)}</p>
+                {passCriteria(item) && <small>{passCriteria(item)}</small>}
               </article>
             ))}
             {!weekPlan.length && <p className="run-note">ยังไม่มีแผนในฐานข้อมูล</p>}
@@ -202,14 +241,15 @@ export function Plan({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="ตารางซ้อมถัดไป" subtitle="รายการสั้นสำหรับมือถือ แตะดูรายละเอียดได้ใน Supabase" className="span-12">
+        <Panel title="ตารางซ้อมถัดไป" subtitle="แสดงจาก Supabase training_plan ที่ sync จาก repo schedule" className="span-12">
           <div className="mobile-schedule-list">
             {(upcoming.length ? upcoming : sortedPlan).slice(0, 8).map((item) => (
               <article key={item.id}>
                 <time>{item.plan_date.slice(5)}</time>
                 <div>
                   <strong>{thaiText(item.title)}</strong>
-                  <span>{thaiText(item.session_type)} · {km(item.target_distance_km)} · {pace(item.target_pace_sec_per_km)}</span>
+                  <span>{workoutDetail(item)}</span>
+                  <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
                 </div>
                 <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
               </article>
