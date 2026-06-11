@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -26,6 +26,7 @@ import "./styles.css";
 const navItems: NavItem[] = [
   { key: "plan", label: "10K แผน", icon: CalendarCheck },
   { key: "today", label: "วันนี้", icon: CalendarDays },
+  { key: "calendar", label: "ปฏิทิน", icon: CalendarRange },
   { key: "race", label: "แข่ง", icon: Trophy },
   { key: "zone2", label: "โซน 2", icon: Gauge },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
@@ -35,6 +36,7 @@ const navItems: NavItem[] = [
 ];
 
 const Activities = lazy(() => import("./pages/Activities").then((module) => ({ default: module.Activities })));
+const Calendar = lazy(() => import("./pages/Calendar").then((module) => ({ default: module.Calendar })));
 const Gear = lazy(() => import("./pages/Gear").then((module) => ({ default: module.Gear })));
 const Plan = lazy(() => import("./pages/Plan").then((module) => ({ default: module.Plan })));
 const Race = lazy(() => import("./pages/Race").then((module) => ({ default: module.Race })));
@@ -117,6 +119,7 @@ function App() {
     if (!hasData && loadState === "ready") return <EmptyState />;
     if (route === "plan") return <Plan data={data} />;
     if (route === "today") return <Today data={data} />;
+    if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
