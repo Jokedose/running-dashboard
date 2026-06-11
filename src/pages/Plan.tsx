@@ -90,6 +90,7 @@ export function Plan({ data }: { data: DashboardData }) {
   const today = todayIso();
   const sortedPlan = [...data.plan].sort((a, b) => a.plan_date.localeCompare(b.plan_date));
   const upcoming = sortedPlan.filter((item) => item.plan_date >= today);
+  const scheduleRows = upcoming.length ? upcoming : sortedPlan;
   const todayPlan = upcoming.find((item) => item.plan_date === today) ?? upcoming[0] ?? latest(sortedPlan, "plan_date");
   const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
   const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
@@ -242,19 +243,24 @@ export function Plan({ data }: { data: DashboardData }) {
         </Panel>
 
         <Panel title="ตารางซ้อมถัดไป" subtitle="แสดงจาก Supabase training_plan ที่ sync จาก repo schedule" className="span-12">
-          <div className="mobile-schedule-list">
-            {(upcoming.length ? upcoming : sortedPlan).slice(0, 8).map((item) => (
-              <article key={item.id}>
-                <time>{item.plan_date.slice(5)}</time>
-                <div>
-                  <strong>{thaiText(item.title)}</strong>
-                  <span>{workoutDetail(item)}</span>
-                  <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
-                </div>
-                <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
-              </article>
-            ))}
-            {!sortedPlan.length && <p className="run-note">ยังไม่มีข้อมูลแผนซ้อม</p>}
+          <div
+            className="upcoming-training-scroll"
+            style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}
+          >
+            <div className="mobile-schedule-list">
+              {scheduleRows.map((item) => (
+                <article key={item.id}>
+                  <time>{item.plan_date.slice(5)}</time>
+                  <div>
+                    <strong>{thaiText(item.title)}</strong>
+                    <span>{workoutDetail(item)}</span>
+                    <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
+                  </div>
+                  <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
+                </article>
+              ))}
+              {!sortedPlan.length && <p className="run-note">ยังไม่มีข้อมูลแผนซ้อม</p>}
+            </div>
           </div>
         </Panel>
       </div>
