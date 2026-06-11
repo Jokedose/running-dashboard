@@ -19,6 +19,13 @@ type DayData = {
   readiness: DailyReadiness | null;
 };
 
+type MatchResult = {
+  verdict: string;
+  bgColor: string;
+  textColor: string;
+  checks: { label: string; planned: string; actual: string; ok: boolean }[];
+};
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -53,21 +60,23 @@ function monthGrid(year: number, month: number): (string | null)[] {
   return cells;
 }
 
-function sessionTypeColor(type: string | null | undefined): string {
+function sessionTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
   const t = type?.toLowerCase() ?? "";
-  if (t.includes("long") || t.includes("ยาว")) return "#8b5cf6";
-  if (t.includes("tempo") || t.includes("threshold") || t.includes("interval") || t.includes("quality")) return "#f97316";
-  if (t.includes("easy") || t.includes("recovery") || t.includes("เบา") || t.includes("ฟื้น")) return "#3b82f6";
-  if (t.includes("race") || t.includes("แข่ง")) return "#f59e0b";
-  if (t.includes("rest") || t.includes("off") || t.includes("พัก")) return "#6b7280";
-  return "#64748b";
+  if (t.includes("long") || t.includes("ยาว")) return { bg: "#ede9fe", border: "#7c3aed", text: "#5b21b6" };
+  if (t.includes("tempo") || t.includes("threshold") || t.includes("interval") || t.includes("quality"))
+    return { bg: "#ffedd5", border: "#c2410c", text: "#9a3412" };
+  if (t.includes("easy") || t.includes("recovery") || t.includes("เบา") || t.includes("ฟื้น"))
+    return { bg: "#dbeafe", border: "#2563eb", text: "#1d4ed8" };
+  if (t.includes("race") || t.includes("แข่ง")) return { bg: "#fef3c7", border: "#b45309", text: "#92400e" };
+  if (t.includes("rest") || t.includes("off") || t.includes("พัก")) return { bg: "#f3f4f6", border: "#6b7280", text: "#374151" };
+  return { bg: "#e0f2fe", border: "#0369a1", text: "#075985" };
 }
 
 function statusDot(status: TrainingPlan["status"] | null): { char: string; color: string } {
-  if (status === "done") return { char: "✓", color: "#22c55e" };
-  if (status === "skipped") return { char: "✗", color: "#ef4444" };
-  if (status === "adjusted") return { char: "~", color: "#fbbf24" };
-  return { char: "·", color: "#94a3b8" };
+  if (status === "done") return { char: "✓", color: "#1a6847" };
+  if (status === "skipped") return { char: "✗", color: "#9d1c37" };
+  if (status === "adjusted") return { char: "~", color: "#7a5300" };
+  return { char: "·", color: "#668086" };
 }
 
 function statusLabel(status: TrainingPlan["status"] | null) {
@@ -90,14 +99,39 @@ function noteField(notes: string | null | undefined, label: string) {
   return line?.split(":").slice(1).join(":").trim() || null;
 }
 
-const navBtnStyle: React.CSSProperties = {
-  display: "flex", alignItems: "center", justifyContent: "center",
-  width: 32, height: 32, borderRadius: 6,
-  border: "1px solid var(--border, rgba(255,255,255,0.12))",
-  cursor: "pointer", background: "transparent", color: "inherit",
-};
+function analyzeMatch(plan: TrainingPlan, run: RunLog): MatchResult {
+  const checks: MatchResult["checks"] = [];
 
-// ─── Main export ────────────────────────────────────────────────────────────
+  if (plan.target_distance_km != null && run.distance_km != null) {
+    const pct = (run.distance_km - plan.target_distance_km) / plan.target_distance_km;
+    checks.push({ label: "ระยะ", planned: km(plan.target_distance_km), actual: km(run.distance_km), ok: pct >= -0.1 && pct <= 0.15 });
+  }
+  if (plan.target_pace_sec_per_km != null && run.pace_sec_per_km != null) {
+    checks.push({ label: "เพซ", planned: pace(plan.target_pace_sec_per_km), actual: pace(run.pace_sec_per_km), ok: Math.abs(run.pace_sec_per_km - plan.target_pace_sec_per_km) <= 20 });
+  }
+  if (plan.target_duration_min != null && run.duration_min != null) {
+    checks.push({ label: "เวลา", planned: minutes(plan.target_duration_min), actual: minutes(run.duration_min), ok: Math.abs(run.duration_min - plan.target_duration_min) <= 5 });
+  }
+
+  if (!checks.length) return { verdict: "วิ่งแล้ว", bgColor: "#d8eee5", textColor: "#1a6847", checks };
+
+  const allOk = checks.every((c) => c.ok);
+  const d = plan.target_distance_km;
+  const rd = run.distance_km;
+
+  let verdict: string, bgColor: string, textColor: string;
+  if (allOk) {
+    verdict = "ตามแผน ✓"; bgColor = "#d8eee5"; textColor = "#1a6847";
+  } else if (d != null && rd != null && rd > d * 1.12) {
+    verdict = "เกินแผน"; bgColor = "#fef3c7"; textColor = "#7a5300";
+  } else if (d != null && rd != null && rd < d * 0.9) {
+    verdict = "ต่ำกว่าแผน"; bgColor = "#fee2e8"; textColor = "#9d1c37";
+  } else {
+    verdict = "ใกล้เคียง"; bgColor = "#dff7f2"; textColor = "#1a6847";
+  }
+  return { verdict, bgColor, textColor, checks };
+}
+
 export function Calendar({ data }: { data: DashboardData }) {
   const today = todayIso();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
@@ -127,12 +161,7 @@ export function Calendar({ data }: { data: DashboardData }) {
   }, [data.daily]);
 
   function dayData(date: string): DayData {
-    return {
-      date,
-      plans: planByDate.get(date) ?? [],
-      run: runByDate.get(date) ?? null,
-      readiness: readinessByDate.get(date) ?? null,
-    };
+    return { date, plans: planByDate.get(date) ?? [], run: runByDate.get(date) ?? null, readiness: readinessByDate.get(date) ?? null };
   }
 
   const navYear = parseInt(navDate.slice(0, 4));
@@ -142,220 +171,117 @@ export function Calendar({ data }: { data: DashboardData }) {
     if (viewMode === "month") {
       const d = new Date(navYear, navMonth - 2, 1);
       setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
-    } else {
-      setNavDate(addDays(navDate, -7));
-    }
+    } else setNavDate(addDays(navDate, -7));
   }
   function nextPeriod() {
     if (viewMode === "month") {
       const d = new Date(navYear, navMonth, 1);
       setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
-    } else {
-      setNavDate(addDays(navDate, 7));
-    }
+    } else setNavDate(addDays(navDate, 7));
   }
 
   const grid = useMemo(() => monthGrid(navYear, navMonth), [navYear, navMonth]);
   const weekDays = useMemo(() => weekDates(navDate), [navDate]);
   const selectedDay = selected ? dayData(selected) : null;
-
-  const periodLabel =
-    viewMode === "month"
-      ? `${MONTHS_TH[navMonth - 1]} ${navYear}`
-      : `${weekDays[0].slice(5).replace("-", "/")} – ${weekDays[6].slice(5).replace("-", "/")}`;
+  const periodLabel = viewMode === "month"
+    ? `${MONTHS_TH[navMonth - 1]} ${navYear}`
+    : `${weekDays[0].slice(5).replace("-", "/")} – ${weekDays[6].slice(5).replace("-", "/")}`;
 
   return (
     <section className="page-stack">
-      {/* Controls */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <div style={{
-          display: "flex", borderRadius: 8, overflow: "hidden",
-          border: "1px solid var(--border, rgba(255,255,255,0.12))",
-        }}>
-          {(["month", "week"] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              style={{
-                padding: "5px 16px", border: "none", cursor: "pointer", fontSize: "0.83rem",
-                background: viewMode === mode ? "var(--accent, #3b82f6)" : "transparent",
-                color: viewMode === mode ? "#fff" : "inherit",
-                fontFamily: "inherit",
-              }}
-            >
-              {mode === "month" ? "เดือน" : "สัปดาห์"}
-            </button>
-          ))}
+      <div className="cal-controls">
+        <div className="cal-view-toggle">
+          <button className={`cal-btn${viewMode === "month" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("month")} type="button">เดือน</button>
+          <button className={`cal-btn${viewMode === "week" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("week")} type="button">สัปดาห์</button>
         </div>
-
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
-          <button onClick={prevPeriod} style={navBtnStyle}><ChevronLeft size={16} /></button>
-          <strong style={{ minWidth: 150, textAlign: "center", fontSize: "0.88rem" }}>{periodLabel}</strong>
-          <button onClick={nextPeriod} style={navBtnStyle}><ChevronRight size={16} /></button>
-          <button
-            onClick={() => setNavDate(today)}
-            style={{
-              padding: "4px 12px", borderRadius: 6, cursor: "pointer", fontSize: "0.78rem",
-              border: "1px solid var(--border, rgba(255,255,255,0.12))",
-              background: "transparent", color: "inherit", fontFamily: "inherit",
-            }}
-          >วันนี้</button>
+          <button className="cal-nav-btn" onClick={prevPeriod} type="button"><ChevronLeft size={16} /></button>
+          <strong className="cal-period-label">{periodLabel}</strong>
+          <button className="cal-nav-btn" onClick={nextPeriod} type="button"><ChevronRight size={16} /></button>
+          <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
         </div>
       </div>
 
-      {/* View */}
-      {viewMode === "month" ? (
-        <MonthView grid={grid} dayData={dayData} today={today} onSelect={setSelected} />
-      ) : (
-        <WeekView dates={weekDays} dayData={dayData} today={today} onSelect={setSelected} />
-      )}
+      {viewMode === "month"
+        ? <MonthView grid={grid} dayData={dayData} today={today} onSelect={setSelected} />
+        : <WeekView dates={weekDays} dayData={dayData} today={today} onSelect={setSelected} />}
 
-      {/* Legend */}
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: "0.73rem", opacity: 0.65 }}>
+      <div className="cal-legend">
         {[
-          { color: "#22c55e", label: "ทำแล้ว" },
-          { color: "#fbbf24", label: "ปรับแผน" },
-          { color: "#ef4444", label: "ข้าม" },
-          { color: "#3b82f6", label: "วิ่งเบา/ฟื้นตัว" },
-          { color: "#8b5cf6", label: "วิ่งยาว" },
-          { color: "#f97316", label: "คุณภาพ/เทมโป" },
-          { color: "#f59e0b", label: "วันแข่ง" },
-          { color: "#6366f1", label: "วิ่งนอกแผน" },
+          { color: "#1a6847", label: "ตามแผน" },
+          { color: "#7a5300", label: "ปรับ/เกิน" },
+          { color: "#9d1c37", label: "ข้าม/ต่ำ" },
+          { color: "#2563eb", label: "วิ่งเบา" },
+          { color: "#7c3aed", label: "วิ่งยาว" },
+          { color: "#c2410c", label: "คุณภาพ" },
+          { color: "#b45309", label: "วันแข่ง" },
         ].map(({ color, label }) => (
           <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 9, height: 9, borderRadius: 2, background: color, display: "inline-block", flexShrink: 0 }} />
-            {label}
+            <span className="cal-legend-dot" style={{ background: color }} />{label}
           </span>
         ))}
       </div>
 
-      {/* Modal */}
-      {selected && selectedDay && (
-        <DayModal day={selectedDay} onClose={() => setSelected(null)} />
-      )}
+      {selected && selectedDay && <DayModal day={selectedDay} onClose={() => setSelected(null)} />}
     </section>
   );
 }
 
-// ─── Month grid ──────────────────────────────────────────────────────────────
-function MonthView({
-  grid, dayData, today, onSelect,
-}: {
-  grid: (string | null)[];
-  dayData: (d: string) => DayData;
-  today: string;
-  onSelect: (d: string) => void;
+function MonthView({ grid, dayData, today, onSelect }: {
+  grid: (string | null)[]; dayData: (d: string) => DayData; today: string; onSelect: (d: string) => void;
 }) {
   return (
-    <div style={{
-      background: "var(--surface, rgba(255,255,255,0.03))",
-      borderRadius: 12, overflow: "hidden",
-      border: "1px solid var(--border, rgba(255,255,255,0.08))",
-    }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--border, rgba(255,255,255,0.08))" }}>
-        {WEEKDAYS_SHORT.map((d) => (
-          <div key={d} style={{ padding: "8px 4px", textAlign: "center", fontSize: "0.73rem", fontWeight: 600, opacity: 0.55 }}>{d}</div>
-        ))}
+    <div className="cal-month-grid">
+      <div className="cal-month-header">
+        {WEEKDAYS_SHORT.map((d) => <div key={d} className="cal-month-header-cell">{d}</div>)}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+      <div className="cal-month-body">
         {grid.map((date, idx) =>
-          date ? (
-            <DayCell key={date} dd={dayData(date)} isToday={date === today} isPast={date < today} onSelect={onSelect} />
-          ) : (
-            <div key={`empty-${idx}`} style={{
-              minHeight: 80,
-              borderRight: "1px solid var(--border, rgba(255,255,255,0.05))",
-              borderBottom: "1px solid var(--border, rgba(255,255,255,0.05))",
-              background: "rgba(0,0,0,0.08)",
-            }} />
-          )
+          date
+            ? <DayCell key={date} dd={dayData(date)} isToday={date === today} isPast={date < today} onSelect={onSelect} />
+            : <div key={`e-${idx}`} className="cal-day-cell cal-day-empty" />
         )}
       </div>
     </div>
   );
 }
 
-function DayCell({
-  dd, isToday, isPast, onSelect,
-}: {
-  dd: DayData;
-  isToday: boolean;
-  isPast: boolean;
-  onSelect: (d: string) => void;
+function DayCell({ dd, isToday, isPast, onSelect }: {
+  dd: DayData; isToday: boolean; isPast: boolean; onSelect: (d: string) => void;
 }) {
   const dayNum = parseInt(dd.date.slice(8));
   const hasContent = dd.plans.length > 0 || dd.run !== null;
-  const hasReadiness = dd.readiness !== null;
+  const plan = dd.plans[0];
+  const match = plan && dd.run && isPast ? analyzeMatch(plan, dd.run) : null;
 
   return (
     <div
+      className={`cal-day-cell${hasContent ? " cal-day-clickable" : ""}${isToday ? " cal-day-today" : ""}${isPast && !isToday ? " cal-day-past" : ""}`}
       onClick={() => hasContent && onSelect(dd.date)}
-      style={{
-        minHeight: 80, padding: "5px 5px 4px",
-        borderRight: "1px solid var(--border, rgba(255,255,255,0.05))",
-        borderBottom: "1px solid var(--border, rgba(255,255,255,0.05))",
-        cursor: hasContent ? "pointer" : "default",
-        background: isToday
-          ? "rgba(59,130,246,0.1)"
-          : isPast
-          ? "rgba(0,0,0,0.12)"
-          : "transparent",
-        transition: "background 0.12s",
-        position: "relative",
-      }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-        <span style={{
-          display: "inline-flex", alignItems: "center", justifyContent: "center",
-          width: 20, height: 20, borderRadius: "50%", fontSize: "0.75rem",
-          background: isToday ? "#3b82f6" : "transparent",
-          color: isToday ? "#fff" : isPast ? "rgba(255,255,255,0.45)" : "inherit",
-          fontWeight: isToday ? 700 : 400,
-        }}>{dayNum}</span>
-        {hasReadiness && (
-          <span style={{ fontSize: "0.6rem", opacity: 0.5 }}>
-            {dd.readiness!.recovery_percent != null ? `${dd.readiness!.recovery_percent}%` : "💚"}
-          </span>
+      <div className="cal-day-top">
+        <span className="cal-day-num">{dayNum}</span>
+        {match && <span className="cal-match-tiny" style={{ color: match.textColor }}>{match.verdict.replace(" ✓", "")}</span>}
+        {!match && dd.readiness?.recovery_percent != null && (
+          <span className="cal-recov-tiny">{dd.readiness.recovery_percent}%</span>
         )}
       </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+      <div className="cal-chips">
         {dd.plans.slice(0, 2).map((p) => {
+          const c = sessionTypeColor(p.session_type);
           const dot = statusDot(p.status);
-          const color = sessionTypeColor(p.session_type);
           return (
-            <div key={p.id} style={{
-              display: "flex", alignItems: "center", gap: 2,
-              background: p.status === "done"
-                ? "rgba(34,197,94,0.18)"
-                : p.status === "skipped"
-                ? "rgba(239,68,68,0.13)"
-                : p.status === "adjusted"
-                ? "rgba(251,191,36,0.14)"
-                : `${color}1e`,
-              borderLeft: `2px solid ${color}`,
-              borderRadius: "0 3px 3px 0",
-              padding: "1px 3px",
-              fontSize: "0.63rem",
-              overflow: "hidden",
-            }}>
-              <span style={{ color: dot.color, fontWeight: 700, flexShrink: 0, lineHeight: 1 }}>{dot.char}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {thaiText(p.title).slice(0, 11)}
-              </span>
+            <div key={p.id} className="cal-chip" style={{ background: c.bg, borderLeftColor: c.border }}>
+              <span className="cal-chip-dot" style={{ color: dot.color }}>{dot.char}</span>
+              <span className="cal-chip-text" style={{ color: c.text }}>{thaiText(p.title).slice(0, 11)}</span>
             </div>
           );
         })}
-        {dd.plans.length > 2 && (
-          <span style={{ fontSize: "0.6rem", opacity: 0.45 }}>+{dd.plans.length - 2} อื่น</span>
-        )}
-        {dd.run && dd.plans.length === 0 && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 2,
-            background: "rgba(99,102,241,0.18)", borderLeft: "2px solid #6366f1",
-            borderRadius: "0 3px 3px 0", padding: "1px 3px", fontSize: "0.63rem",
-          }}>
-            🏃 {dd.run.distance_km?.toFixed(1)}km
+        {dd.plans.length > 2 && <span className="cal-chip-more">+{dd.plans.length - 2}</span>}
+        {dd.run && !dd.plans.length && (
+          <div className="cal-chip" style={{ background: "#e0e7ff", borderLeftColor: "#6366f1" }}>
+            <span className="cal-chip-dot" style={{ color: "#6366f1" }}>🏃</span>
+            <span className="cal-chip-text" style={{ color: "#4338ca" }}>{dd.run.distance_km?.toFixed(1)}km</span>
           </div>
         )}
       </div>
@@ -363,102 +289,62 @@ function DayCell({
   );
 }
 
-// ─── Week view ───────────────────────────────────────────────────────────────
-function WeekView({
-  dates, dayData, today, onSelect,
-}: {
-  dates: string[];
-  dayData: (d: string) => DayData;
-  today: string;
-  onSelect: (d: string) => void;
+function WeekView({ dates, dayData, today, onSelect }: {
+  dates: string[]; dayData: (d: string) => DayData; today: string; onSelect: (d: string) => void;
 }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 5 }}>
+    <div className="cal-week-grid">
       {dates.map((date) => {
         const dd = dayData(date);
         const isToday = date === today;
         const isPast = date < today;
-        const dayNum = parseInt(date.slice(8));
-        const dowIdx = (new Date(date).getDay() + 6) % 7;
         const hasContent = dd.plans.length > 0 || dd.run !== null;
+        const dowIdx = (new Date(date).getDay() + 6) % 7;
+        const plan = dd.plans[0];
+        const match = plan && dd.run && isPast ? analyzeMatch(plan, dd.run) : null;
+
         return (
           <div
             key={date}
+            className={`cal-week-card${hasContent ? " cal-day-clickable" : ""}${isToday ? " cal-day-today" : ""}${isPast && !isToday ? " cal-day-past" : ""}`}
             onClick={() => hasContent && onSelect(date)}
-            style={{
-              background: isToday
-                ? "rgba(59,130,246,0.1)"
-                : isPast
-                ? "var(--surface, rgba(255,255,255,0.02))"
-                : "var(--surface, rgba(255,255,255,0.04))",
-              border: isToday
-                ? "1px solid rgba(59,130,246,0.45)"
-                : "1px solid var(--border, rgba(255,255,255,0.08))",
-              borderRadius: 8, padding: "8px 7px 10px",
-              cursor: hasContent ? "pointer" : "default",
-              minHeight: 110,
-            }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-              <span style={{ fontSize: "0.7rem", opacity: 0.55 }}>{WEEKDAYS_SHORT[dowIdx]}</span>
-              <span style={{
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                width: 23, height: 23, borderRadius: "50%", fontSize: "0.8rem",
-                background: isToday ? "#3b82f6" : "transparent",
-                color: isToday ? "#fff" : "inherit", fontWeight: isToday ? 700 : 500,
-              }}>{dayNum}</span>
+            <div className="cal-week-hdr">
+              <span className="cal-week-dow">{WEEKDAYS_SHORT[dowIdx]}</span>
+              <span className={`cal-day-num${isToday ? " cal-day-num-today" : ""}`}>{parseInt(date.slice(8))}</span>
             </div>
-
-            {dd.plans.map((p) => {
-              const color = sessionTypeColor(p.session_type);
-              const dot = statusDot(p.status);
-              return (
-                <div key={p.id} style={{
-                  marginBottom: 4, padding: "4px 6px",
-                  background: p.status === "done"
-                    ? "rgba(34,197,94,0.13)"
-                    : p.status === "skipped"
-                    ? "rgba(239,68,68,0.1)"
-                    : p.status === "adjusted"
-                    ? "rgba(251,191,36,0.11)"
-                    : `${color}18`,
-                  borderLeft: `3px solid ${color}`,
-                  borderRadius: "0 5px 5px 0",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 3, fontSize: "0.73rem" }}>
-                    <span style={{ color: dot.color, fontWeight: 700, flexShrink: 0 }}>{dot.char}</span>
-                    <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {thaiText(p.title)}
-                    </span>
+            <div className="cal-week-body">
+              {dd.plans.map((p) => {
+                const c = sessionTypeColor(p.session_type);
+                const dot = statusDot(p.status);
+                return (
+                  <div key={p.id} className="cal-week-session" style={{
+                    background: p.status === "done" ? "#d8eee5" : p.status === "skipped" ? "#fee2e8" : p.status === "adjusted" ? "#fef3c7" : c.bg,
+                    borderLeftColor: c.border,
+                  }}>
+                    <div className="cal-week-session-title">
+                      <span style={{ color: dot.color, fontWeight: 750 }}>{dot.char}</span>
+                      <span style={{ color: "var(--color-ink)" }}>{thaiText(p.title)}</span>
+                    </div>
+                    {p.target_distance_km != null && (
+                      <div className="cal-week-session-meta">{p.target_distance_km.toFixed(1)} km</div>
+                    )}
                   </div>
-                  {p.target_distance_km && (
-                    <div style={{ fontSize: "0.65rem", opacity: 0.65, marginTop: 1 }}>{p.target_distance_km.toFixed(1)} km</div>
-                  )}
+                );
+              })}
+              {dd.run && !dd.plans.length && (
+                <div className="cal-week-session" style={{ background: "#e0e7ff", borderLeftColor: "#6366f1" }}>
+                  <div className="cal-week-session-title" style={{ color: "var(--color-ink)" }}>วิ่งนอกแผน</div>
+                  <div className="cal-week-session-meta">{dd.run.distance_km?.toFixed(1)} km</div>
                 </div>
-              );
-            })}
-
-            {dd.run && dd.plans.length === 0 && (
-              <div style={{
-                padding: "4px 6px", marginBottom: 4,
-                background: "rgba(99,102,241,0.14)", borderLeft: "3px solid #6366f1",
-                borderRadius: "0 5px 5px 0", fontSize: "0.73rem",
-              }}>
-                <div style={{ fontWeight: 600 }}>วิ่งนอกแผน</div>
-                <div style={{ fontSize: "0.65rem", opacity: 0.65, marginTop: 1 }}>{dd.run.distance_km?.toFixed(1)} km</div>
-              </div>
-            )}
-
-            {dd.readiness && (
-              <div style={{ marginTop: 6, fontSize: "0.63rem", opacity: 0.55, display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {dd.readiness.recovery_percent != null && (
-                  <span>💚 {dd.readiness.recovery_percent}%</span>
-                )}
-                {dd.readiness.hrv_avg_ms != null && (
-                  <span>HRV {dd.readiness.hrv_avg_ms}</span>
-                )}
-              </div>
-            )}
+              )}
+              {match && (
+                <span className="cal-match-badge" style={{ background: match.bgColor, color: match.textColor }}>{match.verdict}</span>
+              )}
+              {dd.readiness?.recovery_percent != null && (
+                <div className="cal-week-readiness">💚 {dd.readiness.recovery_percent}%{dd.readiness.hrv_avg_ms != null ? ` · HRV ${dd.readiness.hrv_avg_ms}` : ""}</div>
+              )}
+            </div>
           </div>
         );
       })}
@@ -466,199 +352,107 @@ function WeekView({
   );
 }
 
-// ─── Day detail modal ────────────────────────────────────────────────────────
 function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
   const { date, plans, run, readiness } = day;
   const plan = plans[0] ?? null;
   const today = todayIso();
-  const isPastWithoutRun = !run && plan && date < today && plan.status !== "skipped";
+  const isPast = date < today;
+  const match = plan && run ? analyzeMatch(plan, run) : null;
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", zIndex: 1200,
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--surface-raised, #1e293b)",
-          borderRadius: "16px 16px 0 0",
-          padding: "18px 18px 36px",
-          width: "100%", maxWidth: 580,
-          maxHeight: "88vh", overflowY: "auto",
-          boxShadow: "0 -6px 40px rgba(0,0,0,0.5)",
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
-          <div>
-            <strong style={{ fontSize: "1rem" }}>{date}</strong>
-            {plan && (
-              <span style={{
-                marginLeft: 8, fontSize: "0.78rem", opacity: 0.65,
-                padding: "2px 7px", borderRadius: 4,
-                background: `${sessionTypeColor(plan.session_type)}28`,
-                color: sessionTypeColor(plan.session_type),
-              }}>{thaiText(plan.session_type)}</span>
+    <div className="cal-modal-overlay" onClick={onClose}>
+      <div className="cal-modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-header">
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+            <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>{date}</strong>
+            {plan && (() => { const c = sessionTypeColor(plan.session_type); return (
+              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.text }}>{thaiText(plan.session_type)}</span>
+            ); })()}
+            {match && (
+              <span className="cal-match-badge" style={{ background: match.bgColor, color: match.textColor }}>{match.verdict}</span>
             )}
           </div>
-          <button onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "inherit" }}>
-            <X size={20} />
-          </button>
+          <button className="cal-modal-close" onClick={onClose} type="button"><X size={18} /></button>
         </div>
 
-        {/* Plan block */}
         {plan && (
-          <div style={{
-            marginBottom: 14, padding: "12px 14px",
-            background: "rgba(255,255,255,0.04)", borderRadius: 10,
-            borderLeft: `3px solid ${sessionTypeColor(plan.session_type)}`,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-              <strong style={{ fontSize: "0.9rem" }}>{thaiText(plan.title)}</strong>
-              <span style={{
-                marginLeft: "auto", fontSize: "0.73rem",
-                padding: "2px 8px", borderRadius: 4,
-                background: plan.status === "done"
-                  ? "rgba(34,197,94,0.18)"
-                  : plan.status === "skipped"
-                  ? "rgba(239,68,68,0.15)"
-                  : plan.status === "adjusted"
-                  ? "rgba(251,191,36,0.15)"
-                  : "rgba(255,255,255,0.07)",
-                color: statusDot(plan.status).color,
-                fontWeight: 600,
-              }}>
-                {statusLabel(plan.status)}
-              </span>
+          <div className="cal-block" style={{ borderLeftColor: sessionTypeColor(plan.session_type).border }}>
+            <div className="cal-block-head">
+              <strong>{thaiText(plan.title)}</strong>
+              <span className="cal-status-pill" data-status={plan.status ?? "planned"}>{statusLabel(plan.status)}</span>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 20px", fontSize: "0.8rem" }}>
+            <div className="cal-data-grid">
               {plan.target_distance_km != null && <DataRow label="ระยะเป้า" value={km(plan.target_distance_km)} />}
               {plan.target_duration_min != null && <DataRow label="เวลาเป้า" value={minutes(plan.target_duration_min)} />}
               {plan.target_pace_sec_per_km != null && <DataRow label="เพซเป้า" value={pace(plan.target_pace_sec_per_km)} />}
-              {plan.planned_shoe && <DataRow label="รองเท้าแผน" value={thaiText(plan.planned_shoe)} />}
+              {plan.planned_shoe && <DataRow label="รองเท้า" value={thaiText(plan.planned_shoe)} />}
               {plan.priority && <DataRow label="ความสำคัญ" value={priorityLabel(plan.priority)} />}
-              {plan.intensity && <DataRow label="ความหนัก" value={plan.intensity} />}
             </div>
-            {noteField(plan.notes, "รายการซ้อม") && (
-              <div style={{ marginTop: 8, fontSize: "0.77rem", opacity: 0.75 }}>
-                <span style={{ opacity: 0.6 }}>รายการ: </span>{noteField(plan.notes, "รายการซ้อม")}
-              </div>
-            )}
-            {noteField(plan.notes, "เป้าหมายหลัก") && (
-              <div style={{ marginTop: 4, fontSize: "0.77rem", opacity: 0.75 }}>
-                <span style={{ opacity: 0.6 }}>เป้าหมาย: </span>{noteField(plan.notes, "เป้าหมายหลัก")}
-              </div>
-            )}
-            {noteField(plan.notes, "เกณฑ์ผ่าน") && (
-              <div style={{ marginTop: 4, fontSize: "0.77rem", opacity: 0.75 }}>
-                <span style={{ opacity: 0.6 }}>เกณฑ์ผ่าน: </span>{noteField(plan.notes, "เกณฑ์ผ่าน")}
-              </div>
-            )}
+            {noteField(plan.notes, "รายการซ้อม") && <div className="cal-note-line"><b>รายการ:</b> {noteField(plan.notes, "รายการซ้อม")}</div>}
+            {noteField(plan.notes, "เป้าหมายหลัก") && <div className="cal-note-line"><b>เป้าหมาย:</b> {noteField(plan.notes, "เป้าหมายหลัก")}</div>}
+            {noteField(plan.notes, "เกณฑ์ผ่าน") && <div className="cal-note-line"><b>เกณฑ์ผ่าน:</b> {noteField(plan.notes, "เกณฑ์ผ่าน")}</div>}
           </div>
         )}
 
-        {/* Extra sessions */}
-        {plans.length > 1 && plans.slice(1).map((p) => (
-          <div key={p.id} style={{
-            marginBottom: 10, padding: "8px 12px",
-            background: "rgba(255,255,255,0.03)", borderRadius: 8,
-            borderLeft: `3px solid ${sessionTypeColor(p.session_type)}`,
-            fontSize: "0.8rem",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: statusDot(p.status).color, fontWeight: 700 }}>{statusDot(p.status).char}</span>
-              <strong>{thaiText(p.title)}</strong>
-              <span style={{ marginLeft: "auto", opacity: 0.6 }}>{statusLabel(p.status)}</span>
+        {match && match.checks.length > 0 && (
+          <div className="cal-block cal-block-match" style={{ background: match.bgColor, borderLeftColor: match.textColor }}>
+            <span className="cal-block-title" style={{ color: match.textColor }}>📊 วิเคราะห์ vs แผน — {match.verdict}</span>
+            <div className="cal-compare-table">
+              <div className="cal-compare-head">
+                <span>ตัวชี้วัด</span><span>แผน</span><span>จริง</span><span></span>
+              </div>
+              {match.checks.map((c) => (
+                <div key={c.label} className="cal-compare-row">
+                  <span>{c.label}</span>
+                  <span>{c.planned}</span>
+                  <span style={{ fontWeight: 650 }}>{c.actual}</span>
+                  <span style={{ color: c.ok ? "#1a6847" : "#9d1c37", fontWeight: 750 }}>{c.ok ? "✓" : "✗"}</span>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
 
-        {/* Actual run block */}
         {run && (
-          <div style={{
-            marginBottom: 14, padding: "12px 14px",
-            background: "rgba(34,197,94,0.06)", borderRadius: 10,
-            borderLeft: "3px solid #22c55e",
-          }}>
-            <strong style={{ fontSize: "0.85rem", marginBottom: 8, display: "block" }}>📊 ผลจริง</strong>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 20px", fontSize: "0.8rem" }}>
-              {run.distance_km != null && <DataRow label="ระยะจริง" value={km(run.distance_km)} />}
-              {run.duration_min != null && <DataRow label="เวลาจริง" value={minutes(run.duration_min)} />}
-              {run.pace_sec_per_km != null && <DataRow label="เพซจริง" value={pace(run.pace_sec_per_km)} />}
-              {run.avg_hr_bpm != null && <DataRow label="ชีพจรเฉลี่ย" value={`${run.avg_hr_bpm.toFixed(0)} bpm`} />}
+          <div className="cal-block" style={{ borderLeftColor: "#add9c9", background: "#f0faf5" }}>
+            <span className="cal-block-title">📊 ผลจริง</span>
+            <div className="cal-data-grid">
+              {run.distance_km != null && <DataRow label="ระยะ" value={km(run.distance_km)} />}
+              {run.duration_min != null && <DataRow label="เวลา" value={minutes(run.duration_min)} />}
+              {run.pace_sec_per_km != null && <DataRow label="เพซ" value={pace(run.pace_sec_per_km)} />}
+              {run.avg_hr_bpm != null && <DataRow label="ชีพจร" value={`${run.avg_hr_bpm.toFixed(0)} bpm`} />}
               {run.z2_percent != null && <DataRow label="Zone 2" value={percent(run.z2_percent)} />}
               {run.rpe && <DataRow label="RPE" value={thaiText(run.rpe)} />}
-              {run.shoe_slug && <DataRow label="รองเท้าจริง" value={thaiText(run.shoe_slug)} />}
-              {run.pain && run.pain !== "none" && <DataRow label="อาการเจ็บ" value={thaiText(run.pain)} />}
+              {run.shoe_slug && <DataRow label="รองเท้า" value={thaiText(run.shoe_slug)} />}
+              {run.pain && run.pain !== "none" && <DataRow label="เจ็บ" value={thaiText(run.pain)} />}
             </div>
-            {plan?.target_distance_km != null && run.distance_km != null && (
-              <div style={{ marginTop: 8, fontSize: "0.77rem" }}>
-                <span style={{ opacity: 0.6 }}>เทียบแผน: </span>
-                <span style={{
-                  color: Math.abs(run.distance_km - plan.target_distance_km) <= 0.5 ? "#22c55e" : "#fbbf24",
-                  fontWeight: 600,
-                }}>
-                  {run.distance_km >= plan.target_distance_km ? "+" : ""}
-                  {(run.distance_km - plan.target_distance_km).toFixed(2)} km
-                </span>
-              </div>
-            )}
-            {run.note && (
-              <div style={{ marginTop: 6, fontSize: "0.77rem", opacity: 0.7, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 6 }}>
-                {run.note}
-              </div>
-            )}
+            {run.note && <div className="cal-note-line" style={{ marginTop: 8, borderTop: "1px solid var(--color-line-soft)", paddingTop: 6 }}>{run.note}</div>}
           </div>
         )}
 
-        {/* Past plan without run warning */}
-        {isPastWithoutRun && (
-          <div style={{
-            marginBottom: 14, padding: "10px 14px",
-            background: "rgba(251,191,36,0.07)", borderRadius: 10,
-            borderLeft: "3px solid #fbbf24", fontSize: "0.8rem", opacity: 0.85,
-          }}>
-            ⚠️ ยังไม่มีบันทึกการวิ่งสำหรับวันนี้
+        {!run && plan && isPast && plan.status !== "skipped" && (
+          <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>
+            <span style={{ color: "#7a5300", fontSize: "0.82rem" }}>⚠️ ยังไม่มีบันทึกการวิ่ง</span>
           </div>
         )}
 
-        {/* Readiness block */}
         {readiness && (
-          <div style={{
-            padding: "12px 14px",
-            background: "rgba(99,102,241,0.06)", borderRadius: 10,
-            borderLeft: "3px solid #6366f1",
-          }}>
-            <strong style={{ fontSize: "0.85rem", marginBottom: 8, display: "block" }}>💚 ความพร้อมร่างกาย</strong>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 20px", fontSize: "0.8rem" }}>
+          <div className="cal-block" style={{ borderLeftColor: "var(--color-primary)", background: "var(--color-primary-soft)" }}>
+            <span className="cal-block-title">💚 ความพร้อมร่างกาย</span>
+            <div className="cal-data-grid">
               {readiness.recovery_percent != null && <DataRow label="ฟื้นตัว" value={`${readiness.recovery_percent}%`} />}
               {readiness.sleep_score != null && <DataRow label="คะแนนนอน" value={String(readiness.sleep_score)} />}
-              {readiness.sleep_minutes != null && (
-                <DataRow
-                  label="ชั่วโมงนอน"
-                  value={`${Math.floor(readiness.sleep_minutes / 60)}h ${readiness.sleep_minutes % 60}m`}
-                />
-              )}
-              {readiness.hrv_avg_ms != null && <DataRow label="HRV" value={`${readiness.hrv_avg_ms} ms`} />}
-              {readiness.resting_hr_bpm != null && <DataRow label="HR พัก" value={`${readiness.resting_hr_bpm} bpm`} />}
-              {readiness.load_ratio != null && <DataRow label="Load ratio" value={readiness.load_ratio.toFixed(2)} />}
+              {readiness.sleep_minutes != null && <DataRow label="นอน" value={`${Math.floor(readiness.sleep_minutes / 60)}h ${readiness.sleep_minutes % 60}m`} />}
+              {readiness.hrv_avg_ms != null && <DataRow label="HRV" value={`${readiness.hrv_avg_ms} ms`} />}
+              {readiness.resting_hr_bpm != null && <DataRow label="HR พัก" value={`${readiness.resting_hr_bpm} bpm`} />}
             </div>
             {readiness.recommendation && (
-              <div style={{ marginTop: 8, fontSize: "0.77rem", opacity: 0.75, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 6 }}>
-                {thaiText(readiness.recommendation)}
-              </div>
+              <div className="cal-note-line" style={{ marginTop: 8, borderTop: "1px solid var(--color-line)", paddingTop: 6 }}>{thaiText(readiness.recommendation)}</div>
             )}
             {readiness.tags && readiness.tags.length > 0 && (
               <div style={{ marginTop: 6, display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {readiness.tags.map((tag) => (
-                  <span key={tag} style={{
-                    fontSize: "0.68rem", padding: "2px 7px", borderRadius: 10,
-                    background: "rgba(255,255,255,0.08)",
-                  }}>{thaiText(tag)}</span>
+                  <span key={tag} style={{ fontSize: "0.68rem", padding: "2px 7px", borderRadius: 10, background: "rgba(58,169,158,0.15)", color: "var(--color-ink)" }}>{thaiText(tag)}</span>
                 ))}
               </div>
             )}
@@ -666,7 +460,7 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
         )}
 
         {!plan && !run && !readiness && (
-          <div style={{ textAlign: "center", padding: "28px 0", opacity: 0.45, fontSize: "0.85rem" }}>ไม่มีข้อมูลสำหรับวันนี้</div>
+          <div style={{ textAlign: "center", padding: "28px 0", color: "var(--color-muted)" }}>ไม่มีข้อมูลสำหรับวันนี้</div>
         )}
       </div>
     </div>
@@ -676,8 +470,8 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
 function DataRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
-      <span style={{ opacity: 0.55, flexShrink: 0, fontSize: "0.75rem" }}>{label}</span>
-      <span style={{ fontWeight: 500 }}>{value}</span>
+      <span style={{ color: "var(--color-muted)", fontSize: "0.75rem", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 650, color: "var(--color-ink)" }}>{value}</span>
     </div>
   );
 }
