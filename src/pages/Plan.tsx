@@ -6,8 +6,38 @@ import { latest } from "../utils/data";
 import { km, minutes, pace, percent, raceTime } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
-const FALLBACK_RACE_DATE = "2026-07-19";
-const TARGET_MINUTES = 90;
+const B_RACE_DATE = "2026-07-19";
+const A_RACE_DATE = "2026-12-06";
+const TARGET_MINUTES = 80;
+
+const PHASES = [
+  { label: "Pre-race", sub: "มิ.ย.–ก.ค.", from: "2026-06-11", to: "2026-07-19" },
+  { label: "Phase A", sub: "Recovery", from: "2026-07-20", to: "2026-08-01" },
+  { label: "Phase B", sub: "Base Rebuild", from: "2026-08-03", to: "2026-09-05" },
+  { label: "Phase C", sub: "Threshold", from: "2026-09-07", to: "2026-10-10" },
+  { label: "Phase D", sub: "Race-Specific", from: "2026-10-12", to: "2026-11-14" },
+  { label: "Phase E", sub: "Taper", from: "2026-11-16", to: "2026-12-06" },
+];
+
+function phaseFor(date: string) {
+  return PHASES.find((p) => date >= p.from && date <= p.to) ?? null;
+}
+
+function groupByPhase(rows: TrainingPlan[]) {
+  const groups: { label: string; sub: string; items: TrainingPlan[] }[] = [];
+  for (const row of rows) {
+    const phase = phaseFor(row.plan_date);
+    const label = phase?.label ?? "อื่น ๆ";
+    const sub = phase?.sub ?? "";
+    const last = groups.at(-1);
+    if (last?.label === label) {
+      last.items.push(row);
+    } else {
+      groups.push({ label, sub, items: [row] });
+    }
+  }
+  return groups;
+}
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -95,19 +125,21 @@ export function Plan({ data }: { data: DashboardData }) {
   const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
   const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
   const nextKeySession = upcoming.find((item) => item.priority === "high" || item.priority === "race");
-  const raceDate = data.race?.race_date ?? FALLBACK_RACE_DATE;
-  const raceCountdown = daysUntil(raceDate);
+  const nextRaceDate = today <= B_RACE_DATE ? B_RACE_DATE : A_RACE_DATE;
+  const raceCountdown = daysUntil(nextRaceDate);
+  const aRaceCountdown = daysUntil(A_RACE_DATE);
   const todayReadiness = latest(data.daily, "log_date");
   const latestRun = latest(data.runs, "run_date");
   const plannedKm = plannedDistance(weekPlan);
   const progress = weekProgress(weekPlan);
   const heroTone = readinessTone(todayReadiness?.readiness_status ?? null);
+  const phaseGroups = groupByPhase(scheduleRows);
 
   return (
     <section className="page-stack home-dashboard">
       <div className={`home-hero ${heroTone}`}>
         <div className="home-hero-copy">
-          <span className="readiness-status-badge">แผนหลัก 10K</span>
+          <span className="readiness-status-badge">แผน 10K 80 นาที</span>
           <h2>{todayPlan ? thaiText(todayPlan.title) : "แผน 10K พร้อมเริ่ม"}</h2>
           <p>
             {todayPlan
@@ -123,16 +155,16 @@ export function Plan({ data }: { data: DashboardData }) {
         <div className="race-countdown">
           <span>เหลือ</span>
           <strong>{raceCountdown >= 0 ? raceCountdown : 0}</strong>
-          <small>วันถึง 10K</small>
-          <i>{raceDate}</i>
+          <small>{nextRaceDate === B_RACE_DATE ? "วัน B-race" : "วัน A-race"}</small>
+          <i>{nextRaceDate}</i>
         </div>
       </div>
 
       <div className="smart-strip">
         <div>
-          <span>เป้าหมาย</span>
+          <span>A-race เป้าหมาย</span>
           <strong>{raceTime(TARGET_MINUTES)}</strong>
-          <small>9:00/km</small>
+          <small>8:00/km</small>
         </div>
         <div>
           <span>พร้อมซ้อม</span>
@@ -143,6 +175,11 @@ export function Plan({ data }: { data: DashboardData }) {
           <span>แผนสัปดาห์</span>
           <strong>{completionLabel(weekPlan)}</strong>
           <small>{activeWeek ?? "ยังไม่มีสัปดาห์"}</small>
+        </div>
+        <div>
+          <span>A-race เหลือ</span>
+          <strong>{aRaceCountdown >= 0 ? aRaceCountdown : 0}</strong>
+          <small>วัน · {A_RACE_DATE}</small>
         </div>
       </div>
 
@@ -242,22 +279,40 @@ export function Plan({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="ตารางซ้อมถัดไป" subtitle="แสดงจาก Supabase training_plan ที่ sync จาก repo schedule" className="span-12">
+        <Panel title="ตารางซ้อมถัดไป" subtitle="จัดกลุ่มตาม Phase · sync จาก repo schedule" className="span-12">
           <div
             className="upcoming-training-scroll"
             style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}
           >
             <div className="mobile-schedule-list">
-              {scheduleRows.map((item) => (
-                <article key={item.id}>
-                  <time>{item.plan_date.slice(5)}</time>
-                  <div>
-                    <strong>{thaiText(item.title)}</strong>
-                    <span>{workoutDetail(item)}</span>
-                    <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
+              {phaseGroups.map(({ label, sub, items }) => (
+                <div key={label}>
+                  <div
+                    style={{
+                      padding: "6px 12px",
+                      marginTop: "8px",
+                      background: "var(--surface-raised, rgba(255,255,255,0.06))",
+                      borderRadius: "6px",
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "8px",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.8rem", letterSpacing: "0.04em" }}>{label}</strong>
+                    {sub && <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>{sub}</span>}
                   </div>
-                  <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
-                </article>
+                  {items.map((item) => (
+                    <article key={item.id}>
+                      <time>{item.plan_date.slice(5)}</time>
+                      <div>
+                        <strong>{thaiText(item.title)}</strong>
+                        <span>{workoutDetail(item)}</span>
+                        <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
+                      </div>
+                      <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
+                    </article>
+                  ))}
+                </div>
               ))}
               {!sortedPlan.length && <p className="run-note">ยังไม่มีข้อมูลแผนซ้อม</p>}
             </div>
