@@ -84,6 +84,7 @@ export type TrainingPlan = {
   planned_shoe: string | null;
   priority: "low" | "normal" | "high" | "race" | null;
   status: "planned" | "done" | "skipped" | "adjusted" | null;
+  skip_reason: string | null;
   notes: string | null;
   created_at: string | null;
 };

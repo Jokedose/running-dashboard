@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
@@ -56,12 +56,42 @@ function LoadingScreen({ label }: { label: string }) {
   );
 }
 
+const DATA_STALE_MS = 30 * 60 * 1000; // re-fetch หลัง 30 นาที
+
 function App() {
   const route = useHashRoute();
   const [session, setSession] = useState<Session | null>(null);
   const [data, setData] = useState<DashboardData>(emptyData);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [loading, setLoading] = useState(true);
+  const tokenRef = useRef<string | null>(null);
+  const lastFetchRef = useRef<number>(0);
+
+  async function fetchData() {
+    setLoadState("loading");
+    const [daily, runs, weekly, gear, race, plan] = await Promise.all([
+      supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
+      supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
+      supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
+      supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
+      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(1),
+      supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
+    ]);
+    if (daily.error || runs.error || weekly.error || gear.error || race.error) {
+      setLoadState("error");
+      return;
+    }
+    lastFetchRef.current = Date.now();
+    setData({
+      daily: (daily.data ?? []) as DailyReadiness[],
+      runs: (runs.data ?? []) as RunLog[],
+      weekly: (weekly.data ?? []) as WeeklySummary[],
+      gear: (gear.data ?? []) as GearMileage[],
+      race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
+      plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
+    });
+    setLoadState("ready");
+  }
 
   useEffect(() => {
     if (!supabaseConfigured) {
@@ -75,43 +105,51 @@ function App() {
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession);
+      const newToken = nextSession?.access_token ?? null;
+      // อัพเดท session เฉพาะเมื่อ token เปลี่ยนจริง (ไม่ใช่แค่ object reference ใหม่)
+      if (newToken !== tokenRef.current) {
+        tokenRef.current = newToken;
+        setSession(nextSession);
+      }
     });
 
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // auth guard: เช็ค user ทุก 15 นาที + ทุกครั้ง tab focus
+  useEffect(() => {
+    if (!session) return;
+
+    async function checkUser() {
+      const { error } = await supabase.auth.getUser();
+      if (error) await supabase.auth.signOut();
+    }
+
+    const interval = setInterval(checkUser, 15 * 60 * 1000);
+
+    function onVisibility() {
+      if (document.visibilityState !== "visible") return;
+      checkUser();
+      // re-fetch ข้อมูลเฉพาะเมื่อ stale
+      if (Date.now() - lastFetchRef.current > DATA_STALE_MS) fetchData();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [session]);
+
+  // fetch ครั้งแรกเมื่อ login หรือ token เปลี่ยน
   useEffect(() => {
     if (!session) {
       setData(emptyData);
       setLoadState("idle");
+      lastFetchRef.current = 0;
       return;
     }
-
-    setLoadState("loading");
-    Promise.all([
-      supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
-      supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
-      supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
-      supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
-      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(1),
-      supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
-    ]).then(([daily, runs, weekly, gear, race, plan]) => {
-      if (daily.error || runs.error || weekly.error || gear.error || race.error) {
-        setLoadState("error");
-        return;
-      }
-
-      setData({
-        daily: (daily.data ?? []) as DailyReadiness[],
-        runs: (runs.data ?? []) as RunLog[],
-        weekly: (weekly.data ?? []) as WeeklySummary[],
-        gear: (gear.data ?? []) as GearMileage[],
-        race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
-        plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
-      });
-      setLoadState("ready");
-    });
+    fetchData();
   }, [session]);
 
   const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race || data.plan.length);

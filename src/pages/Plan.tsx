@@ -229,6 +229,11 @@ export function Plan({ data }: { data: DashboardData }) {
                   <b>เกณฑ์ผ่าน:</b> {passCriteria(todayPlan)}
                 </p>
               )}
+              {todayPlan.skip_reason && (
+                <p style={{ color: todayPlan.status === "skipped" ? "#9d1c37" : "#7a5300" }}>
+                  <b>{todayPlan.status === "skipped" ? "ข้ามเพราะ:" : "ปรับเพราะ:"}</b> {todayPlan.skip_reason}
+                </p>
+              )}
               <small>{statusLabel(todayPlan.status)} · {priorityLabel(todayPlan.priority)}</small>
             </div>
           )}
@@ -308,6 +313,15 @@ export function Plan({ data }: { data: DashboardData }) {
                         <strong>{thaiText(item.title)}</strong>
                         <span>{workoutDetail(item)}</span>
                         <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
+                        {item.skip_reason && (
+                          <em style={{
+                            color: item.status === "skipped" ? "#9d1c37" : "#7a5300",
+                            fontStyle: "italic",
+                            fontSize: "0.72rem",
+                          }}>
+                            {item.status === "skipped" ? "ข้ามเพราะ: " : "ปรับเพราะ: "}{item.skip_reason}
+                          </em>
+                        )}
                       </div>
                       <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
                     </article>

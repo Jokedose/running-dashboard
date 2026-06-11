@@ -329,6 +329,17 @@ function WeekView({ dates, dayData, today, onSelect }: {
                     {p.target_distance_km != null && (
                       <div className="cal-week-session-meta">{p.target_distance_km.toFixed(1)} km</div>
                     )}
+                    {p.skip_reason && (
+                      <div style={{
+                        fontSize: "0.7rem",
+                        color: p.status === "skipped" ? "#9d1c37" : "#7a5300",
+                        marginTop: 2,
+                        lineHeight: 1.4,
+                        fontStyle: "italic",
+                      }}>
+                        {p.skip_reason.length > 60 ? p.skip_reason.slice(0, 57) + "…" : p.skip_reason}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -430,7 +441,18 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
           </div>
         )}
 
-        {!run && plan && isPast && plan.status !== "skipped" && (
+        {plan?.skip_reason && (
+          <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>
+            <span className="cal-block-title" style={{ color: "#7a5300" }}>
+              {plan.status === "skipped" ? "📋 เหตุผลที่ข้าม" : "📋 เหตุผลที่ปรับแผน"}
+            </span>
+            <div style={{ fontSize: "0.82rem", color: "var(--color-ink)", marginTop: 4, lineHeight: 1.5 }}>
+              {plan.skip_reason}
+            </div>
+          </div>
+        )}
+
+        {!run && plan && isPast && plan.status !== "skipped" && !plan.skip_reason && (
           <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>
             <span style={{ color: "#7a5300", fontSize: "0.82rem" }}>⚠️ ยังไม่มีบันทึกการวิ่ง</span>
           </div>
