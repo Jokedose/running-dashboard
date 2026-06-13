@@ -76,6 +76,12 @@ export type RaceReadiness = {
   quality_logs: number | null;
   longest_distance_km: number | null;
   fastest_quality_pace_sec_per_km: number | null;
+  vo2max: number | null;
+  coros_running_level: number | null;
+  coros_threshold_pace_sec_per_km: number | null;
+  coros_pred_5k_min: number | null;
+  coros_pred_10k_min: number | null;
+  coros_pred_half_min: number | null;
   strengths: string[] | null;
   risks: string[] | null;
   race_decision: string | null;

@@ -1,4 +1,7 @@
-import { Activity, AlertCircle, Clock3, Gauge, Timer } from "lucide-react";
+import { useState } from "react";
+import { Activity, AlertCircle, Clock3, Gauge, Timer, X } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
@@ -38,7 +41,111 @@ function painText(level: ReturnType<typeof painLevel>): string {
   }
 }
 
+function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) {
+  const zones = [
+    { name: "Z1", value: run.z1_percent ?? 0, color: "#94a3b8" },
+    { name: "Z2", value: run.z2_percent ?? 0, color: "#3aa99e" },
+    { name: "Z3", value: run.z3_percent ?? 0, color: "#f59e0b" },
+    { name: "Z4", value: run.z4_percent ?? 0, color: "#ef4444" },
+    { name: "Z5", value: run.z5_percent ?? 0, color: "#7c3aed" },
+  ];
+  const hasZones = zones.some((z) => z.value > 0);
+  const cadenceWarn = run.cadence_spm != null && run.cadence_spm < 168;
+  const driftWarn = run.drift_bpm != null && run.drift_bpm > 5;
+  const decouplingWarn = run.decoupling_percent != null && run.decoupling_percent > 5;
+
+  return (
+    <div className="cal-modal-overlay" onClick={onClose}>
+      <div className="cal-modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
+        <div className="cal-modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <strong style={{ fontSize: "1rem" }}>{run.run_date}</strong>
+            <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#dbeafe", color: "#1d4ed8" }}>
+              {thaiText(run.session_type)}
+            </span>
+            {run.shoe_slug && (
+              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#e0e7ff", color: "#4338ca" }}>
+                {run.shoe_slug}
+              </span>
+            )}
+          </div>
+          <button className="cal-modal-close" onClick={onClose} type="button"><X size={18} /></button>
+        </div>
+
+        <div className="cal-block" style={{ borderLeftColor: chartColors.primary }}>
+          <span className="cal-block-title">📊 สรุป</span>
+          <div className="cal-data-grid">
+            <DataRow label="ระยะ" value={km(run.distance_km)} />
+            <DataRow label="เวลา" value={minutes(run.duration_min)} />
+            <DataRow label="เพซ" value={pace(run.pace_sec_per_km)} />
+            <DataRow label="ชีพจรเฉลี่ย" value={`${run.avg_hr_bpm?.toFixed(0) ?? "-"} bpm`} />
+            <DataRow label="ชีพจรสูงสุด" value={`${run.hr_max_bpm?.toFixed(0) ?? "-"} bpm`} />
+            <DataRow label="RPE" value={thaiText(run.rpe)} />
+          </div>
+        </div>
+
+        {hasZones && (
+          <div className="cal-block" style={{ borderLeftColor: chartColors.primary }}>
+            <span className="cal-block-title">💓 Heart Rate Zones</span>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={zones} margin={chartMargin} layout="vertical">
+                <CartesianGrid {...chartGrid} horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} {...chartAxis} />
+                <YAxis type="category" dataKey="name" {...chartAxis} width={32} />
+                <ChartTooltip formatter={(v) => [`${Number(v).toFixed(1)}%`, "เวลา"]} />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]}>
+                  {zones.map((z) => <rect key={z.name} fill={z.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div style={{ fontSize: "0.78rem", color: "var(--color-muted)", marginTop: 4 }}>
+              Sweet spot: {percent(run.sweet_spot_percent)}
+            </div>
+          </div>
+        )}
+
+        <div className="cal-block" style={{ borderLeftColor: driftWarn || decouplingWarn ? "#c2410c" : chartColors.primary }}>
+          <span className="cal-block-title">📈 คุณภาพ aerobic</span>
+          <div className="cal-data-grid">
+            <DataRow label="Drift" value={`${run.drift_bpm?.toFixed(1) ?? "-"} bpm${driftWarn ? " ⚠" : ""}`} />
+            <DataRow label="Decoupling" value={`${percent(run.decoupling_percent)}${decouplingWarn ? " ⚠" : ""}`} />
+            <DataRow label="Z2 main" value={percent(run.z2_percent)} />
+          </div>
+        </div>
+
+        <div className="cal-block" style={{ borderLeftColor: cadenceWarn ? "#c2410c" : chartColors.primary }}>
+          <span className="cal-block-title">🦵 Biomechanics</span>
+          <div className="cal-data-grid">
+            <DataRow label="Cadence" value={`${run.cadence_spm?.toFixed(0) ?? "-"} spm${cadenceWarn ? " ⚠ ต่ำกว่า 168" : ""}`} />
+            <DataRow label="Stride length" value={`${run.stride_cm?.toFixed(1) ?? "-"} cm`} />
+            <DataRow label="Ground contact" value={`${run.gct_ms?.toFixed(0) ?? "-"} ms`} />
+            <DataRow label="Power" value={`${run.power_w?.toFixed(0) ?? "-"} w`} />
+          </div>
+        </div>
+
+        {(run.pain || run.note) && (
+          <div className="cal-block" style={{ borderLeftColor: "#eed28b", background: "#fef9ec" }}>
+            <span className="cal-block-title">📝 Subjective</span>
+            {run.pain && <div className="cal-note-line"><b>Pain:</b> {thaiText(run.pain)}</div>}
+            {run.note && <div className="cal-note-line"><b>Note:</b> {thaiText(run.note)}</div>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+      <span style={{ color: "var(--color-muted)", fontSize: "0.75rem", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 650, color: "var(--color-ink)" }}>{value}</span>
+    </div>
+  );
+}
+
 export function Activities({ data }: { data: DashboardData }) {
+  const [selectedRun, setSelectedRun] = useState<RunLog | null>(null);
   const totalDistance = data.runs.reduce((sum, run) => sum + (run.distance_km ?? 0), 0);
   const totalDuration = data.runs.reduce((sum, run) => sum + (run.duration_min ?? 0), 0);
   const avgPaceSeconds = totalDistance > 0 && totalDuration > 0 ? (totalDuration * 60) / totalDistance : null;
@@ -110,7 +217,7 @@ export function Activities({ data }: { data: DashboardData }) {
             </thead>
             <tbody>
               {[...data.runs].reverse().map((run) => (
-                <tr key={run.id}>
+                <tr key={run.id} onClick={() => setSelectedRun(run)} style={{ cursor: "pointer" }}>
                   <td>{run.run_date}</td>
                   <td>{thaiText(run.session_type)}</td>
                   <td>{km(run.distance_km)}</td>
@@ -129,6 +236,8 @@ export function Activities({ data }: { data: DashboardData }) {
           </table>
         </div>
       </div>
+
+      {selectedRun && <RunDetailModal run={selectedRun} onClose={() => setSelectedRun(null)} />}
     </section>
   );
 }

@@ -70,6 +70,25 @@ export function Today({ data }: { data: DashboardData }) {
   const tone = readinessTone(today?.readiness_status ?? null);
   const verdict = runVerdict(lastRun);
 
+  const easyRuns = data.runs
+    .filter((r) => {
+      const t = r.session_type?.toLowerCase() ?? "";
+      return (t.includes("easy") || t.includes("recovery") || t.includes("เบา") || t.includes("ฟื้น")) && r.pace_sec_per_km != null;
+    })
+    .slice(-10)
+    .map((r) => r.pace_sec_per_km as number);
+  const paceConsistencyCoV = (() => {
+    if (easyRuns.length < 3) return null;
+    const avg = easyRuns.reduce((a, b) => a + b, 0) / easyRuns.length;
+    const variance = easyRuns.reduce((acc, p) => acc + (p - avg) ** 2, 0) / easyRuns.length;
+    const std = Math.sqrt(variance);
+    return (std / avg) * 100;
+  })();
+  const consistencyTone: "neutral" | "good" | "warn" | "hot" =
+    paceConsistencyCoV == null ? "neutral" :
+    paceConsistencyCoV < 3 ? "good" :
+    paceConsistencyCoV < 6 ? "warn" : "hot";
+
   const loadRatio = today?.load_ratio ?? null;
   const acwrTone: "neutral" | "good" | "warn" | "hot" =
     loadRatio == null ? "neutral" :
@@ -145,6 +164,18 @@ export function Today({ data }: { data: DashboardData }) {
           value={km(totalDistance)}
           detail={`เฉลี่ย Z2 ${percent(avgZ2)}`}
           icon={Activity}
+        />
+        <MetricCard
+          label="Pace consistency"
+          value={paceConsistencyCoV == null ? "-" : `${paceConsistencyCoV.toFixed(1)}%`}
+          detail={
+            paceConsistencyCoV == null ? "ต้องมี easy runs ≥3 ครั้ง" :
+            paceConsistencyCoV < 3 ? "นิ่งมาก · pacing skill ดี" :
+            paceConsistencyCoV < 6 ? "ปกติ · ปรับได้อีก" :
+            "เพซแกว่ง · เน้น cuing pace"
+          }
+          icon={Activity}
+          tone={consistencyTone}
         />
       </div>
 

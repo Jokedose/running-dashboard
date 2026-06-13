@@ -1,4 +1,4 @@
-import { Activity, Clock3, Gauge, Trophy } from "lucide-react";
+import { Activity, Clock3, Gauge, Sparkles, Trophy } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -121,6 +121,40 @@ function planForecast(points: ActualProjectionPoint[], daysLeft: number | null) 
   return Math.max(TARGET_MINUTES, baseline - expectedGain);
 }
 
+function smartForecast(
+  points: ActualProjectionPoint[],
+  coros10kMin: number | null,
+  recentRuns: RunLog[],
+  daysLeft: number | null,
+) {
+  const repForecast = planForecast(points, daysLeft);
+  if (coros10kMin == null) return repForecast;
+
+  const recentCadences = recentRuns
+    .slice(-10)
+    .map((r) => r.cadence_spm)
+    .filter((v): v is number => v != null);
+  const avgCadence = recentCadences.length ? recentCadences.reduce((a, b) => a + b, 0) / recentCadences.length : null;
+  const cadenceFactor = avgCadence == null ? 1.0
+    : avgCadence >= 168 ? 0.98
+    : avgCadence >= 165 ? 1.01
+    : avgCadence >= 160 ? 1.03
+    : 1.06;
+
+  const recentZ2 = recentRuns
+    .slice(-10)
+    .map((r) => r.z2_percent)
+    .filter((v): v is number => v != null);
+  const avgZ2 = recentZ2.length ? recentZ2.reduce((a, b) => a + b, 0) / recentZ2.length : null;
+  const z2Factor = avgZ2 == null ? 1.0
+    : avgZ2 >= 85 ? 0.98
+    : avgZ2 >= 75 ? 1.0
+    : 1.03;
+
+  const adjusted = coros10kMin * cadenceFactor * z2Factor;
+  return repForecast == null ? adjusted : (adjusted + repForecast) / 2;
+}
+
 function finishPace(value: number | null | undefined) {
   return value == null ? "-" : pace((value * 60) / 10);
 }
@@ -139,8 +173,10 @@ export function Race({ data }: { data: DashboardData }) {
     (best, point) => (!best || point.actual < best.actual ? point : best),
     null,
   );
-  const forecast = planForecast(actualProjection, daysLeft);
+  const coros10k = race?.coros_pred_10k_min ?? null;
+  const forecast = smartForecast(actualProjection, coros10k, data.runs, daysLeft);
   const forecastDelta = forecast == null ? null : forecast - (IS_B_RACE ? CUTOFF_MINUTES : A_RACE_TARGET);
+  const corosDelta = coros10k == null ? null : coros10k - B_RACE_TARGET;
   const latestGap = latestPoint && latestExpected ? latestPoint.actual - latestExpected : null;
   const targetPaceSec = (TARGET_MINUTES * 60) / 10;
 
@@ -196,6 +232,37 @@ export function Race({ data }: { data: DashboardData }) {
           icon={Gauge}
         />
       </div>
+
+      {(coros10k != null || race?.vo2max != null) && (
+        <div className="metric-grid">
+          <MetricCard
+            label="VO2max (COROS)"
+            value={race?.vo2max == null ? "-" : race.vo2max.toFixed(0)}
+            detail={race?.coros_running_level == null ? undefined : `Running level ${race.coros_running_level.toFixed(0)}`}
+            icon={Sparkles}
+            tone="good"
+          />
+          <MetricCard
+            label="COROS 10K prediction"
+            value={raceTime(coros10k)}
+            detail={corosDelta == null ? undefined : corosDelta <= 0 ? `เกินเป้า A ${Math.abs(corosDelta).toFixed(1)} นาที` : `ช้ากว่าเป้า A ${corosDelta.toFixed(1)} นาที`}
+            icon={Trophy}
+            tone={corosDelta != null && corosDelta <= 0 ? "good" : "warn"}
+          />
+          <MetricCard
+            label="Threshold pace"
+            value={race?.coros_threshold_pace_sec_per_km == null ? "-" : pace(race.coros_threshold_pace_sec_per_km)}
+            detail="จาก COROS fitness assessment"
+            icon={Activity}
+          />
+          <MetricCard
+            label="5K prediction"
+            value={raceTime(race?.coros_pred_5k_min ?? null)}
+            detail="วัดความเร็วระยะสั้น"
+            icon={Clock3}
+          />
+        </div>
+      )}
 
       {IS_B_RACE && aDaysLeft > 0 && (
         <div className="smart-strip">
