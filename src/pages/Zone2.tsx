@@ -45,6 +45,19 @@ export function Zone2({ data }: { data: DashboardData }) {
   const driftTone: "neutral" | "good" | "warn" | "hot" =
     avgDrift == null ? "neutral" : avgDrift <= 5 ? "good" : avgDrift <= 8 ? "warn" : "hot";
 
+  const efficiencyRows = data.runs
+    .filter((r) => {
+      const t = r.session_type?.toLowerCase() ?? "";
+      return r.avg_hr_bpm != null && r.pace_sec_per_km != null && (t.includes("easy") || t.includes("long") || t.includes("recovery"));
+    })
+    .slice(-20)
+    .map((r) => ({
+      date: shortDate(r.run_date),
+      efficiency: r.avg_hr_bpm != null && r.pace_sec_per_km != null
+        ? Math.round((1000 / r.pace_sec_per_km) / r.avg_hr_bpm * 10000) / 100
+        : null,
+    }));
+
   const cadenceRows = data.runs
     .filter((run) => run.cadence_spm != null)
     .slice(-20)
@@ -90,6 +103,18 @@ export function Zone2({ data }: { data: DashboardData }) {
               <Line dataKey="z2" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} name="Z2 %" />
               <Line dataKey="drift" stroke={chartColors.accent} strokeWidth={2.5} dot={false} name="การไหล bpm" />
               <Line dataKey="decoupling" stroke={chartColors.brown} strokeWidth={2.5} strokeDasharray="4 5" dot={false} name="หลุดแอโรบิก %" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="⚡ Aerobic efficiency" subtitle="(1000/pace) / HR × 100 · ยิ่งสูงยิ่งมี aerobic fitness ดี · ดูเทียบกับตัวเอง" className="span-12">
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={efficiencyRows} margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis {...chartAxis} />
+              <ChartTooltip formatter={(v) => [Number(v).toFixed(2), "Efficiency"]} />
+              <Line dataKey="efficiency" stroke={chartColors.blue} strokeWidth={3} dot={{ r: 4, fill: chartColors.blue, strokeWidth: 0 }} activeDot={{ r: 7, strokeWidth: 0 }} name="Aerobic efficiency" connectNulls={false} />
             </LineChart>
           </ResponsiveContainer>
         </Panel>

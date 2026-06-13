@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Brain, Flame, HeartPulse, Moon, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, Brain, Flame, HeartPulse, Moon, ShieldCheck, Zap } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { CoreFeatures } from "../components/CoreFeatures";
@@ -89,6 +89,18 @@ export function Today({ data }: { data: DashboardData }) {
     paceConsistencyCoV < 3 ? "good" :
     paceConsistencyCoV < 6 ? "warn" : "hot";
 
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const isQualityType = (t: string | null | undefined): boolean => {
+    const s = (t ?? "").toLowerCase();
+    return s.includes("tempo") || s.includes("vo2") || s.includes("interval") || s.includes("race-pace") ||
+           s.includes("race-sim") || s.includes("quality") || s.includes("threshold") || s.includes("test") ||
+           s.includes("calibration") || s.includes("คุณภาพ");
+  };
+  const nextQuality = data.plan
+    .filter((p) => p.plan_date >= todayIso && isQualityType(p.session_type ?? p.title))
+    .sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
+  const nextQualityDays = nextQuality == null ? null : Math.ceil((new Date(nextQuality.plan_date).getTime() - Date.now()) / 86400000);
+
   const loadRatio = today?.load_ratio ?? null;
   const acwrTone: "neutral" | "good" | "warn" | "hot" =
     loadRatio == null ? "neutral" :
@@ -105,6 +117,33 @@ export function Today({ data }: { data: DashboardData }) {
   const avgHrv7 = average(data.daily.slice(-8, -1).map((d) => d.hrv_avg_ms));
   const hrvTone: "neutral" | "good" | "warn" =
     latestHrv == null ? "neutral" : latestHrv >= (avgHrv7 ?? latestHrv) * 0.95 ? "good" : "warn";
+
+  // Smart coach advice based on combined signals
+  const coachAdvice = (() => {
+    const advice: { tone: "good" | "warn" | "hot"; text: string }[] = [];
+    if (today?.recovery_percent != null && today.recovery_percent < 60) {
+      advice.push({ tone: "hot", text: `Recovery ${today.recovery_percent}% ต่ำ — ทำได้แค่ recovery easy` });
+    }
+    if (latestHrv != null && avgHrv7 != null && latestHrv < avgHrv7 * 0.9) {
+      advice.push({ tone: "warn", text: `HRV ต่ำกว่า baseline 7 วัน — ลดความหนักลง` });
+    }
+    if (today?.sleep_minutes != null && today.sleep_minutes < 330) {
+      advice.push({ tone: "warn", text: `นอนน้อย ${Math.round(today.sleep_minutes / 60)}h — ห้ามทำ quality วันนี้` });
+    }
+    if (loadRatio != null && loadRatio > 1.5) {
+      advice.push({ tone: "hot", text: `Load ratio ${loadRatio.toFixed(2)} สูงเสี่ยงบาดเจ็บ — พัก/easy 2-3 วัน` });
+    }
+    if (lastRun?.pain && !lastRun.pain.includes("ไม่มี")) {
+      advice.push({ tone: "warn", text: `Run ล่าสุดมี pain note — เช็คก่อน quality ครั้งถัดไป` });
+    }
+    if (lastRun?.cadence_spm != null && lastRun.cadence_spm < 165) {
+      advice.push({ tone: "warn", text: `Cadence ${lastRun.cadence_spm.toFixed(0)} spm ต่ำ — ฝึก cuing 170 ใน easy run` });
+    }
+    if (!advice.length) {
+      advice.push({ tone: "good", text: "Signal ทุกตัวอยู่ในเกณฑ์ดี — ทำตามแผนได้เต็ม" });
+    }
+    return advice;
+  })();
 
   const recentDaily = data.daily.slice(-14).map((d) => ({
     date: shortDate(d.log_date),
@@ -166,6 +205,13 @@ export function Today({ data }: { data: DashboardData }) {
           icon={Activity}
         />
         <MetricCard
+          label="Quality session ถัดไป"
+          value={nextQualityDays == null ? "-" : nextQualityDays === 0 ? "วันนี้" : `อีก ${nextQualityDays} วัน`}
+          detail={nextQuality == null ? "ไม่มีในแผน" : `${nextQuality.plan_date} · ${nextQuality.session_type ?? nextQuality.title}`}
+          icon={Zap}
+          tone={nextQualityDays != null && nextQualityDays <= 2 ? "warn" : "neutral"}
+        />
+        <MetricCard
           label="Pace consistency"
           value={paceConsistencyCoV == null ? "-" : `${paceConsistencyCoV.toFixed(1)}%`}
           detail={
@@ -192,6 +238,26 @@ export function Today({ data }: { data: DashboardData }) {
               {lastRun?.drift_bpm != null && <span>Drift {lastRun.drift_bpm.toFixed(1)} bpm</span>}
             </div>
             {lastRun?.note && <p className="run-note">{thaiText(lastRun.note)}</p>}
+          </div>
+        </Panel>
+
+        <Panel title="🤖 Smart coach advice" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {coachAdvice.map((a, i) => {
+              const color = a.tone === "hot" ? "#9d1c37" : a.tone === "warn" ? "#7a5300" : "#1a6847";
+              const bg = a.tone === "hot" ? "#fee2e8" : a.tone === "warn" ? "#fef9ec" : "#d8eee5";
+              const icon = a.tone === "hot" ? "🛑" : a.tone === "warn" ? "⚠️" : "✅";
+              return (
+                <div key={i} style={{
+                  display: "flex", alignItems: "center", gap: 10,
+                  padding: "10px 14px", borderRadius: 8,
+                  background: bg, borderLeft: `4px solid ${color}`,
+                }}>
+                  <span style={{ fontSize: 16 }}>{icon}</span>
+                  <span style={{ color: "var(--color-ink)", fontWeight: 600, fontSize: "0.88rem" }}>{a.text}</span>
+                </div>
+              );
+            })}
           </div>
         </Panel>
 

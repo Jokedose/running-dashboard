@@ -1,12 +1,16 @@
-import { Activity, Brain, Moon, TrendingUp } from "lucide-react";
+import { Activity, Brain, Moon, Mountain, TrendingUp } from "lucide-react";
 import {
   Bar,
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   XAxis,
   YAxis,
+  ZAxis,
 } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -35,6 +39,50 @@ export function Trends({ data }: { data: DashboardData }) {
     rhr: d.resting_hr_bpm ?? null,
   }));
 
+  const sessionTypeCounts = data.runs.reduce((acc, r) => {
+    const t = (r.session_type ?? "อื่นๆ").toLowerCase();
+    let bucket = "อื่นๆ";
+    if (t.includes("easy") || t.includes("เบา")) bucket = "Easy";
+    else if (t.includes("long") || t.includes("ยาว")) bucket = "Long";
+    else if (t.includes("recovery") || t.includes("ฟื้น")) bucket = "Recovery";
+    else if (t.includes("tempo") || t.includes("threshold")) bucket = "Tempo";
+    else if (t.includes("vo2") || t.includes("interval")) bucket = "VO2";
+    else if (t.includes("strides") || t.includes("stride")) bucket = "Strides";
+    else if (t.includes("race")) bucket = "Race";
+    acc[bucket] = (acc[bucket] ?? 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const sessionMix = Object.entries(sessionTypeCounts).map(([type, count]) => ({ type, count }));
+
+  const longRunRows = data.runs
+    .filter((r) => {
+      const t = r.session_type?.toLowerCase() ?? "";
+      return (t.includes("long") || t.includes("ยาว")) && r.distance_km != null && r.pace_sec_per_km != null;
+    })
+    .map((r) => ({
+      date: shortDate(r.run_date),
+      distance: r.distance_km,
+      paceMin: r.pace_sec_per_km != null ? r.pace_sec_per_km / 60 : null,
+      z2: r.z2_percent,
+    }));
+
+  const dailyByDate = new Map(data.daily.map((d) => [d.log_date, d]));
+  const qualityRows = data.runs
+    .filter((r) => r.z2_percent != null && r.drift_bpm != null && r.pace_sec_per_km != null)
+    .map((r) => {
+      const prevDate = new Date(r.run_date);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevKey = prevDate.toISOString().slice(0, 10);
+      const prev = dailyByDate.get(prevKey) ?? dailyByDate.get(r.run_date);
+      if (!prev || prev.hrv_avg_ms == null) return null;
+      const qualityScore =
+        (r.z2_percent ?? 0) * 0.6 -
+        (r.drift_bpm ?? 0) * 3 +
+        Math.max(0, 100 - ((r.decoupling_percent ?? 5) - 3) * 5);
+      return { hrv: prev.hrv_avg_ms, quality: Math.round(qualityScore), date: r.run_date };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   const sleepRows = data.daily.slice(-21).map((d) => ({
     date: shortDate(d.log_date),
     hours: d.sleep_minutes == null ? null : Math.round(d.sleep_minutes / 6) / 10,
@@ -46,6 +94,13 @@ export function Trends({ data }: { data: DashboardData }) {
       <div className="metric-grid">
         <MetricCard label="สัปดาห์ทั้งหมด" value={String(totalWeeks)} detail="ที่บันทึกไว้" icon={TrendingUp} />
         <MetricCard label="ระยะ/สัปดาห์" value={km(avgWeeklyKm)} detail="เฉลี่ยทุกสัปดาห์" icon={Activity} />
+        <MetricCard
+          label="Long run ยาวสุด"
+          value={longRunRows.length === 0 ? "-" : km(Math.max(...longRunRows.map((r) => r.distance ?? 0)))}
+          detail={`${longRunRows.length} ครั้งที่บันทึก`}
+          icon={Mountain}
+          tone={longRunRows.some((r) => (r.distance ?? 0) >= 9.5) ? "good" : "warn"}
+        />
         <MetricCard
           label="HRV เฉลี่ย"
           value={avgHrv == null ? "-" : `${avgHrv.toFixed(0)} ms`}
@@ -124,6 +179,51 @@ export function Trends({ data }: { data: DashboardData }) {
               />
             </ComposedChart>
           </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="📊 Session mix" subtitle={`${data.runs.length} ครั้งที่บันทึก แบ่งตามประเภท`} className="span-6">
+          <ResponsiveContainer width="100%" height={220}>
+            <ComposedChart data={sessionMix} margin={chartMargin} layout="vertical">
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} horizontal={false} />
+              <XAxis type="number" {...chartAxis} />
+              <YAxis type="category" dataKey="type" {...chartAxis} width={70} />
+              <ChartTooltip />
+              <Bar dataKey="count" fill="url(#primaryBar)" radius={[0, 6, 6, 0]} name="ครั้ง" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="🏔 Long run progression" subtitle={`พัฒนาการระยะและเพซของ long run (${longRunRows.length} ครั้ง) · เป้า ≥ 9.5 km`} className="span-6">
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={longRunRows} margin={chartMargin}>
+              <ChartGradientDefs />
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis yAxisId="left" {...chartAxis} label={{ value: "km", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" reversed {...chartAxis} label={{ value: "min/km", angle: 90, position: "insideRight", fontSize: 11 }} />
+              <ChartTooltip />
+              <ReferenceLine yAxisId="left" y={9.5} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "เป้า 9.5km", position: "insideTopLeft", fontSize: 11, fill: chartColors.accent }} />
+              <Bar yAxisId="left" dataKey="distance" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
+              <Line yAxisId="right" dataKey="paceMin" stroke={chartColors.blue} strokeWidth={3} dot={{ r: 4, fill: chartColors.blue, strokeWidth: 0 }} name="เพซ นาที/กม." connectNulls={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="🧠 HRV ก่อนวิ่ง vs Quality" subtitle={`ความสัมพันธ์ HRV (วันก่อน) กับ run quality (${qualityRows.length} ครั้ง)`} className="span-6">
+          <ResponsiveContainer width="100%" height={260}>
+            <ScatterChart margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis type="number" dataKey="hrv" name="HRV ms" domain={["dataMin - 5", "dataMax + 5"]} {...chartAxis} />
+              <YAxis type="number" dataKey="quality" name="Quality" {...chartAxis} />
+              <ZAxis range={[60, 60]} />
+              <ChartTooltip cursor={{ strokeDasharray: "3 3" }} />
+              <Scatter data={qualityRows} fill={chartColors.primary} />
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
+            HRV สูง → quality มักดีขึ้น · ใช้ HRV เป็น early signal ก่อนซ้อมหนัก
+          </div>
         </Panel>
 
         <Panel title="คุณภาพการนอน" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-6">
