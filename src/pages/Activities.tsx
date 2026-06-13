@@ -123,6 +123,17 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
           </div>
         </div>
 
+        {(run.weather || run.temperature_c != null || run.humidity_percent != null) && (
+          <div className="cal-block" style={{ borderLeftColor: "#5aa9e6" }}>
+            <span className="cal-block-title">🌤 Environment</span>
+            <div className="cal-data-grid">
+              {run.weather && <DataRow label="อากาศ" value={thaiText(run.weather)} />}
+              {run.temperature_c != null && <DataRow label="อุณหภูมิ" value={`${run.temperature_c}°C`} />}
+              {run.humidity_percent != null && <DataRow label="ความชื้น" value={`${run.humidity_percent}%`} />}
+            </div>
+          </div>
+        )}
+
         {(run.pain || run.note) && (
           <div className="cal-block" style={{ borderLeftColor: "#eed28b", background: "#fef9ec" }}>
             <span className="cal-block-title">📝 Subjective</span>

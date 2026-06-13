@@ -37,6 +37,9 @@ export type RunLog = {
   power_w: number | null;
   gct_ms: number | null;
   stride_cm: number | null;
+  temperature_c: number | null;
+  humidity_percent: number | null;
+  weather: string | null;
   shoe_slug: string | null;
   rpe: string | null;
   pain: string | null;

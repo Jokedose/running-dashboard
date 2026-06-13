@@ -13,7 +13,7 @@ import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "..
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
-import { pace, raceTime, shortDate } from "../utils/format";
+import { km, pace, percent, raceTime, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const B_RACE_DATE = "2026-07-19";
@@ -159,6 +159,68 @@ function finishPace(value: number | null | undefined) {
   return value == null ? "-" : pace((value * 60) / 10);
 }
 
+function RacePaceCalculator({ targetMin }: { targetMin: number }) {
+  const targetSec = targetMin * 60;
+  const avgPaceSec = targetSec / 10;
+  // Conservative strategy: km 1-2 slower by 8%, km 3-7 at avg, km 8-9 same/slight push, km 10 same
+  const splits = Array.from({ length: 10 }, (_, i) => {
+    const km = i + 1;
+    let factor = 1.0;
+    if (km <= 2) factor = 1.06;
+    else if (km <= 7) factor = 0.99;
+    else if (km <= 9) factor = 0.98;
+    else factor = 0.97;
+    return { km, paceSec: Math.round(avgPaceSec * factor) };
+  });
+  // Normalize so cumulative time hits target
+  const total = splits.reduce((acc, s) => acc + s.paceSec, 0);
+  const correction = targetSec / total;
+  let cumSec = 0;
+  const rows = splits.map((s) => {
+    const adjustedPace = Math.round(s.paceSec * correction);
+    cumSec += adjustedPace;
+    return {
+      km: s.km,
+      pace: adjustedPace,
+      cum: cumSec,
+    };
+  });
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", fontSize: "0.85rem" }}>
+        <thead>
+          <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>Km</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>Pace</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>Cumulative</th>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>Strategy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const note = r.km <= 2 ? "🐢 Conservative" : r.km <= 7 ? "⚖️ Steady" : r.km <= 9 ? "🔥 Push" : "🏁 Finish";
+            const bg = r.km <= 2 ? "#dbeafe" : r.km <= 7 ? "#dff7f2" : r.km <= 9 ? "#fef3c7" : "#fee2e8";
+            return (
+              <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
+                <td style={{ padding: "8px 6px", fontWeight: 650 }}>{r.km}</td>
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{pace(r.pace)}</td>
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{Math.floor(r.cum / 60)}:{String(r.cum % 60).padStart(2, "0")}</td>
+                <td style={{ padding: "8px 6px" }}>
+                  <span style={{ background: bg, padding: "2px 8px", borderRadius: 4, fontSize: "0.78rem" }}>{note}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 10, fontSize: "0.78rem", color: "var(--color-muted)" }}>
+        Average pace: <b style={{ color: "var(--color-ink)" }}>{pace(avgPaceSec)}</b> · ออกตัวช้าเพื่อคุม HR · เร่งช่วงท้ายถ้า effort ยังเหลือ
+      </div>
+    </div>
+  );
+}
+
 export function Race({ data }: { data: DashboardData }) {
   const race = data.race;
   const raceDate = race?.race_date ?? RACE_DATE;
@@ -175,6 +237,31 @@ export function Race({ data }: { data: DashboardData }) {
   );
   const coros10k = race?.coros_pred_10k_min ?? null;
   const forecast = smartForecast(actualProjection, coros10k, data.runs, daysLeft);
+
+  // Personal Records
+  const longestRun = data.runs.reduce<RunLog | null>((best, r) =>
+    !best || (r.distance_km ?? 0) > (best.distance_km ?? 0) ? r : best, null);
+  const fastestEasy = data.runs
+    .filter((r) => {
+      const t = r.session_type?.toLowerCase() ?? "";
+      return (t.includes("easy") || t.includes("long")) && r.pace_sec_per_km != null && (r.distance_km ?? 0) >= 4;
+    })
+    .reduce<RunLog | null>((best, r) =>
+      !best || (r.pace_sec_per_km ?? 99999) < (best.pace_sec_per_km ?? 99999) ? r : best, null);
+  const fastestQuality = data.runs
+    .filter((r) => {
+      const t = r.session_type?.toLowerCase() ?? "";
+      return (t.includes("tempo") || t.includes("interval") || t.includes("quality") || t.includes("threshold")) && r.pace_sec_per_km != null;
+    })
+    .reduce<RunLog | null>((best, r) =>
+      !best || (r.pace_sec_per_km ?? 99999) < (best.pace_sec_per_km ?? 99999) ? r : best, null);
+  const bestZ2 = data.runs
+    .filter((r) => (r.distance_km ?? 0) >= 6 && r.z2_percent != null)
+    .reduce<RunLog | null>((best, r) =>
+      !best || (r.z2_percent ?? 0) > (best.z2_percent ?? 0) ? r : best, null);
+  const peakCadence = data.runs.reduce<RunLog | null>((best, r) =>
+    !best || (r.cadence_spm ?? 0) > (best.cadence_spm ?? 0) ? r : best, null);
+
   const forecastDelta = forecast == null ? null : forecast - (IS_B_RACE ? CUTOFF_MINUTES : A_RACE_TARGET);
   const corosDelta = coros10k == null ? null : coros10k - B_RACE_TARGET;
   const latestGap = latestPoint && latestExpected ? latestPoint.actual - latestExpected : null;
@@ -387,6 +474,33 @@ export function Race({ data }: { data: DashboardData }) {
         </Panel>
         <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
         <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+
+        <Panel title="🏆 Personal Records" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+            {[
+              { label: "Longest run", value: km(longestRun?.distance_km), sub: longestRun?.run_date, icon: "🏔" },
+              { label: "Fastest easy/long", value: pace(fastestEasy?.pace_sec_per_km), sub: fastestEasy?.run_date, icon: "⚡" },
+              { label: "Fastest quality", value: pace(fastestQuality?.pace_sec_per_km), sub: fastestQuality?.run_date, icon: "🔥" },
+              { label: "Best Z2 (long)", value: percent(bestZ2?.z2_percent), sub: bestZ2?.run_date, icon: "💚" },
+              { label: "Peak cadence", value: peakCadence?.cadence_spm == null ? "-" : `${peakCadence.cadence_spm.toFixed(0)} spm`, sub: peakCadence?.run_date, icon: "🦵" },
+            ].map((pr, i) => (
+              <div key={i} style={{
+                background: "var(--color-primary-soft)",
+                border: "1px solid var(--color-line)",
+                borderRadius: 8, padding: "12px 14px",
+              }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{pr.icon}</div>
+                <div style={{ color: "var(--color-muted)", fontSize: "0.78rem" }}>{pr.label}</div>
+                <div style={{ fontWeight: 750, fontSize: "1.1rem", color: "var(--color-ink)" }}>{pr.value}</div>
+                <div style={{ fontSize: "0.72rem", color: "var(--color-muted)", marginTop: 2 }}>{pr.sub ?? ""}</div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="🧮 Race pace calculator" subtitle={`Split plan สำหรับ ${raceTime(TARGET_MINUTES)} · conservative start strategy`} className="span-12">
+          <RacePaceCalculator targetMin={TARGET_MINUTES} />
+        </Panel>
 
         {race?.milestones && race.milestones.length > 0 && (
           <Panel title="🎯 Milestones ที่ต้องผ่านก่อนแข่ง" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
