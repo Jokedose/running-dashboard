@@ -387,6 +387,29 @@ export function Race({ data }: { data: DashboardData }) {
         </Panel>
         <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
         <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+
+        {race?.milestones && race.milestones.length > 0 && (
+          <Panel title="🎯 Milestones ที่ต้องผ่านก่อนแข่ง" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {race.milestones.map((m, i) => {
+                const color = m.status === "done" ? "#1a6847" : m.status === "skipped" ? "#9d1c37" : "#7a5300";
+                const bg = m.status === "done" ? "#d8eee5" : m.status === "skipped" ? "#fee2e8" : "#fef9ec";
+                const icon = m.status === "done" ? "✓" : m.status === "skipped" ? "✗" : "○";
+                return (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 12,
+                    padding: "10px 14px", borderRadius: 8,
+                    background: bg, borderLeft: `4px solid ${color}`,
+                  }}>
+                    <span style={{ fontSize: 18, fontWeight: 750, color, minWidth: 18 }}>{icon}</span>
+                    <span style={{ flex: 1, color: "var(--color-ink)", fontWeight: 600 }}>{m.name}</span>
+                    <span style={{ fontSize: "0.82rem", color: "var(--color-muted)" }}>{m.due}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </Panel>
+        )}
       </div>
     </section>
   );

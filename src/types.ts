@@ -85,6 +85,13 @@ export type RaceReadiness = {
   strengths: string[] | null;
   risks: string[] | null;
   race_decision: string | null;
+  milestones: Milestone[] | null;
+};
+
+export type Milestone = {
+  name: string;
+  due: string;
+  status: "done" | "upcoming" | "planned" | "skipped";
 };
 
 export type TrainingPlan = {
