@@ -6,22 +6,8 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
+import { painLevel } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
-
-function painLevel(pain: string | null): "none" | "mild" | "moderate" | "high" {
-  if (!pain) return "none";
-  const p = pain.toLowerCase();
-  if (p.includes("ไม่มี") || p.includes("หาย") || p.includes("none") || p === "-") return "none";
-  const match = p.match(/(\d+)\s*\/\s*10/);
-  if (match) {
-    const n = parseInt(match[1]);
-    if (n >= 7) return "high";
-    if (n >= 4) return "moderate";
-    return "mild";
-  }
-  if (p.includes("ตึง") || p.includes("เจ็บ") || p.includes("ปวด")) return "mild";
-  return "none";
-}
 
 function painColor(level: ReturnType<typeof painLevel>): string {
   switch (level) {

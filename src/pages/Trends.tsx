@@ -18,6 +18,7 @@ import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average } from "../utils/data";
 import { km, minutes, shortDate } from "../utils/format";
+import { classifySession } from "../utils/session";
 
 export function Trends({ data }: { data: DashboardData }) {
   const avgHrv = average(data.daily.map((d) => d.hrv_avg_ms));
@@ -39,26 +40,19 @@ export function Trends({ data }: { data: DashboardData }) {
     rhr: d.resting_hr_bpm ?? null,
   }));
 
+  const KIND_LABELS: Record<string, string> = {
+    easy: "Easy", long: "Long", recovery: "Recovery", strides: "Strides",
+    tempo: "Tempo", vo2: "VO2", test: "Test", race: "Race", rest: "Rest", other: "อื่นๆ",
+  };
   const sessionTypeCounts = data.runs.reduce((acc, r) => {
-    const t = (r.session_type ?? "อื่นๆ").toLowerCase();
-    let bucket = "อื่นๆ";
-    if (t.includes("easy") || t.includes("เบา")) bucket = "Easy";
-    else if (t.includes("long") || t.includes("ยาว")) bucket = "Long";
-    else if (t.includes("recovery") || t.includes("ฟื้น")) bucket = "Recovery";
-    else if (t.includes("tempo") || t.includes("threshold")) bucket = "Tempo";
-    else if (t.includes("vo2") || t.includes("interval")) bucket = "VO2";
-    else if (t.includes("strides") || t.includes("stride")) bucket = "Strides";
-    else if (t.includes("race")) bucket = "Race";
+    const bucket = KIND_LABELS[classifySession(r.session_type)] ?? "อื่นๆ";
     acc[bucket] = (acc[bucket] ?? 0) + 1;
     return acc;
   }, {} as Record<string, number>);
   const sessionMix = Object.entries(sessionTypeCounts).map(([type, count]) => ({ type, count }));
 
   const longRunRows = data.runs
-    .filter((r) => {
-      const t = r.session_type?.toLowerCase() ?? "";
-      return (t.includes("long") || t.includes("ยาว")) && r.distance_km != null && r.pace_sec_per_km != null;
-    })
+    .filter((r) => classifySession(r.session_type) === "long" && r.distance_km != null && r.pace_sec_per_km != null)
     .map((r) => ({
       date: shortDate(r.run_date),
       distance: r.distance_km,

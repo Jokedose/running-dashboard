@@ -7,6 +7,7 @@ import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
 import { average, latest } from "../utils/data";
 import { km, minutes, pace, percent, sessionLabel, shortDate } from "../utils/format";
+import { classifySession, isSteadyAerobic, painLevel } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
 function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
@@ -28,7 +29,7 @@ function runVerdict(run: RunLog | undefined) {
 
   const z2 = run.z2_percent ?? 0;
   const drift = run.drift_bpm ?? 0;
-  const hasPain = Boolean(run.pain && !run.pain.includes("ไม่มี"));
+  const hasPain = painLevel(run.pain) !== "none";
 
   if (hasPain) {
     return {
@@ -71,10 +72,7 @@ export function Today({ data }: { data: DashboardData }) {
   const verdict = runVerdict(lastRun);
 
   const easyRuns = data.runs
-    .filter((r) => {
-      const t = r.session_type?.toLowerCase() ?? "";
-      return (t.includes("easy") || t.includes("recovery") || t.includes("เบา") || t.includes("ฟื้น")) && r.pace_sec_per_km != null;
-    })
+    .filter((r) => isSteadyAerobic(r.session_type) && r.pace_sec_per_km != null)
     .slice(-10)
     .map((r) => r.pace_sec_per_km as number);
   const paceConsistencyCoV = (() => {
@@ -90,11 +88,9 @@ export function Today({ data }: { data: DashboardData }) {
     paceConsistencyCoV < 6 ? "warn" : "hot";
 
   const todayIso = new Date().toISOString().slice(0, 10);
-  const isQualityType = (t: string | null | undefined): boolean => {
-    const s = (t ?? "").toLowerCase();
-    return s.includes("tempo") || s.includes("vo2") || s.includes("interval") || s.includes("race-pace") ||
-           s.includes("race-sim") || s.includes("quality") || s.includes("threshold") || s.includes("test") ||
-           s.includes("calibration") || s.includes("คุณภาพ");
+  const isQualityType = (v: string | null | undefined): boolean => {
+    const kind = classifySession(v);
+    return kind === "tempo" || kind === "vo2" || kind === "test" || kind === "race";
   };
   const nextQuality = data.plan
     .filter((p) => p.plan_date >= todayIso && isQualityType(p.session_type ?? p.title))
@@ -133,7 +129,7 @@ export function Today({ data }: { data: DashboardData }) {
     if (loadRatio != null && loadRatio > 1.5) {
       advice.push({ tone: "hot", text: `Load ratio ${loadRatio.toFixed(2)} สูงเสี่ยงบาดเจ็บ — พัก/easy 2-3 วัน` });
     }
-    if (lastRun?.pain && !lastRun.pain.includes("ไม่มี")) {
+    if (painLevel(lastRun?.pain) !== "none") {
       advice.push({ tone: "warn", text: `Run ล่าสุดมี pain note — เช็คก่อน quality ครั้งถัดไป` });
     }
     if (lastRun?.cadence_spm != null && lastRun.cadence_spm < 165) {

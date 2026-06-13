@@ -14,6 +14,7 @@ import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
 import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
+import { classifySession, isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
 const B_RACE_DATE = "2026-07-19";
@@ -64,6 +65,9 @@ function estimate10kMinutes(run: RunLog) {
 function raceProjection(runs: RunLog[]) {
   const bestByDate = new Map<string, ActualProjectionPoint>();
   runs.forEach((run) => {
+    // Strides sessions have burst pace that is not representative of sustained
+    // race pace, so they distort the 10K projection — skip them.
+    if (classifySession(run.session_type) === "strides") return;
     const estimate = estimate10kMinutes(run);
     if (estimate == null || !run.run_date || !run.distance_km) return;
     const current = bestByDate.get(run.run_date);
@@ -130,8 +134,11 @@ function smartForecast(
   const repForecast = planForecast(points, daysLeft);
   if (coros10kMin == null) return repForecast;
 
-  const recentCadences = recentRuns
-    .slice(-10)
+  // Only steady aerobic runs reflect race-relevant efficiency — strides/tempo
+  // have variable cadence/Z2 that would skew the efficiency factors.
+  const steadyRuns = recentRuns.filter((r) => isSteadyAerobic(r.session_type)).slice(-10);
+
+  const recentCadences = steadyRuns
     .map((r) => r.cadence_spm)
     .filter((v): v is number => v != null);
   const avgCadence = recentCadences.length ? recentCadences.reduce((a, b) => a + b, 0) / recentCadences.length : null;
@@ -141,8 +148,7 @@ function smartForecast(
     : avgCadence >= 160 ? 1.03
     : 1.06;
 
-  const recentZ2 = recentRuns
-    .slice(-10)
+  const recentZ2 = steadyRuns
     .map((r) => r.z2_percent)
     .filter((v): v is number => v != null);
   const avgZ2 = recentZ2.length ? recentZ2.reduce((a, b) => a + b, 0) / recentZ2.length : null;
@@ -242,16 +248,13 @@ export function Race({ data }: { data: DashboardData }) {
   const longestRun = data.runs.reduce<RunLog | null>((best, r) =>
     !best || (r.distance_km ?? 0) > (best.distance_km ?? 0) ? r : best, null);
   const fastestEasy = data.runs
-    .filter((r) => {
-      const t = r.session_type?.toLowerCase() ?? "";
-      return (t.includes("easy") || t.includes("long")) && r.pace_sec_per_km != null && (r.distance_km ?? 0) >= 4;
-    })
+    .filter((r) => isSteadyAerobic(r.session_type) && r.pace_sec_per_km != null && (r.distance_km ?? 0) >= 4)
     .reduce<RunLog | null>((best, r) =>
       !best || (r.pace_sec_per_km ?? 99999) < (best.pace_sec_per_km ?? 99999) ? r : best, null);
   const fastestQuality = data.runs
     .filter((r) => {
-      const t = r.session_type?.toLowerCase() ?? "";
-      return (t.includes("tempo") || t.includes("interval") || t.includes("quality") || t.includes("threshold")) && r.pace_sec_per_km != null;
+      const kind = classifySession(r.session_type);
+      return (kind === "tempo" || kind === "vo2" || kind === "test") && r.pace_sec_per_km != null;
     })
     .reduce<RunLog | null>((best, r) =>
       !best || (r.pace_sec_per_km ?? 99999) < (best.pace_sec_per_km ?? 99999) ? r : best, null);

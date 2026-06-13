@@ -16,6 +16,7 @@ import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
 import { pace, paceMinutes, percent, sessionLabel, shortDate } from "../utils/format";
+import { isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
@@ -46,10 +47,7 @@ export function Zone2({ data }: { data: DashboardData }) {
     avgDrift == null ? "neutral" : avgDrift <= 5 ? "good" : avgDrift <= 8 ? "warn" : "hot";
 
   const efficiencyRows = data.runs
-    .filter((r) => {
-      const t = r.session_type?.toLowerCase() ?? "";
-      return r.avg_hr_bpm != null && r.pace_sec_per_km != null && (t.includes("easy") || t.includes("long") || t.includes("recovery"));
-    })
+    .filter((r) => isSteadyAerobic(r.session_type) && r.avg_hr_bpm != null && r.pace_sec_per_km != null)
     .slice(-20)
     .map((r) => ({
       date: shortDate(r.run_date),
