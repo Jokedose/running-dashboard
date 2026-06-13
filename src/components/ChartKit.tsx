@@ -2,16 +2,16 @@ import type { ReactNode } from "react";
 import { Tooltip } from "recharts";
 
 export const chartColors = {
-  ink: "#172026",
-  muted: "#657176",
-  grid: "#e2e8e3",
-  primary: "#2a7f62",
-  primarySoft: "#d8eee5",
-  accent: "#cf244f",
-  blue: "#0b73e0",
-  blueSoft: "#d8e9fb",
-  amber: "#c98913",
-  brown: "#695d46",
+  ink: "#2b2820",
+  muted: "#8d8678",
+  grid: "#e8e3d9",
+  primary: "#4f8a78",
+  primarySoft: "#e7efe9",
+  accent: "#b0593f",
+  blue: "#6f93b0",
+  blueSoft: "#dde6ec",
+  amber: "#b8924c",
+  brown: "#8a7a5c",
 } as const;
 
 export const chartMargin = { top: 14, right: 14, bottom: 0, left: -12 };
