@@ -19,6 +19,8 @@ import { pace, paceMinutes, percent, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
+const TARGET_CADENCE_MIN = 168;
+const TARGET_CADENCE_MAX = 172;
 
 export function Zone2({ data }: { data: DashboardData }) {
   const rows = data.runs
@@ -43,6 +45,22 @@ export function Zone2({ data }: { data: DashboardData }) {
   const driftTone: "neutral" | "good" | "warn" | "hot" =
     avgDrift == null ? "neutral" : avgDrift <= 5 ? "good" : avgDrift <= 8 ? "warn" : "hot";
 
+  const cadenceRows = data.runs
+    .filter((run) => run.cadence_spm != null)
+    .slice(-20)
+    .map((run) => ({
+      date: shortDate(run.run_date),
+      cadence: run.cadence_spm,
+      gct: run.gct_ms,
+      stride: run.stride_cm,
+    }));
+  const avgCadence = average(data.runs.map((run) => run.cadence_spm));
+  const latestCadence = latestRun?.cadence_spm ?? null;
+  const cadenceTone: "neutral" | "good" | "warn" | "hot" =
+    latestCadence == null ? "neutral" :
+    latestCadence >= TARGET_CADENCE_MIN ? "good" :
+    latestCadence >= 165 ? "warn" : "hot";
+
   return (
     <section className="page-stack">
       <div className="metric-grid">
@@ -50,6 +68,13 @@ export function Zone2({ data }: { data: DashboardData }) {
         <MetricCard label="Z2 ล่าสุด" value={percent(latestRun?.z2_percent)} detail={latestRun?.run_date} icon={HeartPulse} tone={latestRun?.z2_percent != null && latestRun.z2_percent >= 80 ? "good" : "neutral"} />
         <MetricCard label="เพซล่าสุด" value={pace(latestRun?.pace_sec_per_km)} detail={latestRun?.session_type ? thaiText(latestRun.session_type) : undefined} icon={Clock3} />
         <MetricCard label="การไหลเฉลี่ย" value={avgDrift == null ? "-" : `${avgDrift.toFixed(1)} bpm`} detail={`เป้าหมาย ≤ 5 bpm · Z2 เฉลี่ย ${avgZ2 == null ? "-" : percent(avgZ2)}`} icon={Activity} tone={driftTone} />
+        <MetricCard
+          label="Cadence ล่าสุด"
+          value={latestCadence == null ? "-" : `${latestCadence.toFixed(0)} spm`}
+          detail={`เป้า ${TARGET_CADENCE_MIN}–${TARGET_CADENCE_MAX} · เฉลี่ย ${avgCadence == null ? "-" : avgCadence.toFixed(0)} spm`}
+          icon={Activity}
+          tone={cadenceTone}
+        />
       </div>
 
       <div className="content-grid">
@@ -65,6 +90,21 @@ export function Zone2({ data }: { data: DashboardData }) {
               <Line dataKey="z2" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} name="Z2 %" />
               <Line dataKey="drift" stroke={chartColors.accent} strokeWidth={2.5} dot={false} name="การไหล bpm" />
               <Line dataKey="decoupling" stroke={chartColors.brown} strokeWidth={2.5} strokeDasharray="4 5" dot={false} name="หลุดแอโรบิก %" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Panel>
+
+        <Panel title="Cadence trend" subtitle={`รอบขา spm · เป้า ${TARGET_CADENCE_MIN}–${TARGET_CADENCE_MAX} · ต่ำกว่า 165 = stride สูง risk บาดเจ็บ`} className="span-12">
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={cadenceRows} margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis domain={[150, 180]} {...chartAxis} />
+              <ChartTooltip />
+              <ReferenceLine y={TARGET_CADENCE_MIN} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `${TARGET_CADENCE_MIN}`, position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
+              <ReferenceLine y={TARGET_CADENCE_MAX} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `${TARGET_CADENCE_MAX}`, position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
+              <ReferenceLine y={165} stroke={chartColors.accent} strokeDasharray="3 3" label={{ value: "warn 165", position: "insideBottomLeft", fontSize: 10, fill: chartColors.accent }} />
+              <Line dataKey="cadence" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 4, fill: chartColors.primary, strokeWidth: 0 }} activeDot={{ r: 7, strokeWidth: 0 }} name="Cadence spm" />
             </LineChart>
           </ResponsiveContainer>
         </Panel>

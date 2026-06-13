@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Brain, HeartPulse, Moon, ShieldCheck } from "lucide-react";
+import { Activity, AlertTriangle, Brain, Flame, HeartPulse, Moon, ShieldCheck } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { CoreFeatures } from "../components/CoreFeatures";
@@ -70,6 +70,18 @@ export function Today({ data }: { data: DashboardData }) {
   const tone = readinessTone(today?.readiness_status ?? null);
   const verdict = runVerdict(lastRun);
 
+  const loadRatio = today?.load_ratio ?? null;
+  const acwrTone: "neutral" | "good" | "warn" | "hot" =
+    loadRatio == null ? "neutral" :
+    loadRatio >= 0.8 && loadRatio <= 1.3 ? "good" :
+    loadRatio < 0.8 ? "warn" :
+    loadRatio <= 1.5 ? "warn" : "hot";
+  const acwrLabel =
+    loadRatio == null ? "ไม่มีข้อมูล" :
+    loadRatio < 0.8 ? "Detraining · เริ่มถดถอย" :
+    loadRatio <= 1.3 ? "Optimized · zone ปลอดภัย" :
+    loadRatio <= 1.5 ? "Functional overreach" : "Injury risk สูง — ลดโหลด";
+
   const latestHrv = today?.hrv_avg_ms;
   const avgHrv7 = average(data.daily.slice(-8, -1).map((d) => d.hrv_avg_ms));
   const hrvTone: "neutral" | "good" | "warn" =
@@ -120,6 +132,13 @@ export function Today({ data }: { data: DashboardData }) {
           detail={avgHrv7 == null ? undefined : `เฉลี่ย 7 วัน: ${avgHrv7.toFixed(0)} ms`}
           icon={Brain}
           tone={hrvTone}
+        />
+        <MetricCard
+          label="ACWR (load ratio)"
+          value={loadRatio == null ? "-" : loadRatio.toFixed(2)}
+          detail={acwrLabel}
+          icon={Flame}
+          tone={acwrTone}
         />
         <MetricCard
           label="ระยะรวม"
