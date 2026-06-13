@@ -13,7 +13,7 @@ import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "..
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, RunLog } from "../types";
-import { km, pace, percent, raceTime, shortDate } from "../utils/format";
+import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const B_RACE_DATE = "2026-07-19";
@@ -70,7 +70,7 @@ function raceProjection(runs: RunLog[]) {
     const next = {
       date: run.run_date,
       label: shortDate(run.run_date),
-      session: thaiText(run.session_type),
+      session: sessionLabel(run.session_type),
       distance: run.distance_km,
       actual: Number(estimate.toFixed(1)),
       target: TARGET_MINUTES,

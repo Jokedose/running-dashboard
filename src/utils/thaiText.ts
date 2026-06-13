@@ -1,10 +1,4 @@
 const replacements: Array<[RegExp, string]> = [
-  [/\blong run\b/gi, "วิ่งยาว"],
-  [/\blong-run\b/gi, "วิ่งยาว"],
-  [/\beasy run\b/gi, "วิ่งเบา"],
-  [/\beasy\b/gi, "เบา"],
-  [/\btempo\b/gi, "เทมโป"],
-  [/\bstrides\b/gi, "สไตรด์"],
   [/\bdrift\b/gi, "การไหลของหัวใจ"],
   [/\bdecoupling\b/gi, "การหลุดแอโรบิก"],
   [/\bmobility\b/gi, "การเคลื่อนไหว"],

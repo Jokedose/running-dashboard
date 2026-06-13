@@ -15,7 +15,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
-import { pace, paceMinutes, percent, shortDate } from "../utils/format";
+import { pace, paceMinutes, percent, sessionLabel, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
@@ -79,7 +79,7 @@ export function Zone2({ data }: { data: DashboardData }) {
       <div className="metric-grid">
         <MetricCard label="เป้าหมายระยะยาว" value="7:00/km" detail="เพซโซน 2" icon={Gauge} tone="hot" />
         <MetricCard label="Z2 ล่าสุด" value={percent(latestRun?.z2_percent)} detail={latestRun?.run_date} icon={HeartPulse} tone={latestRun?.z2_percent != null && latestRun.z2_percent >= 80 ? "good" : "neutral"} />
-        <MetricCard label="เพซล่าสุด" value={pace(latestRun?.pace_sec_per_km)} detail={latestRun?.session_type ? thaiText(latestRun.session_type) : undefined} icon={Clock3} />
+        <MetricCard label="เพซล่าสุด" value={pace(latestRun?.pace_sec_per_km)} detail={latestRun?.session_type ? sessionLabel(latestRun.session_type) : undefined} icon={Clock3} />
         <MetricCard label="การไหลเฉลี่ย" value={avgDrift == null ? "-" : `${avgDrift.toFixed(1)} bpm`} detail={`เป้าหมาย ≤ 5 bpm · Z2 เฉลี่ย ${avgZ2 == null ? "-" : percent(avgZ2)}`} icon={Activity} tone={driftTone} />
         <MetricCard
           label="Cadence ล่าสุด"

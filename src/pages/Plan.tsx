@@ -3,7 +3,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, TrainingPlan } from "../types";
 import { latest } from "../utils/data";
-import { km, minutes, pace, percent, raceTime } from "../utils/format";
+import { km, minutes, pace, percent, raceTime, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const B_RACE_DATE = "2026-07-19";
@@ -140,10 +140,10 @@ export function Plan({ data }: { data: DashboardData }) {
       <div className={`home-hero ${heroTone}`}>
         <div className="home-hero-copy">
           <span className="readiness-status-badge">แผน 10K 80 นาที</span>
-          <h2>{todayPlan ? thaiText(todayPlan.title) : "แผน 10K พร้อมเริ่ม"}</h2>
+          <h2>{todayPlan ? sessionLabel(todayPlan.title) : "แผน 10K พร้อมเริ่ม"}</h2>
           <p>
             {todayPlan
-              ? `${todayPlan.plan_date} · ${thaiText(todayPlan.session_type ?? "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
+              ? `${todayPlan.plan_date} · ${sessionLabel(todayPlan.session_type, "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
               : "เพิ่มแผนลง Supabase แล้วหน้านี้จะสรุปสิ่งที่ต้องทำถัดไปให้อัตโนมัติ"}
           </p>
           <div className="hero-action-row">
@@ -187,14 +187,14 @@ export function Plan({ data }: { data: DashboardData }) {
         <MetricCard label="ระยะตามแผน" value={km(plannedKm)} detail="รวมในสัปดาห์นี้" icon={Activity} />
         <MetricCard label="ความคืบหน้า" value={`${progress}%`} detail="รายการซ้อมที่ทำแล้ว" icon={CheckCircle2} tone={progress >= 60 ? "good" : "neutral"} />
         <MetricCard label="วิ่งล่าสุด" value={km(latestRun?.distance_km)} detail={latestRun ? `${pace(latestRun.pace_sec_per_km)} · Z2 ${percent(latestRun.z2_percent)}` : undefined} icon={Gauge} />
-        <MetricCard label="ซ้อมสำคัญถัดไป" value={thaiText(nextKeySession?.session_type)} detail={nextKeySession ? `${nextKeySession.plan_date} · ${thaiText(nextKeySession.title)}` : undefined} icon={Trophy} tone={nextKeySession?.priority === "race" ? "hot" : "warn"} />
+        <MetricCard label="ซ้อมสำคัญถัดไป" value={sessionLabel(nextKeySession?.session_type)} detail={nextKeySession ? `${nextKeySession.plan_date} · ${sessionLabel(nextKeySession.title)}` : undefined} icon={Trophy} tone={nextKeySession?.priority === "race" ? "hot" : "warn"} />
       </div>
 
       <div className="mobile-plan-stack">
         <article className={`next-session-card ${statusTone(todayPlan?.status ?? null)}`}>
           <div>
             <span>รายการถัดไป</span>
-            <strong>{thaiText(todayPlan?.title, "ยังไม่มีแผน")}</strong>
+            <strong>{sessionLabel(todayPlan?.title, "ยังไม่มีแผน")}</strong>
             <p>{todayPlan ? workoutDetail(todayPlan) : "เพิ่มรายการซ้อมเพื่อเริ่มติดตาม"}</p>
           </div>
           <div className="session-pills">
@@ -255,7 +255,7 @@ export function Plan({ data }: { data: DashboardData }) {
             {weekPlan.slice(0, 4).map((item) => (
               <article className={`plan-focus-card ${item.priority ?? "normal"}`} key={item.id}>
                 <span>{item.plan_date}</span>
-                <strong>{thaiText(item.title)}</strong>
+                <strong>{sessionLabel(item.title)}</strong>
                 <p>{workoutDetail(item)}</p>
                 {passCriteria(item) && <small>{passCriteria(item)}</small>}
               </article>
@@ -310,7 +310,7 @@ export function Plan({ data }: { data: DashboardData }) {
                     <article key={item.id}>
                       <time>{item.plan_date.slice(5)}</time>
                       <div>
-                        <strong>{thaiText(item.title)}</strong>
+                        <strong>{sessionLabel(item.title)}</strong>
                         <span>{workoutDetail(item)}</span>
                         <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
                         {item.skip_reason && (

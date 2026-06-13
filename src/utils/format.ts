@@ -32,3 +32,43 @@ export function percent(value: number | null | undefined) {
 export function shortDate(date: string | null | undefined) {
   return date ? date.slice(5) : "-";
 }
+
+const SESSION_NORMALIZE: Array<[RegExp, string]> = [
+  [/recovery easy/i, "Recovery easy"],
+  [/recovery run/i, "Recovery run"],
+  [/recovery/i, "Recovery"],
+  [/long easy/i, "Long easy"],
+  [/long run/i, "Long run"],
+  [/easy \+ strides/i, "Easy + strides"],
+  [/easy run/i, "Easy run"],
+  [/easy strides/i, "Easy + strides"],
+  [/^easy$/i, "Easy"],
+  [/tempo \/ steady/i, "Tempo / steady"],
+  [/tempo interval/i, "Tempo interval"],
+  [/^tempo$/i, "Tempo"],
+  [/vo2max interval/i, "VO2max interval"],
+  [/vo2max/i, "VO2max"],
+  [/race pace/i, "Race pace"],
+  [/race simulation/i, "Race simulation"],
+  [/race day/i, "Race day"],
+  [/^race$/i, "Race"],
+  [/calibration test/i, "Calibration test"],
+  [/calibration/i, "Calibration"],
+  [/5k test/i, "5K test"],
+  [/3k test/i, "3K test"],
+  [/threshold/i, "Threshold"],
+  [/intervals?/i, "Interval"],
+  [/quality/i, "Quality"],
+  [/shakeout/i, "Shakeout"],
+  [/^rest$/i, "Rest"],
+  [/mobility/i, "Mobility"],
+];
+
+export function sessionLabel(value: string | null | undefined, fallback = "-"): string {
+  if (!value) return fallback;
+  const trimmed = value.trim();
+  for (const [re, label] of SESSION_NORMALIZE) {
+    if (re.test(trimmed)) return label;
+  }
+  return trimmed;
+}

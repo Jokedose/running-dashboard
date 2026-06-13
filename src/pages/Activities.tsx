@@ -5,7 +5,7 @@ import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "..
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
-import { km, minutes, pace, percent } from "../utils/format";
+import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 function painLevel(pain: string | null): "none" | "mild" | "moderate" | "high" {
@@ -61,7 +61,7 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <strong style={{ fontSize: "1rem" }}>{run.run_date}</strong>
             <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#dbeafe", color: "#1d4ed8" }}>
-              {thaiText(run.session_type)}
+              {sessionLabel(run.session_type)}
             </span>
             {run.shoe_slug && (
               <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#e0e7ff", color: "#4338ca" }}>
@@ -230,7 +230,7 @@ export function Activities({ data }: { data: DashboardData }) {
               {[...data.runs].reverse().map((run) => (
                 <tr key={run.id} onClick={() => setSelectedRun(run)} style={{ cursor: "pointer" }}>
                   <td>{run.run_date}</td>
-                  <td>{thaiText(run.session_type)}</td>
+                  <td>{sessionLabel(run.session_type)}</td>
                   <td>{km(run.distance_km)}</td>
                   <td>{minutes(run.duration_min)}</td>
                   <td>{pace(run.pace_sec_per_km)}</td>

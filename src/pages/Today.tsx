@@ -6,7 +6,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
 import { average, latest } from "../utils/data";
-import { km, minutes, pace, percent, shortDate } from "../utils/format";
+import { km, minutes, pace, percent, sessionLabel, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
@@ -228,7 +228,7 @@ export function Today({ data }: { data: DashboardData }) {
       <div className="content-grid">
         <Panel title="วิ่งล่าสุด" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
-            <strong>{thaiText(lastRun?.session_type)}</strong>
+            <strong>{sessionLabel(lastRun?.session_type)}</strong>
             <div className="mini-metrics">
               <span>{km(lastRun?.distance_km)}</span>
               <span>{minutes(lastRun?.duration_min)}</span>

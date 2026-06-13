@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../types";
-import { km, minutes, pace, percent } from "../utils/format";
+import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const WEEKDAYS_SHORT = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
@@ -273,7 +273,7 @@ function DayCell({ dd, isToday, isPast, onSelect }: {
           return (
             <div key={p.id} className="cal-chip" style={{ background: c.bg, borderLeftColor: c.border }}>
               <span className="cal-chip-dot" style={{ color: dot.color }}>{dot.char}</span>
-              <span className="cal-chip-text" style={{ color: c.text }}>{thaiText(p.title).slice(0, 11)}</span>
+              <span className="cal-chip-text" style={{ color: c.text }}>{sessionLabel(p.title).slice(0, 11)}</span>
             </div>
           );
         })}
@@ -324,7 +324,7 @@ function WeekView({ dates, dayData, today, onSelect }: {
                   }}>
                     <div className="cal-week-session-title">
                       <span style={{ color: dot.color, fontWeight: 750 }}>{dot.char}</span>
-                      <span style={{ color: "var(--color-ink)" }}>{thaiText(p.title)}</span>
+                      <span style={{ color: "var(--color-ink)" }}>{sessionLabel(p.title)}</span>
                     </div>
                     {p.target_distance_km != null && (
                       <div className="cal-week-session-meta">{p.target_distance_km.toFixed(1)} km</div>
@@ -377,7 +377,7 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
             <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>{date}</strong>
             {plan && (() => { const c = sessionTypeColor(plan.session_type); return (
-              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.text }}>{thaiText(plan.session_type)}</span>
+              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.text }}>{sessionLabel(plan.session_type)}</span>
             ); })()}
             {match && (
               <span className="cal-match-badge" style={{ background: match.bgColor, color: match.textColor }}>{match.verdict}</span>
@@ -389,7 +389,7 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
         {plan && (
           <div className="cal-block" style={{ borderLeftColor: sessionTypeColor(plan.session_type).border }}>
             <div className="cal-block-head">
-              <strong>{thaiText(plan.title)}</strong>
+              <strong>{sessionLabel(plan.title)}</strong>
               <span className="cal-status-pill" data-status={plan.status ?? "planned"}>{statusLabel(plan.status)}</span>
             </div>
             <div className="cal-data-grid">
