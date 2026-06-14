@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Activity, Droplet, Flame, Scale } from "lucide-react";
+import { useRef, useState } from "react";
+import { Activity, Droplet, Flame, Scale, Upload } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -50,8 +50,44 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
   const [form, setForm] = useState<Record<string, string>>({ measured_date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const weightRows = rows.map((r) => ({ date: shortDate(r.measured_date), weight: r.weight_kg, fat: r.body_fat_pct }));
+
+  async function onUpload(file: File) {
+    setOcrBusy(true);
+    setErr(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+        body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
+      });
+      const out = await res.json();
+      if (!res.ok || out.error) throw new Error(out.error ?? `OCR failed (${res.status})`);
+      const parsed = out.data as Record<string, number | string>;
+      const next: Record<string, string> = { measured_date: form.measured_date ?? new Date().toISOString().slice(0, 10) };
+      for (const [k, v] of Object.entries(parsed)) {
+        if (v != null && v !== "") next[k] = String(v);
+      }
+      setForm(next);
+      setShowForm(true);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "OCR error");
+    } finally {
+      setOcrBusy(false);
+    }
+  }
 
   async function save() {
     setSaving(true);
@@ -107,10 +143,19 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
           title="น้ำหนัก · ไขมัน trend"
           subtitle={`น้ำหนัก (kg) + ไขมัน % · เป้าน้ำหนัก ${TARGET_WEIGHT} kg`}
           className="span-12"
-          action={<button type="button" onClick={() => setShowForm((s) => !s)} style={{ minHeight: 32, padding: "0 12px", fontSize: 13 }}>{showForm ? "ปิดฟอร์ม" : "+ เพิ่มข้อมูล"}</button>}
+          action={
+            <div style={{ display: "flex", gap: 8 }}>
+              <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+              <button type="button" onClick={() => fileRef.current?.click()} disabled={ocrBusy} style={{ minHeight: 32, padding: "0 12px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <Upload size={14} />{ocrBusy ? "กำลังอ่านรูป..." : "อัปโหลดรูป"}
+              </button>
+              <button type="button" onClick={() => setShowForm((s) => !s)} style={{ minHeight: 32, padding: "0 12px", fontSize: 13, background: "transparent", color: "var(--color-ink)", border: "1px solid var(--color-line)" }}>{showForm ? "ปิด" : "กรอกเอง"}</button>
+            </div>
+          }
         >
           {showForm && (
             <div style={{ marginBottom: 16, padding: 14, border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-nav)" }}>
+              <p style={{ fontSize: 12, color: "var(--color-muted)", margin: "0 0 10px" }}>ตรวจค่าที่อ่านจากรูปก่อนบันทึก — แก้ตรงไหนก็ได้</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
                 {FIELD_DEFS.map((f) => (
                   <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--color-muted)" }}>
