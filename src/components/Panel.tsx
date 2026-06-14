@@ -6,11 +6,13 @@ export function Panel({
   subtitle,
   children,
   className = "",
+  action,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   className?: string;
+  action?: ReactNode;
 }) {
   return (
     <Paper component="section" className={`panel ${className}`} variant="outlined">
@@ -21,6 +23,7 @@ export function Panel({
           </Typography>
           {subtitle && <Typography variant="body2">{subtitle}</Typography>}
         </div>
+        {action}
       </div>
       {children}
     </Paper>

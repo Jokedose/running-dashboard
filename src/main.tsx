@@ -2,12 +2,13 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Footprints, Gauge, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Footprints, Gauge, Scale, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
 import { supabase, supabaseConfigured } from "./supabase";
 import type {
+  BodyComposition,
   DailyReadiness,
   DashboardData,
   GearMileage,
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { key: "weekly", label: "สัปดาห์", icon: Activity },
   { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "gear", label: "รองเท้า", icon: Footprints },
+  { key: "body", label: "ร่างกาย", icon: Scale },
   { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
 ];
 
@@ -44,6 +46,7 @@ const Today = lazy(() => import("./pages/Today").then((module) => ({ default: mo
 const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: module.Trends })));
 const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: module.Weekly })));
 const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
+const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -69,13 +72,14 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan] = await Promise.all([
+    const [daily, runs, weekly, gear, race, plan, body] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
       supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
       supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(1),
       supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
+      supabase.from("body_composition").select("*").order("measured_date", { ascending: true }),
     ]);
     if (daily.error || runs.error || weekly.error || gear.error || race.error) {
       setLoadState("error");
@@ -89,6 +93,7 @@ function App() {
       gear: (gear.data ?? []) as GearMileage[],
       race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
       plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
+      body: body.error ? [] : ((body.data ?? []) as BodyComposition[]),
     });
     setLoadState("ready");
   }
@@ -152,7 +157,7 @@ function App() {
     fetchData();
   }, [session]);
 
-  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race || data.plan.length);
+  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race || data.plan.length || data.body.length);
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;
     if (route === "plan") return <Plan data={data} />;
@@ -163,6 +168,7 @@ function App() {
     if (route === "weekly") return <Weekly data={data} />;
     if (route === "trends") return <Trends data={data} />;
     if (route === "gear") return <Gear data={data} />;
+    if (route === "body") return <Body data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
     return <Plan data={data} />;
   }, [data, hasData, loadState, route]);

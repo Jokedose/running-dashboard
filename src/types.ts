@@ -115,6 +115,28 @@ export type TrainingPlan = {
   created_at: string | null;
 };
 
+export type BodyComposition = {
+  id: string;
+  measured_date: string;
+  weight_kg: number | null;
+  bmi: number | null;
+  body_score: number | null;
+  body_fat_pct: number | null;
+  body_fat_mass_kg: number | null;
+  subcutaneous_fat_pct: number | null;
+  visceral_fat_level: number | null;
+  muscle_mass_kg: number | null;
+  muscle_pct: number | null;
+  skeletal_muscle_kg: number | null;
+  body_water_pct: number | null;
+  protein_mass_kg: number | null;
+  bone_mineral_kg: number | null;
+  fat_free_mass_kg: number | null;
+  bmr_kcal: number | null;
+  body_age: number | null;
+  source: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -122,6 +144,7 @@ export type DashboardData = {
   gear: GearMileage[];
   race: RaceReadiness | null;
   plan: TrainingPlan[];
+  body: BodyComposition[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
