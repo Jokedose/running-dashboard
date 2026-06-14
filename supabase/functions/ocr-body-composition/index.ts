@@ -3,7 +3,7 @@
 // verify_jwt is enabled by default, so only authenticated dashboard users can call it.
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const MODEL = "claude-haiku-4-5";
+const MODEL = "claude-sonnet-4-6";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -11,37 +11,38 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const FIELDS = `
-weight_kg, bmi, body_score, body_fat_pct, body_fat_mass_kg, subcutaneous_fat_pct,
-visceral_fat_level, muscle_mass_kg, muscle_pct, skeletal_muscle_kg, body_water_pct,
-protein_mass_kg, bone_mineral_kg, fat_free_mass_kg, bmr_kcal, body_age, measured_date`;
-
 const TOOL = {
   name: "record_body_composition",
   description: "Record the body composition metrics read from the image.",
   input_schema: {
     type: "object",
     properties: {
-      measured_date: { type: "string", description: "Date shown in image, format YYYY-MM-DD. Null if absent." },
-      weight_kg: { type: "number" },
-      bmi: { type: "number" },
-      body_score: { type: "integer" },
-      body_fat_pct: { type: "number" },
-      body_fat_mass_kg: { type: "number" },
-      subcutaneous_fat_pct: { type: "number" },
-      visceral_fat_level: { type: "number" },
-      muscle_mass_kg: { type: "number" },
-      muscle_pct: { type: "number" },
-      skeletal_muscle_kg: { type: "number" },
-      body_water_pct: { type: "number" },
-      protein_mass_kg: { type: "number" },
-      bone_mineral_kg: { type: "number" },
-      fat_free_mass_kg: { type: "number" },
-      bmr_kcal: { type: "integer" },
-      body_age: { type: "integer" },
+      measured_date: { type: "string", description: "Date at the top, format YYYY-MM-DD. Image may show DD/MM/YYYY — convert carefully. Omit if absent." },
+      weight_kg: { type: "number", description: "Large weight number near the top, kg." },
+      bmi: { type: "number", description: "BMI value, typically 18-30. Label: BMI. NOT body fat percent." },
+      body_score: { type: "integer", description: "Body score, typically 60-100. NOT visceral fat level." },
+      body_fat_pct: { type: "number", description: "Body fat percentage with % sign, typically 10-30." },
+      body_fat_mass_kg: { type: "number", description: "Fat mass in kg (มวลไขมัน)." },
+      subcutaneous_fat_pct: { type: "number", description: "Subcutaneous fat percent." },
+      visceral_fat_level: { type: "number", description: "Visceral fat LEVEL, small integer 1-15. NOT a percent or kg." },
+      muscle_mass_kg: { type: "number", description: "Muscle mass kg, typically 45-60." },
+      muscle_pct: { type: "number", description: "Muscle percentage with %, typically 70-80." },
+      skeletal_muscle_kg: { type: "number", description: "Skeletal muscle kg, typically 25-35." },
+      body_water_pct: { type: "number", description: "Body water percent, typically 50-60." },
+      protein_mass_kg: { type: "number", description: "Protein mass kg, typically 10-16." },
+      bone_mineral_kg: { type: "number", description: "Bone mineral kg, typically 2-4." },
+      fat_free_mass_kg: { type: "number", description: "Fat free mass kg, typically 50-60." },
+      bmr_kcal: { type: "integer", description: "BMR kcal, typically 1400-1800." },
+      body_age: { type: "integer", description: "Body age in years." },
     },
   },
 };
+
+const PROMPT =
+  "This is a COROS / smart-scale body composition screenshot in Thai. Each metric has a NUMBER directly above or beside its Thai LABEL. " +
+  "Match each number to its label CAREFULLY — do not swap values. Avoid these mistakes: (1) BMI (~24) vs body fat % (~22). " +
+  "(2) body score (~80, large) vs visceral fat level (~8, small integer). (3) percentages (%) vs masses (kg). " +
+  "(4) มวลไขมัน (fat mass kg) vs เปอร์เซ็นต์ไขมัน (fat %). Read each value exactly. Omit any field you cannot read with high confidence.";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
@@ -75,13 +76,7 @@ Deno.serve(async (req) => {
           role: "user",
           content: [
             { type: "image", source: { type: "base64", media_type: mediaType, data: image } },
-            {
-              type: "text",
-              text: `Read this body composition / scale screenshot (may be in Thai) and extract these fields: ${FIELDS}. ` +
-                `Use the numeric values exactly as shown. Convert Thai labels: น้ำหนัก=weight, ไขมัน=fat, กล้ามเนื้อ=muscle, ` +
-                `น้ำในร่างกาย=body water, โปรตีน=protein, กระดูก=bone, ไขมันในช่องท้อง/อวัยวะภายใน=visceral fat, ` +
-                `อายุร่างกาย=body age, มวลไร้ไขมัน=fat free mass. Omit any field you cannot read confidently.`,
-            },
+            { type: "text", text: PROMPT },
           ],
         },
       ],
