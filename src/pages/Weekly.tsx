@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock3 } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
@@ -5,7 +6,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { latest } from "../utils/data";
-import { km, minutes } from "../utils/format";
+import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 type WeekTotals = {
@@ -69,14 +70,22 @@ function buildWeekTotals(data: DashboardData) {
 export function Weekly({ data }: { data: DashboardData }) {
   const summaryRows = buildWeekTotals(data);
   const week = latest(summaryRows, "week_id");
+  const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
 
   const weekRows = summaryRows.slice(-16).map((w) => ({
     week: w.week_id.replace(/^\d{4}-/, ""),
+    weekId: w.week_id,
     km: w.total_distance_km ?? 0,
     hours: w.total_duration_min == null ? null : Number((w.total_duration_min / 60).toFixed(1)),
     runs: w.run_count ?? 0,
     quality: w.quality_count ?? 0,
   }));
+
+  const activeWeekId = selectedWeek ?? week?.week_id ?? null;
+  const activeSummary = summaryRows.find((w) => w.week_id === activeWeekId) ?? null;
+  const weekRuns = data.runs
+    .filter((r) => isoWeekId(r.run_date) === activeWeekId)
+    .sort((a, b) => a.run_date.localeCompare(b.run_date));
 
   return (
     <section className="page-stack">
@@ -93,7 +102,7 @@ export function Weekly({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="แนวโน้มระยะรายสัปดาห์" subtitle="ระยะและซ้อมคุณภาพรายสัปดาห์" className="span-12">
+        <Panel title="แนวโน้มระยะรายสัปดาห์" subtitle="คลิกที่แท่งเพื่อดูรายละเอียดสัปดาห์นั้น" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -103,7 +112,15 @@ export function Weekly({ data }: { data: DashboardData }) {
               <YAxis yAxisId="right" orientation="right" {...chartAxis} />
               <ChartTooltip />
               <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ color: chartColors.muted, fontSize: 12, paddingBottom: 8 }} />
-              <Bar yAxisId="left" dataKey="km" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
+              <Bar
+                yAxisId="left"
+                dataKey="km"
+                fill="url(#primaryBar)"
+                radius={[8, 8, 0, 0]}
+                name="ระยะ km"
+                cursor="pointer"
+                onClick={(d: { payload?: { weekId?: string } }) => d?.payload?.weekId && setSelectedWeek(d.payload.weekId)}
+              />
               <Line
                 yAxisId="right"
                 dataKey="hours"
@@ -116,6 +133,38 @@ export function Weekly({ data }: { data: DashboardData }) {
               />
             </ComposedChart>
           </ResponsiveContainer>
+        </Panel>
+
+        <Panel
+          title={`รายละเอียดสัปดาห์ ${activeWeekId ?? "-"}`}
+          subtitle={activeSummary ? `${km(activeSummary.total_distance_km)} · ${activeSummary.run_count ?? weekRuns.length} ครั้ง · วิ่งยาว ${activeSummary.long_run_count ?? 0} · ซ้อมคุณภาพ ${activeSummary.quality_count ?? 0}` : "เลือกสัปดาห์จากกราฟ"}
+          className="span-12"
+        >
+          {weekRuns.length === 0 ? (
+            <p className="chart-note">ไม่มี run log ในสัปดาห์นี้</p>
+          ) : (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>การไหล</th><th>Cadence</th></tr>
+                </thead>
+                <tbody>
+                  {weekRuns.map((r) => (
+                    <tr key={r.id}>
+                      <td>{r.run_date}</td>
+                      <td>{sessionLabel(r.session_type)}</td>
+                      <td>{km(r.distance_km)}</td>
+                      <td>{minutes(r.duration_min)}</td>
+                      <td>{pace(r.pace_sec_per_km)}</td>
+                      <td>{percent(r.z2_percent)}</td>
+                      <td>{r.drift_bpm?.toFixed(1) ?? "-"} bpm</td>
+                      <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
 
         <Panel title="คำแนะนำโค้ช" subtitle="คำแนะนำปรับแผน" className="span-8">

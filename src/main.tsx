@@ -31,6 +31,7 @@ const navItems: NavItem[] = [
   { key: "race", label: "แข่ง", icon: Trophy },
   { key: "zone2", label: "โซน 2", icon: Gauge },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
+  { key: "monthly", label: "เดือน", icon: CalendarRange },
   { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "gear", label: "รองเท้า", icon: Footprints },
   { key: "body", label: "ร่างกาย", icon: Scale },
@@ -47,6 +48,7 @@ const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: 
 const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: module.Weekly })));
 const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
 const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
+const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default: module.Monthly })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -166,6 +168,7 @@ function App() {
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
+    if (route === "monthly") return <Monthly data={data} />;
     if (route === "trends") return <Trends data={data} />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "body") return <Body data={data} onSaved={fetchData} />;
