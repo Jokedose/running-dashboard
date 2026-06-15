@@ -1783,10 +1783,16 @@ button.cal-today-btn {
   border: 1px solid var(--color-line);
 }
 
-/* Monthly report modal: fixed height on desktop, scroll inside */
-.report-modal-sheet {
-  height: 68vh;
-  max-height: 68vh;
+/* Report detail: desktop = fixed-height box with inner scroll; mobile = bottom-sheet modal */
+.report-detail-box {
+  display: block;
+}
+.report-detail-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+}
+.report-detail-modal {
+  display: none;
 }
 
 @media (max-width: 620px) {
@@ -1804,10 +1810,12 @@ button.cal-today-btn {
     padding-bottom: 24px;
   }
 
-  /* half-screen bottom sheet on mobile (override desktop fixed height) */
-  .report-modal-sheet {
-    height: 50vh;
-    max-height: 50vh;
+  /* swap: hide the inline box, show the half-screen modal */
+  .report-detail-box {
+    display: none;
+  }
+  .report-detail-modal {
+    display: flex;
   }
 }
 

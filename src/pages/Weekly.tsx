@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock3 } from "lucide-react";
+import { Activity, AlertTriangle, CalendarDays, CheckCircle2, Clock3, X } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -81,11 +81,55 @@ export function Weekly({ data }: { data: DashboardData }) {
     quality: w.quality_count ?? 0,
   }));
 
-  const activeWeekId = selectedWeek ?? week?.week_id ?? null;
-  const activeSummary = summaryRows.find((w) => w.week_id === activeWeekId) ?? null;
-  const weekRuns = data.runs
-    .filter((r) => isoWeekId(r.run_date) === activeWeekId)
-    .sort((a, b) => a.run_date.localeCompare(b.run_date));
+  // Desktop box always shows a week (default latest); mobile modal opens only on click.
+  const inlineWeekId = selectedWeek ?? week?.week_id ?? null;
+  const inlineSummary = summaryRows.find((w) => w.week_id === inlineWeekId) ?? null;
+  const runsFor = (weekId: string | null) =>
+    weekId
+      ? data.runs.filter((r) => isoWeekId(r.run_date) === weekId).sort((a, b) => a.run_date.localeCompare(b.run_date))
+      : [];
+  const inlineRuns = runsFor(inlineWeekId);
+  const modalSummary = selectedWeek ? summaryRows.find((w) => w.week_id === selectedWeek) ?? null : null;
+  const modalRuns = runsFor(selectedWeek);
+
+  function reportBody(summary: WeekTotals, runs: typeof inlineRuns) {
+    return (
+      <>
+        <div className="cal-data-grid" style={{ marginBottom: 12 }}>
+          <DataRow label="ระยะรวม" value={km(summary.total_distance_km)} />
+          <DataRow label="เวลารวม" value={minutes(summary.total_duration_min)} />
+          <DataRow label="จำนวนวิ่ง" value={`${summary.run_count ?? runs.length} ครั้ง`} />
+          <DataRow label="วิ่งยาว" value={`${summary.long_run_count ?? 0} ครั้ง`} />
+          <DataRow label="ซ้อมคุณภาพ" value={`${summary.quality_count ?? 0} ครั้ง`} />
+        </div>
+        {runs.length === 0 ? (
+          <p className="chart-note">ไม่มี run log ในสัปดาห์นี้</p>
+        ) : (
+          <div className="table-scroll report-detail-scroll">
+            <table>
+              <thead>
+                <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>การไหล</th><th>Cadence</th></tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.run_date}</td>
+                    <td>{sessionLabel(r.session_type)}</td>
+                    <td>{km(r.distance_km)}</td>
+                    <td>{minutes(r.duration_min)}</td>
+                    <td>{pace(r.pace_sec_per_km)}</td>
+                    <td>{percent(r.z2_percent)}</td>
+                    <td>{r.drift_bpm?.toFixed(1) ?? "-"} bpm</td>
+                    <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <section className="page-stack">
@@ -135,37 +179,15 @@ export function Weekly({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel
-          title={`รายละเอียดสัปดาห์ ${activeWeekId ?? "-"}`}
-          subtitle={activeSummary ? `${km(activeSummary.total_distance_km)} · ${activeSummary.run_count ?? weekRuns.length} ครั้ง · วิ่งยาว ${activeSummary.long_run_count ?? 0} · ซ้อมคุณภาพ ${activeSummary.quality_count ?? 0}` : "เลือกสัปดาห์จากกราฟ"}
-          className="span-12"
-        >
-          {weekRuns.length === 0 ? (
-            <p className="chart-note">ไม่มี run log ในสัปดาห์นี้</p>
-          ) : (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>การไหล</th><th>Cadence</th></tr>
-                </thead>
-                <tbody>
-                  {weekRuns.map((r) => (
-                    <tr key={r.id}>
-                      <td>{r.run_date}</td>
-                      <td>{sessionLabel(r.session_type)}</td>
-                      <td>{km(r.distance_km)}</td>
-                      <td>{minutes(r.duration_min)}</td>
-                      <td>{pace(r.pace_sec_per_km)}</td>
-                      <td>{percent(r.z2_percent)}</td>
-                      <td>{r.drift_bpm?.toFixed(1) ?? "-"} bpm</td>
-                      <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
+        {inlineSummary && (
+          <Panel
+            title={`รายละเอียดสัปดาห์ ${inlineWeekId ?? "-"}`}
+            subtitle="คลิกแท่งในกราฟเพื่อเปลี่ยนสัปดาห์"
+            className="span-12 report-detail-box"
+          >
+            {reportBody(inlineSummary, inlineRuns)}
+          </Panel>
+        )}
 
         <Panel title="คำแนะนำโค้ช" subtitle="คำแนะนำปรับแผน" className="span-8">
           <div className="coach-card">
@@ -182,6 +204,28 @@ export function Weekly({ data }: { data: DashboardData }) {
           </div>
         </Panel>
       </div>
+
+      {/* Mobile: half-screen bottom-sheet modal */}
+      {modalSummary && (
+        <div className="cal-modal-overlay report-detail-modal" onClick={() => setSelectedWeek(null)}>
+          <div className="cal-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-header">
+              <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>สัปดาห์ {selectedWeek}</strong>
+              <button className="cal-modal-close" onClick={() => setSelectedWeek(null)} type="button"><X size={18} /></button>
+            </div>
+            {reportBody(modalSummary, modalRuns)}
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function DataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+      <span style={{ color: "var(--color-muted)", fontSize: "0.75rem", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 650, color: "var(--color-ink)" }}>{value}</span>
+    </div>
   );
 }

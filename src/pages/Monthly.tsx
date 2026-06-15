@@ -73,12 +73,56 @@ export function Monthly({ data }: { data: DashboardData }) {
   const prev = months.length >= 2 ? months[months.length - 2] : null;
   const [selected, setSelected] = useState<string | null>(null);
 
-  const activeAgg = selected ? months.find((m) => m.month === selected) ?? null : null;
-  const monthRuns = selected
-    ? data.runs
-        .filter((r) => r.run_date?.slice(0, 7) === selected)
-        .sort((a, b) => (a.run_date ?? "").localeCompare(b.run_date ?? ""))
-    : [];
+  // Desktop box always shows a month (default latest); mobile modal opens only on click.
+  const inlineMonth = selected ?? latest?.month ?? null;
+  const inlineAgg = months.find((m) => m.month === inlineMonth) ?? null;
+  const runsFor = (month: string | null) =>
+    month
+      ? data.runs.filter((r) => r.run_date?.slice(0, 7) === month).sort((a, b) => (a.run_date ?? "").localeCompare(b.run_date ?? ""))
+      : [];
+  const inlineRuns = runsFor(inlineMonth);
+  const modalAgg = selected ? months.find((m) => m.month === selected) ?? null : null;
+  const modalRuns = runsFor(selected);
+
+  function reportBody(agg: MonthAgg, runs: RunLog[]) {
+    return (
+      <>
+        <div className="cal-data-grid" style={{ marginBottom: 12 }}>
+          <DataRow label="ระยะรวม" value={km(agg.distance)} />
+          <DataRow label="เวลารวม" value={minutes(agg.duration)} />
+          <DataRow label="จำนวนวิ่ง" value={`${agg.runs} ครั้ง`} />
+          <DataRow label="วิ่งยาว" value={`${agg.longRuns} ครั้ง`} />
+          <DataRow label="ซ้อมคุณภาพ" value={`${agg.quality} ครั้ง`} />
+          <DataRow label="avg pace" value={pace(agg.paceSec)} />
+          {agg.avgWeightKg != null && <DataRow label="น้ำหนักเฉลี่ย" value={`${agg.avgWeightKg.toFixed(1)} kg`} />}
+        </div>
+        {runs.length === 0 ? (
+          <p className="chart-note">ไม่มี run log ในเดือนนี้</p>
+        ) : (
+          <div className="table-scroll report-detail-scroll">
+            <table>
+              <thead>
+                <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>Cadence</th></tr>
+              </thead>
+              <tbody>
+                {runs.map((r: RunLog) => (
+                  <tr key={r.id}>
+                    <td>{r.run_date}</td>
+                    <td>{sessionLabel(r.session_type)}</td>
+                    <td>{km(r.distance_km)}</td>
+                    <td>{minutes(r.duration_min)}</td>
+                    <td>{pace(r.pace_sec_per_km)}</td>
+                    <td>{percent(r.z2_percent)}</td>
+                    <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>
+    );
+  }
 
   const volDelta = latest && prev && prev.distance > 0
     ? ((latest.distance - prev.distance) / prev.distance) * 100
@@ -135,52 +179,27 @@ export function Monthly({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
+        {/* Desktop: inline box below chart, fixed-height + inner scroll */}
+        {inlineAgg && (
+          <Panel
+            title={`รายงานเดือน ${inlineAgg.label}`}
+            subtitle="คลิกแท่งในกราฟเพื่อเปลี่ยนเดือน"
+            className="span-12 report-detail-box"
+          >
+            {reportBody(inlineAgg, inlineRuns)}
+          </Panel>
+        )}
       </div>
 
-      {selected && activeAgg && (
-        <div className="cal-modal-overlay" onClick={() => setSelected(null)}>
-          <div className="cal-modal-sheet report-modal-sheet" onClick={(e) => e.stopPropagation()}>
+      {/* Mobile: half-screen bottom-sheet modal */}
+      {modalAgg && (
+        <div className="cal-modal-overlay report-detail-modal" onClick={() => setSelected(null)}>
+          <div className="cal-modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="cal-modal-header">
-              <div>
-                <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>รายงานเดือน {activeAgg.label}</strong>
-              </div>
+              <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>รายงานเดือน {modalAgg.label}</strong>
               <button className="cal-modal-close" onClick={() => setSelected(null)} type="button"><X size={18} /></button>
             </div>
-
-            <div className="cal-data-grid" style={{ marginBottom: 12 }}>
-              <DataRow label="ระยะรวม" value={km(activeAgg.distance)} />
-              <DataRow label="เวลารวม" value={minutes(activeAgg.duration)} />
-              <DataRow label="จำนวนวิ่ง" value={`${activeAgg.runs} ครั้ง`} />
-              <DataRow label="วิ่งยาว" value={`${activeAgg.longRuns} ครั้ง`} />
-              <DataRow label="ซ้อมคุณภาพ" value={`${activeAgg.quality} ครั้ง`} />
-              <DataRow label="avg pace" value={pace(activeAgg.paceSec)} />
-              {activeAgg.avgWeightKg != null && <DataRow label="น้ำหนักเฉลี่ย" value={`${activeAgg.avgWeightKg.toFixed(1)} kg`} />}
-            </div>
-
-            {monthRuns.length === 0 ? (
-              <p className="chart-note">ไม่มี run log ในเดือนนี้</p>
-            ) : (
-              <div className="table-scroll">
-                <table>
-                  <thead>
-                    <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>Cadence</th></tr>
-                  </thead>
-                  <tbody>
-                    {monthRuns.map((r: RunLog) => (
-                      <tr key={r.id}>
-                        <td>{r.run_date}</td>
-                        <td>{sessionLabel(r.session_type)}</td>
-                        <td>{km(r.distance_km)}</td>
-                        <td>{minutes(r.duration_min)}</td>
-                        <td>{pace(r.pace_sec_per_km)}</td>
-                        <td>{percent(r.z2_percent)}</td>
-                        <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            {reportBody(modalAgg, modalRuns)}
           </div>
         </div>
       )}
