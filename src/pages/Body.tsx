@@ -11,6 +11,16 @@ import { shortDate } from "../utils/format";
 const TARGET_WEIGHT = 67; // realistic interim target (not COROS aggressive 63)
 const TARGET_BODY_FAT = 18;
 
+// Phased weight recommendation that respects training periodization:
+// hold weight through the pre-race block (don't diet near the B-race),
+// then taper body fat down during the Aug+ base-rebuild phase toward the A-race.
+const GUIDE_MILESTONES: { date: string; weight: number; note: string }[] = [
+  { date: "2026-07-19", weight: 70, note: "B-race — คงน้ำหนัก ไม่ลดช่วง peak" },
+  { date: "2026-09-01", weight: 69, note: "Phase B — เริ่มลดไขมันเบาๆ" },
+  { date: "2026-10-15", weight: 68, note: "Phase C — ลดต่อเนื่อง" },
+  { date: "2026-12-06", weight: TARGET_WEIGHT, note: "A-race — เป้า 67 kg" },
+];
+
 type FieldKey = keyof Omit<BodyComposition, "id" | "measured_date" | "source">;
 
 const FIELD_DEFS: { key: FieldKey | "measured_date"; label: string; step?: string }[] = [
@@ -53,7 +63,27 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
   const [ocrBusy, setOcrBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const weightRows = rows.map((r) => ({ date: shortDate(r.measured_date), weight: r.weight_kg, fat: r.body_fat_pct }));
+  // Merge actual measurements with the recommended guide trajectory into one
+  // date-sorted series. The guide starts from the latest actual weight so the
+  // dashed line visually continues from where the runner is now.
+  const chartData = (() => {
+    const byDate = new Map<string, { date: string; weight: number | null; fat: number | null; guide: number | null }>();
+    for (const r of rows) {
+      byDate.set(r.measured_date, { date: r.measured_date, weight: r.weight_kg, fat: r.body_fat_pct, guide: null });
+    }
+    if (latest?.weight_kg != null) {
+      const seed = byDate.get(latest.measured_date);
+      if (seed) seed.guide = latest.weight_kg;
+    }
+    for (const m of GUIDE_MILESTONES) {
+      const existing = byDate.get(m.date);
+      if (existing) existing.guide = m.weight;
+      else byDate.set(m.date, { date: m.date, weight: null, fat: null, guide: m.weight });
+    }
+    return [...byDate.values()]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((d) => ({ ...d, label: shortDate(d.date) }));
+  })();
 
   async function onUpload(file: File) {
     setOcrBusy(true);
@@ -144,7 +174,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       <div className="content-grid">
         <Panel
           title="น้ำหนัก · ไขมัน trend"
-          subtitle={`น้ำหนัก (kg) + ไขมัน % · เป้าน้ำหนัก ${TARGET_WEIGHT} kg`}
+          subtitle={`เส้นทึบ = น้ำหนักจริง · เส้นประเขียว = เส้นแนะนำ (คงน้ำหนักช่วงแข่ง ก.ค. แล้วค่อยลดไป ${TARGET_WEIGHT} kg ธ.ค.)`}
           className="span-12"
           action={
             <div style={{ display: "flex", gap: 8 }}>
@@ -180,15 +210,16 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
             </div>
           )}
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={weightRows} margin={chartMargin}>
+            <LineChart data={chartData} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
-              <XAxis dataKey="date" {...chartAxis} />
-              <YAxis yAxisId="left" domain={["dataMin - 2", "dataMax + 2"]} {...chartAxis} />
+              <XAxis dataKey="label" {...chartAxis} />
+              <YAxis yAxisId="left" domain={[TARGET_WEIGHT - 2, "dataMax + 2"]} {...chartAxis} />
               <YAxis yAxisId="right" orientation="right" domain={[10, 30]} {...chartAxis} />
               <ChartTooltip />
-              <ReferenceLine yAxisId="left" y={TARGET_WEIGHT} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `เป้า ${TARGET_WEIGHT}kg`, position: "insideTopRight", fontSize: 11, fill: chartColors.primary }} />
-              <Line yAxisId="left" dataKey="weight" stroke={chartColors.ink} strokeWidth={3} dot={{ r: 4, fill: chartColors.ink, strokeWidth: 0 }} name="น้ำหนัก kg" connectNulls />
-              <Line yAxisId="right" dataKey="fat" stroke={chartColors.accent} strokeWidth={2.5} strokeDasharray="5 5" dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }} name="ไขมัน %" connectNulls />
+              <ReferenceLine yAxisId="left" y={TARGET_WEIGHT} stroke={chartColors.muted} strokeDasharray="2 4" label={{ value: `${TARGET_WEIGHT}kg`, position: "insideBottomRight", fontSize: 10, fill: chartColors.muted }} />
+              <Line yAxisId="left" dataKey="guide" stroke={chartColors.primary} strokeWidth={2.5} strokeDasharray="7 6" dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} name="เส้นแนะนำ kg" connectNulls />
+              <Line yAxisId="left" dataKey="weight" stroke={chartColors.ink} strokeWidth={3} dot={{ r: 4, fill: chartColors.ink, strokeWidth: 0 }} name="น้ำหนักจริง kg" connectNulls />
+              <Line yAxisId="right" dataKey="fat" stroke={chartColors.accent} strokeWidth={2} strokeDasharray="3 4" dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }} name="ไขมัน %" connectNulls />
             </LineChart>
           </ResponsiveContainer>
           {rows.length < 2 && <p className="chart-note">บันทึกข้อมูลอย่างน้อย 2 ครั้งเพื่อเห็น trend — เพิ่มทุกเช้าเพื่อติดตามต่อเนื่อง</p>}
