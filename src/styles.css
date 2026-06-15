@@ -1194,6 +1194,19 @@ button.mobile-sheet-backdrop {
 /* 6b. Charts, tables, gear */
 .recharts-wrapper {
   font-size: 12px;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  user-select: none;
+}
+
+.recharts-wrapper *:focus,
+.recharts-wrapper svg:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
+.recharts-wrapper * {
+  -webkit-tap-highlight-color: transparent;
 }
 
 .recharts-responsive-container {
