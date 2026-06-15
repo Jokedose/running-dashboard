@@ -8,6 +8,7 @@ export const emptyData: DashboardData = {
   race: null,
   plan: [],
   body: [],
+  monthly: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

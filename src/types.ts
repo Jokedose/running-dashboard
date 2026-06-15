@@ -115,6 +115,13 @@ export type TrainingPlan = {
   created_at: string | null;
 };
 
+export type MonthlySummary = {
+  id: string;
+  month: string;
+  coach_decision: string | null;
+  readiness_flags: string | null;
+};
+
 export type BodyComposition = {
   id: string;
   measured_date: string;
@@ -145,6 +152,7 @@ export type DashboardData = {
   race: RaceReadiness | null;
   plan: TrainingPlan[];
   body: BodyComposition[];
+  monthly: MonthlySummary[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";

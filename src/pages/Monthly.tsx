@@ -85,6 +85,7 @@ export function Monthly({ data }: { data: DashboardData }) {
   const modalRuns = runsFor(selected);
 
   function reportBody(agg: MonthAgg, runs: RunLog[]) {
+    const summary = data.monthly.find((m) => m.month === agg.month) ?? null;
     return (
       <>
         <div className="cal-data-grid" style={{ marginBottom: 12 }}>
@@ -96,6 +97,23 @@ export function Monthly({ data }: { data: DashboardData }) {
           <DataRow label="avg pace" value={pace(agg.paceSec)} />
           {agg.avgWeightKg != null && <DataRow label="น้ำหนักเฉลี่ย" value={`${agg.avgWeightKg.toFixed(1)} kg`} />}
         </div>
+
+        {summary?.coach_decision && (
+          <div className="cal-block" style={{ borderLeftColor: "var(--color-primary)", background: "var(--color-primary-soft)", marginBottom: 10 }}>
+            <span className="cal-block-title">🧭 สรุปโค้ชประจำเดือน</span>
+            {summary.coach_decision.split("\n").map((line, i) => (
+              <p key={i} className="cal-note-line" style={{ marginTop: i === 0 ? 4 : 6 }}>{line}</p>
+            ))}
+          </div>
+        )}
+        {summary?.readiness_flags && (
+          <div className="cal-block" style={{ borderLeftColor: "#eed28b", background: "#fef9ec", marginBottom: 10 }}>
+            <span className="cal-block-title" style={{ color: "#7a5300" }}>⚠️ ธงเตือนความพร้อม</span>
+            {summary.readiness_flags.split("\n").map((line, i) => (
+              <p key={i} className="cal-note-line" style={{ marginTop: i === 0 ? 4 : 6 }}>{line}</p>
+            ))}
+          </div>
+        )}
         {runs.length === 0 ? (
           <p className="chart-note">ไม่มี run log ในเดือนนี้</p>
         ) : (
