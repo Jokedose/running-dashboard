@@ -8,17 +8,15 @@ import { supabase } from "../supabase";
 import type { BodyComposition, DashboardData } from "../types";
 import { shortDate } from "../utils/format";
 
-const TARGET_WEIGHT = 67; // realistic interim target (not COROS aggressive 63)
+const TARGET_WEIGHT = 63;
 const TARGET_BODY_FAT = 18;
 
-// Phased weight recommendation that respects training periodization:
-// hold weight through the pre-race block (don't diet near the B-race),
-// then taper body fat down during the Aug+ base-rebuild phase toward the A-race.
+// เส้นแนะนำ: คงน้ำหนักช่วง peak ก.ค. แล้วค่อยๆ ลดไป 63 kg ภายใน ธ.ค.
 const GUIDE_MILESTONES: { date: string; weight: number; note: string }[] = [
   { date: "2026-07-19", weight: 70, note: "B-race — คงน้ำหนัก ไม่ลดช่วง peak" },
-  { date: "2026-09-01", weight: 69, note: "Phase B — เริ่มลดไขมันเบาๆ" },
-  { date: "2026-10-15", weight: 68, note: "Phase C — ลดต่อเนื่อง" },
-  { date: "2026-12-06", weight: TARGET_WEIGHT, note: "A-race — เป้า 67 kg" },
+  { date: "2026-09-01", weight: 68, note: "Phase B — เริ่มลดไขมันเบาๆ" },
+  { date: "2026-10-15", weight: 66, note: "Phase C — ลดต่อเนื่อง" },
+  { date: "2026-12-06", weight: TARGET_WEIGHT, note: `A-race — เป้า ${TARGET_WEIGHT} kg` },
 ];
 
 type FieldKey = keyof Omit<BodyComposition, "id" | "measured_date" | "source">;
