@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, CalendarRange, Clock3, Footprints, Mountain } from "lucide-react";
+import { Activity, CalendarRange, Clock3, Mountain, X } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -73,11 +73,12 @@ export function Monthly({ data }: { data: DashboardData }) {
   const prev = months.length >= 2 ? months[months.length - 2] : null;
   const [selected, setSelected] = useState<string | null>(null);
 
-  const activeMonth = selected ?? latest?.month ?? null;
-  const activeAgg = months.find((m) => m.month === activeMonth) ?? null;
-  const monthRuns = data.runs
-    .filter((r) => r.run_date?.slice(0, 7) === activeMonth)
-    .sort((a, b) => (a.run_date ?? "").localeCompare(b.run_date ?? ""));
+  const activeAgg = selected ? months.find((m) => m.month === selected) ?? null : null;
+  const monthRuns = selected
+    ? data.runs
+        .filter((r) => r.run_date?.slice(0, 7) === selected)
+        .sort((a, b) => (a.run_date ?? "").localeCompare(b.run_date ?? ""))
+    : [];
 
   const volDelta = latest && prev && prev.distance > 0
     ? ((latest.distance - prev.distance) / prev.distance) * 100
@@ -134,37 +135,64 @@ export function Monthly({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel
-          title={`รายละเอียดเดือน ${activeAgg?.label ?? "-"}`}
-          subtitle={activeAgg ? `${km(activeAgg.distance)} · ${activeAgg.runs} ครั้ง · วิ่งยาว ${activeAgg.longRuns} · คุณภาพ ${activeAgg.quality} · avg pace ${pace(activeAgg.paceSec)}${activeAgg.avgWeightKg ? ` · น้ำหนักเฉลี่ย ${activeAgg.avgWeightKg.toFixed(1)} kg` : ""}` : "เลือกเดือนจากกราฟ"}
-          className="span-12"
-        >
-          {monthRuns.length === 0 ? (
-            <p className="chart-note">ไม่มี run log ในเดือนนี้</p>
-          ) : (
-            <div className="table-scroll">
-              <table>
-                <thead>
-                  <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>Cadence</th></tr>
-                </thead>
-                <tbody>
-                  {monthRuns.map((r: RunLog) => (
-                    <tr key={r.id}>
-                      <td>{r.run_date}</td>
-                      <td>{sessionLabel(r.session_type)}</td>
-                      <td>{km(r.distance_km)}</td>
-                      <td>{minutes(r.duration_min)}</td>
-                      <td>{pace(r.pace_sec_per_km)}</td>
-                      <td>{percent(r.z2_percent)}</td>
-                      <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Panel>
       </div>
+
+      {selected && activeAgg && (
+        <div className="cal-modal-overlay" onClick={() => setSelected(null)}>
+          <div className="cal-modal-sheet report-modal-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-header">
+              <div>
+                <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>รายงานเดือน {activeAgg.label}</strong>
+              </div>
+              <button className="cal-modal-close" onClick={() => setSelected(null)} type="button"><X size={18} /></button>
+            </div>
+
+            <div className="cal-data-grid" style={{ marginBottom: 12 }}>
+              <DataRow label="ระยะรวม" value={km(activeAgg.distance)} />
+              <DataRow label="เวลารวม" value={minutes(activeAgg.duration)} />
+              <DataRow label="จำนวนวิ่ง" value={`${activeAgg.runs} ครั้ง`} />
+              <DataRow label="วิ่งยาว" value={`${activeAgg.longRuns} ครั้ง`} />
+              <DataRow label="ซ้อมคุณภาพ" value={`${activeAgg.quality} ครั้ง`} />
+              <DataRow label="avg pace" value={pace(activeAgg.paceSec)} />
+              {activeAgg.avgWeightKg != null && <DataRow label="น้ำหนักเฉลี่ย" value={`${activeAgg.avgWeightKg.toFixed(1)} kg`} />}
+            </div>
+
+            {monthRuns.length === 0 ? (
+              <p className="chart-note">ไม่มี run log ในเดือนนี้</p>
+            ) : (
+              <div className="table-scroll">
+                <table>
+                  <thead>
+                    <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>Cadence</th></tr>
+                  </thead>
+                  <tbody>
+                    {monthRuns.map((r: RunLog) => (
+                      <tr key={r.id}>
+                        <td>{r.run_date}</td>
+                        <td>{sessionLabel(r.session_type)}</td>
+                        <td>{km(r.distance_km)}</td>
+                        <td>{minutes(r.duration_min)}</td>
+                        <td>{pace(r.pace_sec_per_km)}</td>
+                        <td>{percent(r.z2_percent)}</td>
+                        <td>{r.cadence_spm?.toFixed(0) ?? "-"} spm</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function DataRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", gap: 5, alignItems: "baseline" }}>
+      <span style={{ color: "var(--color-muted)", fontSize: "0.75rem", flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 650, color: "var(--color-ink)" }}>{value}</span>
+    </div>
   );
 }

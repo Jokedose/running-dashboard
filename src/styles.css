@@ -1783,6 +1783,12 @@ button.cal-today-btn {
   border: 1px solid var(--color-line);
 }
 
+/* Monthly report modal: fixed height on desktop, scroll inside */
+.report-modal-sheet {
+  height: 68vh;
+  max-height: 68vh;
+}
+
 @media (max-width: 620px) {
   .cal-modal-overlay {
     align-items: flex-end;
@@ -1796,6 +1802,12 @@ button.cal-today-btn {
     max-height: 50vh;
     margin: 0;
     padding-bottom: 24px;
+  }
+
+  /* half-screen bottom sheet on mobile (override desktop fixed height) */
+  .report-modal-sheet {
+    height: 50vh;
+    max-height: 50vh;
   }
 }
 
