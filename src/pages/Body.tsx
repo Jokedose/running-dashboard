@@ -76,8 +76,11 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       const out = await res.json();
       if (!res.ok || out.error) throw new Error(out.error ?? `OCR failed (${res.status})`);
       const parsed = out.data as Record<string, number | string>;
-      const next: Record<string, string> = { measured_date: form.measured_date ?? new Date().toISOString().slice(0, 10) };
+      // Default to today — the user uploads the morning's photo, and OCR date digits
+      // (e.g. 15 vs 13) are the least reliable field. They can still edit it.
+      const next: Record<string, string> = { measured_date: new Date().toISOString().slice(0, 10) };
       for (const [k, v] of Object.entries(parsed)) {
+        if (k === "measured_date") continue;
         if (v != null && v !== "") next[k] = String(v);
       }
       setForm(next);
