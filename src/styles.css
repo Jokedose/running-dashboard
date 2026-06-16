@@ -543,6 +543,15 @@ button.mobile-sheet-backdrop {
   grid-column: span 12;
 }
 
+.pace-row {
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) minmax(116px, 1.1fr) 2fr;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--color-line-soft);
+}
+
 .panel,
 .table-panel {
   padding: var(--space-4);
@@ -2267,6 +2276,16 @@ button.cal-modal-close {
   .feature-grid,
   .plan-focus-grid {
     grid-template-columns: 1fr;
+  }
+
+  /* pace/HR zone rows: name + range on top, description wraps below */
+  .pace-row {
+    grid-template-columns: 1fr auto;
+    row-gap: 2px;
+  }
+
+  .pace-row .pace-use {
+    grid-column: 1 / -1;
   }
 
   .metric-card {

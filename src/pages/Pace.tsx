@@ -18,15 +18,6 @@ function fmtRange(a: number, b: number): string {
   return `${fmtPace(Math.min(a, b))}–${fmtPace(Math.max(a, b))}/km`;
 }
 
-const ROW: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(92px, 1fr) minmax(116px, 1.1fr) 2fr",
-  gap: 10,
-  alignItems: "center",
-  padding: "9px 0",
-  borderBottom: "1px solid var(--color-line-soft)",
-};
-
 const RANGE: React.CSSProperties = { color: "var(--color-primary)", fontWeight: 700, fontVariantNumeric: "tabular-nums" };
 const USE: React.CSSProperties = { fontSize: 13, color: "var(--color-muted)" };
 const INPUT_LABEL: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--color-muted)" };
@@ -109,10 +100,10 @@ export function Pace({ data }: { data: DashboardData }) {
           ) : (
             <div style={{ display: "grid", gap: 2 }}>
               {paceZones.map((z) => (
-                <div key={z.name} style={ROW}>
+                <div key={z.name} className="pace-row">
                   <strong style={{ fontSize: 14 }}>{z.name}</strong>
                   <span style={RANGE}>{z.range}</span>
-                  <span style={USE}>{z.use}</span>
+                  <span className="pace-use" style={USE}>{z.use}</span>
                 </div>
               ))}
             </div>
@@ -129,10 +120,10 @@ export function Pace({ data }: { data: DashboardData }) {
           ) : (
             <div style={{ display: "grid", gap: 2 }}>
               {hrZones.map((z) => (
-                <div key={z.name} style={ROW}>
+                <div key={z.name} className="pace-row">
                   <strong style={{ fontSize: 14 }}>{z.name}</strong>
                   <span style={RANGE}>{z.range}</span>
-                  <span style={USE}>{z.use}</span>
+                  <span className="pace-use" style={USE}>{z.use}</span>
                 </div>
               ))}
             </div>
