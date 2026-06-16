@@ -166,7 +166,7 @@ export function Plan({ data }: { data: DashboardData }) {
           <strong>{raceTime(TARGET_MINUTES)}</strong>
           <small>8:00/km</small>
         </div>
-        <div>
+        <div className="highlight">
           <span>พร้อมซ้อม</span>
           <strong>{todayReadiness?.recovery_percent == null ? "-" : `${todayReadiness.recovery_percent}%`}</strong>
           <small>{thaiText(todayReadiness?.readiness_status, "ยังไม่มีข้อมูล")}</small>

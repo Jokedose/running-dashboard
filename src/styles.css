@@ -991,6 +991,16 @@ button.mobile-sheet-backdrop {
   box-shadow: var(--shadow-panel);
 }
 
+.smart-strip div.highlight {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+  box-shadow: 0 8px 22px rgba(79, 138, 120, 0.18);
+}
+
+.smart-strip div.highlight strong {
+  color: var(--color-primary);
+}
+
 .smart-strip span,
 .smart-strip small,
 .next-session-card span,
