@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Activity, Droplet, Flame, Scale, Upload } from "lucide-react";
+import { Activity, AlertTriangle, Droplet, Flame, Scale, Upload, X } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -83,26 +83,56 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       .map((d) => ({ ...d, label: shortDate(d.date) }));
   })();
 
+  // Phone photos are large and may be HEIC (iOS), which Claude's vision API rejects.
+  // Decode via <img>, downscale to <=1568px, and re-encode as JPEG so the payload is
+  // small and always a supported format. Throws if the browser cannot decode the file.
+  async function fileToJpegBase64(file: File): Promise<string> {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
+      reader.readAsDataURL(file);
+    });
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("เปิดรูปนี้ไม่ได้ — ถ้าถ่ายจาก iPhone ลองตั้งกล้องเป็น JPEG หรือ screenshot แล้วอัปโหลดใหม่"));
+      el.src = dataUrl;
+    });
+    const max = 1568;
+    const scale = Math.min(1, max / Math.max(img.width, img.height));
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("ประมวลผลรูปไม่สำเร็จ");
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  }
+
   async function onUpload(file: File) {
     setOcrBusy(true);
     setErr(null);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const base64 = await fileToJpegBase64(file);
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      if (!token) throw new Error("เซสชันหมดอายุ — เข้าสู่ระบบใหม่แล้วลองอีกครั้ง");
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
+        body: JSON.stringify({ image: base64, mediaType: "image/jpeg" }),
       });
-      const out = await res.json();
-      if (!res.ok || out.error) throw new Error(out.error ?? `OCR failed (${res.status})`);
+      const out = await res.json().catch(() => ({ error: `เซิร์ฟเวอร์ตอบกลับผิดพลาด (${res.status})` }));
+      if (!res.ok || out.error) {
+        if (res.status === 500 && String(out.error).includes("ANTHROPIC_API_KEY")) {
+          throw new Error("ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY ใน Supabase — ฟีเจอร์ OCR ยังใช้ไม่ได้");
+        }
+        throw new Error(out.error ?? `OCR ไม่สำเร็จ (${res.status})`);
+      }
       const parsed = out.data as Record<string, number | string>;
       // Default to today — the user uploads the morning's photo, and OCR date digits
       // (e.g. 15 vs 13) are the least reliable field. They can still edit it.
@@ -114,7 +144,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       setForm(next);
       setShowForm(true);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "OCR error");
+      setErr(e instanceof Error ? e.message : "เกิดข้อผิดพลาดในการอ่านรูป");
     } finally {
       setOcrBusy(false);
     }
@@ -201,7 +231,6 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
                   </label>
                 ))}
               </div>
-              {err && <p style={{ color: "#9d1c37", fontSize: 13, marginTop: 8 }}>{err}</p>}
               <button type="button" onClick={save} disabled={saving} style={{ marginTop: 12, minHeight: 38, padding: "0 18px" }}>
                 {saving ? "กำลังบันทึก..." : "บันทึก"}
               </button>
@@ -249,6 +278,21 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
           </Panel>
         )}
       </div>
+
+      {err && (
+        <div className="cal-modal-overlay" onClick={() => setErr(null)}>
+          <div className="cal-modal-sheet" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <div className="cal-modal-header">
+              <strong style={{ fontSize: "1rem", color: "#9d1c37", display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={20} /> อ่านรูปไม่สำเร็จ
+              </strong>
+              <button className="cal-modal-close" onClick={() => setErr(null)} type="button"><X size={18} /></button>
+            </div>
+            <p style={{ color: "var(--color-ink)", fontSize: "0.9rem", lineHeight: 1.6, margin: "4px 0 16px" }}>{err}</p>
+            <button type="button" onClick={() => setErr(null)} style={{ minHeight: 40, padding: "0 20px", width: "100%" }}>เข้าใจแล้ว</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
