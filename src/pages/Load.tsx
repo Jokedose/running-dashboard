@@ -17,8 +17,6 @@ import type { DashboardData, RunLog } from "../types";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
 
-const PAIN_SEVERITY: Record<string, number> = { none: 0, mild: 1, moderate: 2, high: 3 };
-
 // load proxy per run = distance (km). fallback to duration/6 (~km-equiv) when distance missing.
 function runLoad(r: RunLog): number {
   if (r.distance_km != null) return r.distance_km;
@@ -95,8 +93,6 @@ export function Load({ data }: { data: DashboardData }) {
   const niggleRows = runs.filter((r) => painLevel(r.pain) !== "none");
   const recentNiggles = [...niggleRows].sort((a, b) => b.run_date.localeCompare(a.run_date)).slice(0, 6);
   const hasHighPain = recentNiggles.some((r) => painLevel(r.pain) === "high");
-
-  void PAIN_SEVERITY;
 
   return (
     <section className="page-stack">

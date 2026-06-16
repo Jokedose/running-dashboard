@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Footprints, Gauge, Scale, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Target, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -31,9 +31,11 @@ const navItems: NavItem[] = [
   { key: "calendar", label: "ปฏิทิน", icon: CalendarRange },
   { key: "race", label: "แข่ง", icon: Trophy },
   { key: "zone2", label: "โซน 2", icon: Gauge },
+  { key: "pace", label: "เพซโซน", icon: Target },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
   { key: "monthly", label: "เดือน", icon: CalendarRange },
   { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
+  { key: "load", label: "โหลด", icon: HeartPulse },
   { key: "gear", label: "รองเท้า", icon: Footprints },
   { key: "body", label: "ร่างกาย", icon: Scale },
   { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
@@ -50,6 +52,8 @@ const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: 
 const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
 const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
 const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default: module.Monthly })));
+const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
+const Pace = lazy(() => import("./pages/Pace").then((module) => ({ default: module.Pace })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -170,9 +174,11 @@ function App() {
     if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
+    if (route === "pace") return <Pace data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
     if (route === "monthly") return <Monthly data={data} />;
     if (route === "trends") return <Trends data={data} />;
+    if (route === "load") return <Load data={data} />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "body") return <Body data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
