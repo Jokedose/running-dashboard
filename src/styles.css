@@ -2278,6 +2278,11 @@ button.cal-modal-close {
     grid-template-columns: 1fr;
   }
 
+  /* home page summary cards stay 2-up on phones */
+  .home-dashboard .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   /* pace/HR zone rows: name + range on top, description wraps below */
   .pace-row {
     grid-template-columns: 1fr auto;
@@ -2344,7 +2349,7 @@ button.cal-modal-close {
   }
 
   .smart-strip {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 
