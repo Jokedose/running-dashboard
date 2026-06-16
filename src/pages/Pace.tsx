@@ -23,16 +23,14 @@ const USE: React.CSSProperties = { fontSize: 13, color: "var(--color-muted)" };
 const INPUT_LABEL: React.CSSProperties = { display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--color-muted)" };
 
 export function Pace({ data }: { data: DashboardData }) {
-  const prefThreshold = data.race?.coros_threshold_pace_sec_per_km ?? null;
-  const maxHrFromData = Math.max(0, ...data.runs.map((r) => r.hr_max_bpm ?? 0));
-  const rhrFromData = (() => {
-    const vals = data.daily.map((d) => d.resting_hr_bpm).filter((v): v is number => v != null);
-    return vals.length ? Math.min(...vals) : null;
-  })();
+  // ค่าตั้งต้นจาก profile (profile.md) — แก้ในช่องได้ถ้าต้องการ
+  const PROFILE = { hrMax: 193, restHr: 60, thresholdSec: 7 * 60 + 34 };
 
-  const [thresholdStr, setThresholdStr] = useState(prefThreshold ? fmtPace(prefThreshold) : "8:45");
-  const [maxHr, setMaxHr] = useState(maxHrFromData > 0 ? String(maxHrFromData) : "190");
-  const [restHr, setRestHr] = useState(rhrFromData != null ? String(rhrFromData) : "");
+  const prefThreshold = data.race?.coros_threshold_pace_sec_per_km ?? PROFILE.thresholdSec;
+
+  const [thresholdStr, setThresholdStr] = useState(fmtPace(prefThreshold));
+  const [maxHr, setMaxHr] = useState(String(PROFILE.hrMax));
+  const [restHr, setRestHr] = useState(String(PROFILE.restHr));
 
   const tPace = parsePace(thresholdStr);
   const paceZones =
