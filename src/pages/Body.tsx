@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Activity, AlertTriangle, Droplet, Flame, Scale, Upload, X } from "lucide-react";
+import { Activity, Droplet, Flame, Scale, Upload } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -10,6 +10,7 @@ import { shortDate } from "../utils/format";
 
 const TARGET_WEIGHT = 63;
 const TARGET_BODY_FAT = 18;
+const RACE_DAY = "2026-12-06";
 
 // เส้นแนะนำ: คงน้ำหนักช่วง peak ก.ค. แล้วค่อยๆ ลดไป 63 kg ภายใน ธ.ค.
 const GUIDE_MILESTONES: { date: string; weight: number; note: string }[] = [
@@ -51,6 +52,37 @@ function delta(rows: BodyComposition[], key: FieldKey): string | undefined {
   return `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)} จากครั้งก่อน`;
 }
 
+// Linear regression บนน้ำหนักจริง — ทำนายวันที่ถึงเป้า และน้ำหนักคาดวันแข่ง
+function weightProjection(rows: BodyComposition[]) {
+  const pts = rows
+    .filter((r) => r.weight_kg != null)
+    .map((r) => ({ t: Date.parse(`${r.measured_date}T00:00:00Z`), w: r.weight_kg as number }))
+    .filter((p) => Number.isFinite(p.t))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length < 2) return null;
+  const t0 = pts[0].t;
+  const xs = pts.map((p) => (p.t - t0) / 86400000);
+  const ys = pts.map((p) => p.w);
+  const n = xs.length;
+  const sx = xs.reduce((a, b) => a + b, 0);
+  const sy = ys.reduce((a, b) => a + b, 0);
+  const sxx = xs.reduce((a, b) => a + b * b, 0);
+  const sxy = xs.reduce((a, b, i) => a + b * ys[i], 0);
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return null;
+  const slope = (n * sxy - sx * sy) / denom; // kg/วัน
+  const intercept = (sy - slope * sx) / n;
+  const perWeek = slope * 7;
+  const raceX = (Date.parse(`${RACE_DAY}T00:00:00Z`) - t0) / 86400000;
+  const raceWeight = intercept + slope * raceX;
+  let reachDate: string | null = null;
+  if (slope < -0.0001) {
+    const reachX = (TARGET_WEIGHT - intercept) / slope;
+    if (reachX >= xs[n - 1]) reachDate = new Date(t0 + reachX * 86400000).toISOString().slice(0, 10);
+  }
+  return { perWeek, raceWeight, reachDate };
+}
+
 export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => void }) {
   const rows = data.body;
   const latest = rows[rows.length - 1] ?? null;
@@ -83,56 +115,35 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       .map((d) => ({ ...d, label: shortDate(d.date) }));
   })();
 
-  // Phone photos are large and may be HEIC (iOS), which Claude's vision API rejects.
-  // Decode via <img>, downscale to <=1568px, and re-encode as JPEG so the payload is
-  // small and always a supported format. Throws if the browser cannot decode the file.
-  async function fileToJpegBase64(file: File): Promise<string> {
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error("อ่านไฟล์ไม่สำเร็จ"));
-      reader.readAsDataURL(file);
-    });
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const el = new Image();
-      el.onload = () => resolve(el);
-      el.onerror = () => reject(new Error("เปิดรูปนี้ไม่ได้ — ถ้าถ่ายจาก iPhone ลองตั้งกล้องเป็น JPEG หรือ screenshot แล้วอัปโหลดใหม่"));
-      el.src = dataUrl;
-    });
-    const max = 1568;
-    const scale = Math.min(1, max / Math.max(img.width, img.height));
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-    const canvas = document.createElement("canvas");
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("ประมวลผลรูปไม่สำเร็จ");
-    ctx.drawImage(img, 0, 0, w, h);
-    return canvas.toDataURL("image/jpeg", 0.85);
-  }
+  const projection = weightProjection(rows);
+  const projStatus = (() => {
+    if (!projection) return null;
+    if (projection.perWeek >= -0.02) return { color: "#7a5300", text: "ยังไม่มีแนวโน้มลด — ปรับ deficit เพิ่ม" };
+    if (projection.perWeek < -1.0) return { color: "#9d1c37", text: "ลดเร็วเกินไป (>1 kg/สัปดาห์) เสี่ยงเสียกล้ามเนื้อ" };
+    if (projection.reachDate && projection.reachDate <= RACE_DAY) return { color: "#1a6847", text: `on track — น่าจะถึง ${TARGET_WEIGHT} kg ก่อนวันแข่ง` };
+    return { color: "#7a5300", text: "ช้ากว่าเป้า — อาจถึง 63 kg หลังวันแข่ง" };
+  })();
 
   async function onUpload(file: File) {
     setOcrBusy(true);
     setErr(null);
     try {
-      const base64 = await fileToJpegBase64(file);
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
-      if (!token) throw new Error("เซสชันหมดอายุ — เข้าสู่ระบบใหม่แล้วลองอีกครั้ง");
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image: base64, mediaType: "image/jpeg" }),
+        body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
       });
-      const out = await res.json().catch(() => ({ error: `เซิร์ฟเวอร์ตอบกลับผิดพลาด (${res.status})` }));
-      if (!res.ok || out.error) {
-        if (res.status === 500 && String(out.error).includes("ANTHROPIC_API_KEY")) {
-          throw new Error("ยังไม่ได้ตั้งค่า ANTHROPIC_API_KEY ใน Supabase — ฟีเจอร์ OCR ยังใช้ไม่ได้");
-        }
-        throw new Error(out.error ?? `OCR ไม่สำเร็จ (${res.status})`);
-      }
+      const out = await res.json();
+      if (!res.ok || out.error) throw new Error(out.error ?? `OCR failed (${res.status})`);
       const parsed = out.data as Record<string, number | string>;
       // Default to today — the user uploads the morning's photo, and OCR date digits
       // (e.g. 15 vs 13) are the least reliable field. They can still edit it.
@@ -144,7 +155,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       setForm(next);
       setShowForm(true);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "เกิดข้อผิดพลาดในการอ่านรูป");
+      setErr(e instanceof Error ? e.message : "OCR error");
     } finally {
       setOcrBusy(false);
     }
@@ -231,6 +242,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
                   </label>
                 ))}
               </div>
+              {err && <p style={{ color: "#9d1c37", fontSize: 13, marginTop: 8 }}>{err}</p>}
               <button type="button" onClick={save} disabled={saving} style={{ marginTop: 12, minHeight: 38, padding: "0 18px" }}>
                 {saving ? "กำลังบันทึก..." : "บันทึก"}
               </button>
@@ -251,6 +263,32 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
           </ResponsiveContainer>
           {rows.length < 2 && <p className="chart-note">บันทึกข้อมูลอย่างน้อย 2 ครั้งเพื่อเห็น trend — เพิ่มทุกเช้าเพื่อติดตามต่อเนื่อง</p>}
         </Panel>
+
+        {projection && (
+          <Panel
+            title="คาดการณ์น้ำหนัก (เส้น regression)"
+            subtitle={`อิงแนวโน้มน้ำหนักจริง · เป้า ${TARGET_WEIGHT} kg ภายในวันแข่ง ${RACE_DAY}`}
+            className="span-12"
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
+              <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
+                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>เทรนด์ปัจจุบัน</div>
+                <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.perWeek >= 0 ? "+" : ""}{projection.perWeek.toFixed(2)} kg/สัปดาห์</div>
+              </div>
+              <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
+                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>คาดถึง {TARGET_WEIGHT} kg</div>
+                <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.reachDate ?? "—"}</div>
+              </div>
+              <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
+                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>น้ำหนักวันแข่ง (คาด)</div>
+                <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.raceWeight.toFixed(1)} kg</div>
+              </div>
+            </div>
+            {projStatus && (
+              <p className="chart-note" style={{ marginTop: 12, fontWeight: 700, color: projStatus.color }}>{projStatus.text}</p>
+            )}
+          </Panel>
+        )}
 
         {latest && (
           <Panel title="องค์ประกอบร่างกายล่าสุด" subtitle={latest.measured_date} className="span-12">
@@ -278,21 +316,6 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
           </Panel>
         )}
       </div>
-
-      {err && (
-        <div className="cal-modal-overlay" onClick={() => setErr(null)}>
-          <div className="cal-modal-sheet" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
-            <div className="cal-modal-header">
-              <strong style={{ fontSize: "1rem", color: "#9d1c37", display: "flex", alignItems: "center", gap: 8 }}>
-                <AlertTriangle size={20} /> อ่านรูปไม่สำเร็จ
-              </strong>
-              <button className="cal-modal-close" onClick={() => setErr(null)} type="button"><X size={18} /></button>
-            </div>
-            <p style={{ color: "var(--color-ink)", fontSize: "0.9rem", lineHeight: 1.6, margin: "4px 0 16px" }}>{err}</p>
-            <button type="button" onClick={() => setErr(null)} style={{ minHeight: 40, padding: "0 20px", width: "100%" }}>เข้าใจแล้ว</button>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
