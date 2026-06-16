@@ -28,6 +28,56 @@ const RACE_DATE = _today <= B_RACE_DATE ? B_RACE_DATE : A_RACE_DATE;
 const TARGET_MINUTES = _today <= B_RACE_DATE ? B_RACE_TARGET : A_RACE_TARGET;
 const IS_B_RACE = RACE_DATE === B_RACE_DATE;
 
+// แผนวันแข่ง Disney Run — ปรับตาม elevation จริง (สะพานพระราม 8 ×2 + ทางยกระดับบรมราชชนนี) · เป้า A 1:30
+const DISNEY_ROUTE_SPLITS: { km: number; pace: string; cum: string; note: string; phase: "climb" | "flat" | "descent" | "finish" }[] = [
+  { km: 1, pace: "9:20", cum: "9:20", note: "ออกจาก S/F ขึ้นสะพานพระราม 8 — คุม ออกช้า", phase: "climb" },
+  { km: 2, pace: "9:40", cum: "19:00", note: "⛰️ climb หนักสุด: สะพาน + ramp ขึ้นทางยกระดับ — วิ่งด้วย effort", phase: "climb" },
+  { km: 3, pace: "8:55", cum: "27:55", note: "ขึ้นทางยกระดับแล้ว ตั้งจังหวะ goal effort", phase: "flat" },
+  { km: 4, pace: "8:45", cum: "36:40", note: "ราบ ลมโล่ง", phase: "flat" },
+  { km: 5, pace: "8:55", cum: "45:35", note: "เลี้ยวกลับปลายทาง (Decision gate)", phase: "flat" },
+  { km: 6, pace: "8:45", cum: "54:20", note: "ขากลับบนทางยกระดับ", phase: "flat" },
+  { km: 7, pace: "8:45", cum: "63:05", note: "เริ่มล้า รักษา effort", phase: "flat" },
+  { km: 8, pace: "8:40", cum: "71:45", note: "⬇️ ลง ramp — ได้ pace ฟรี ปล่อยไหล ฟอร์มดี", phase: "descent" },
+  { km: 9, pace: "8:55", cum: "80:40", note: "🌉 ข้ามสะพานพระราม 8 รอบ 2 (เนินเตี้ย) แล้วลง", phase: "climb" },
+  { km: 10, pace: "8:40", cum: "89:20", note: "🏁 เข้าเส้น S/F", phase: "finish" },
+];
+
+function DisneyRunPacingPlan() {
+  const phaseBg: Record<string, string> = { climb: "#fef3c7", flat: "#dff7f2", descent: "#dbeafe", finish: "#fee2e8" };
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", fontSize: "0.85rem" }}>
+        <thead>
+          <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>Km</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>Pace</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>สะสม</th>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>โน้ต</th>
+          </tr>
+        </thead>
+        <tbody>
+          {DISNEY_ROUTE_SPLITS.map((r) => (
+            <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
+              <td style={{ padding: "8px 6px", fontWeight: 650 }}>
+                <span style={{ background: phaseBg[r.phase], padding: "2px 8px", borderRadius: 4 }}>{r.km}</span>
+              </td>
+              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.pace}</td>
+              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.cum}</td>
+              <td style={{ padding: "8px 6px", fontSize: "0.8rem" }}>{r.note}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 12, display: "grid", gap: 6, fontSize: "0.82rem", color: "var(--color-muted)" }}>
+        <div>⏱ รวม ≈ <b style={{ color: "var(--color-ink)" }}>1:29:20</b> (buffer 40 วิ ใต้ 1:30) · เฉลี่ย ~8:56/km</div>
+        <div>🌙 Gun start 04:00 น. = เย็นสุดของวัน ไม่มีแดด — heat ไม่ใช่ปัญหาใหญ่ แต่ชื้น จิบน้ำทุกจุด</div>
+        <div>⛰ <b style={{ color: "var(--color-ink)" }}>climb อยู่ต้นเกม (กม.1-2)</b> ช้า/หนัก = ปกติ อย่าเร่งชด · ทุนอยู่ทางยกระดับ + descent กม.8</div>
+        <div>🚦 <b style={{ color: "var(--color-ink)" }}>Decision gate กม.5:</b> HR นิ่ง → ลุย 1:30 / HR พุ่ง → ดรอป B (1:40-1:50)</div>
+      </div>
+    </div>
+  );
+}
+
 type ProjectionPoint = {
   date: string;
   label: string;
@@ -269,6 +319,7 @@ export function Race({ data }: { data: DashboardData }) {
   const corosDelta = coros10k == null ? null : coros10k - B_RACE_TARGET;
   const latestGap = latestPoint && latestExpected ? latestPoint.actual - latestExpected : null;
   const targetPaceSec = (TARGET_MINUTES * 60) / 10;
+  void bestPoint;
 
   return (
     <section className="page-stack">
@@ -477,6 +528,16 @@ export function Race({ data }: { data: DashboardData }) {
         </Panel>
         <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
         <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+
+        {IS_B_RACE && (
+          <Panel
+            title="🌉 แผนวันแข่ง Disney Run · Rama 8 + ทางยกระดับ"
+            subtitle="เป้า A 1:30 · ปรับตาม elevation จริง (สะพาน ×2, ทางยกระดับบรมราชชนนี, ออกตัว 04:00)"
+            className="span-12"
+          >
+            <DisneyRunPacingPlan />
+          </Panel>
+        )}
 
         <Panel title="🏆 Personal Records" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
