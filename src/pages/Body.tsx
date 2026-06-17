@@ -90,6 +90,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
   const [form, setForm] = useState<Record<string, string>>({ measured_date: new Date().toISOString().slice(0, 10) });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ocrErr, setOcrErr] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -126,7 +127,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
 
   async function onUpload(file: File) {
     setOcrBusy(true);
-    setErr(null);
+    setOcrErr(null);
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -143,7 +144,12 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
         body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
       });
       const out = await res.json();
-      if (!res.ok || out.error) throw new Error(out.error ?? `OCR failed (${res.status})`);
+      if (!res.ok || out.error) {
+        // Surface the Claude API status + detail (e.g. 400 bad image) so the
+        // modal shows something actionable instead of failing silently.
+        const detail = typeof out.detail === "string" ? out.detail.slice(0, 300) : "";
+        throw new Error([out.error ?? `OCR failed (${res.status})`, detail].filter(Boolean).join(" — "));
+      }
       const parsed = out.data as Record<string, number | string>;
       // Default to today — the user uploads the morning's photo, and OCR date digits
       // (e.g. 15 vs 13) are the least reliable field. They can still edit it.
@@ -155,7 +161,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       setForm(next);
       setShowForm(true);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "OCR error");
+      setOcrErr(e instanceof Error ? e.message : "OCR error");
     } finally {
       setOcrBusy(false);
     }
@@ -191,6 +197,34 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
 
   return (
     <section className="page-stack">
+      {ocrErr && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setOcrErr(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--color-panel)", border: "1px solid var(--color-line)", borderRadius: 8, padding: 20, maxWidth: 420, width: "100%", boxShadow: "0 12px 40px rgba(0,0,0,0.25)" }}
+          >
+            <h3 style={{ margin: "0 0 8px", fontSize: 16, color: "#9d1c37" }}>อ่านรูปไม่สำเร็จ</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--color-ink)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{ocrErr}</p>
+            <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--color-muted)" }}>ลองถ่ายรูปให้ชัดขึ้น/ครอปเฉพาะตาราง หรือกรอกค่าเองได้</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => { setOcrErr(null); fileRef.current?.click(); }}
+                style={{ minHeight: 36, padding: "0 14px", background: "transparent", color: "var(--color-ink)", border: "1px solid var(--color-line)" }}
+              >
+                ลองใหม่
+              </button>
+              <button type="button" onClick={() => setOcrErr(null)} style={{ minHeight: 36, padding: "0 16px" }}>ปิด</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="metric-grid">
         <MetricCard label="น้ำหนัก" value={latest?.weight_kg == null ? "-" : `${latest.weight_kg} kg`} detail={delta(rows, "weight_kg") ?? `เป้า ${TARGET_WEIGHT} kg`} icon={Scale} />
         <MetricCard
