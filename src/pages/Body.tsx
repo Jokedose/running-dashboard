@@ -12,6 +12,10 @@ const TARGET_WEIGHT = 63;
 const TARGET_BODY_FAT = 18;
 const RACE_DAY = "2026-12-06";
 
+// Claude vision rejects images whose longest edge exceeds 8000px. Xiaomi
+// scroll-captures are very tall, so cap the long edge a little under the limit.
+const MAX_IMAGE_EDGE = 7600;
+
 // เส้นแนะนำ: คงน้ำหนักช่วง peak ก.ค. แล้วค่อยๆ ลดไป 63 kg ภายใน ธ.ค.
 const GUIDE_MILESTONES: { date: string; weight: number; note: string }[] = [
   { date: "2026-07-19", weight: 70, note: "B-race — คงน้ำหนัก ไม่ลดช่วง peak" },
@@ -41,6 +45,47 @@ const FIELD_DEFS: { key: FieldKey | "measured_date"; label: string; step?: strin
   { key: "bmr_kcal", label: "BMR (kcal)" },
   { key: "body_age", label: "อายุร่างกาย" },
 ];
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+// Downscale so the longest edge fits Claude's 8000px limit (Xiaomi scroll
+// captures are very tall). Returns the original data URL untouched when it is
+// already within bounds. Falls back to the original on any canvas failure.
+async function prepareImage(file: File): Promise<{ dataUrl: string; mediaType: string }> {
+  const dataUrl = await readAsDataUrl(file);
+  const fallbackType = file.type || "image/jpeg";
+  try {
+    const img = await loadImage(dataUrl);
+    const longEdge = Math.max(img.width, img.height);
+    if (longEdge <= MAX_IMAGE_EDGE) return { dataUrl, mediaType: fallbackType };
+    const scale = MAX_IMAGE_EDGE / longEdge;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(img.width * scale);
+    canvas.height = Math.round(img.height * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return { dataUrl, mediaType: fallbackType };
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return { dataUrl: canvas.toDataURL("image/jpeg", 0.92), mediaType: "image/jpeg" };
+  } catch {
+    return { dataUrl, mediaType: fallbackType };
+  }
+}
 
 function delta(rows: BodyComposition[], key: FieldKey): string | undefined {
   if (rows.length < 2) return undefined;
@@ -129,19 +174,14 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
     setOcrBusy(true);
     setOcrErr(null);
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+      const { dataUrl: base64, mediaType } = await prepareImage(file);
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
+        body: JSON.stringify({ image: base64, mediaType }),
       });
       const out = await res.json();
       if (!res.ok || out.error) {
