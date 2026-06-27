@@ -1,6 +1,6 @@
 import type { Session } from "@supabase/supabase-js";
 import { Box, Button, Typography } from "@mui/material";
-import { Ellipsis, Gauge, Home, LogOut } from "lucide-react";
+import { CalendarRange, Ellipsis, Gauge, Home, LogOut, Trophy } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { BrandLogo } from "./BrandLogo";
 import type { NavItem } from "../types";
@@ -22,8 +22,9 @@ export function Layout({
   const [panel, setPanel] = useState<"more" | "profile" | null>(null);
   const email = session.user.email ?? "ผู้ใช้ Supabase";
   const profileInitial = email.trim().slice(0, 1).toUpperCase();
-  const moreItems = navItems.filter((item) => item.key !== "plan" && item.key !== "zone2");
-  const isMoreActive = route !== "plan" && route !== "zone2";
+  const tabbarKeys = ["zone2", "race", "plan", "calendar"];
+  const moreItems = navItems.filter((item) => !tabbarKeys.includes(item.key));
+  const isMoreActive = !tabbarKeys.includes(route);
   const closePanel = () => setPanel(null);
 
   return (
@@ -71,9 +72,17 @@ export function Layout({
           <Gauge size={20} />
           <span>โซน 2</span>
         </a>
+        <a className={route === "race" ? "active" : ""} href="#/race" onClick={closePanel}>
+          <Trophy size={20} />
+          <span>แข่ง</span>
+        </a>
         <a className={route === "plan" ? "active primary" : "primary"} href="#/plan" onClick={closePanel}>
           <Home size={22} />
           <span>หน้าหลัก</span>
+        </a>
+        <a className={route === "calendar" ? "active" : ""} href="#/calendar" onClick={closePanel}>
+          <CalendarRange size={20} />
+          <span>ปฏิทิน</span>
         </a>
         <button className={isMoreActive || panel === "more" ? "active" : ""} onClick={() => setPanel(panel === "more" ? null : "more")} type="button">
           <Ellipsis size={22} />

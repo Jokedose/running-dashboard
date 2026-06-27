@@ -33,7 +33,7 @@ const navItems: NavItem[] = [
   { key: "zone2", label: "โซน 2", icon: Gauge },
   { key: "pace", label: "เพซโซน", icon: Target },
   { key: "weekly", label: "สัปดาห์", icon: Activity },
-  { key: "monthly", label: "เดือน", icon: CalendarRange },
+  // { key: "monthly", label: "เดือน", icon: CalendarRange }, // ซ่อนชั่วคราว
   { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "load", label: "โหลด", icon: HeartPulse },
   { key: "injury", label: "บาดเจ็บ", icon: Cross },
