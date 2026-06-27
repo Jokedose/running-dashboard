@@ -878,13 +878,18 @@ button.mobile-sheet-backdrop {
 @media (max-width: 640px) {
   .readiness-hero {
     grid-template-columns: 1fr;
+    padding: var(--space-4);
+    gap: var(--space-3);
+  }
+  .readiness-hero-copy {
+    gap: 8px;
   }
   .readiness-hero-ring {
     border-left: none;
     border-top: 1px solid rgba(42, 127, 98, 0.16);
     padding-left: 0;
-    padding-top: var(--space-4);
-    justify-items: start;
+    padding-top: var(--space-3);
+    justify-items: center;
   }
 }
 
