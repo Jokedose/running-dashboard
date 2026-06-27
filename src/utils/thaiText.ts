@@ -29,10 +29,20 @@ const replacements: Array<[RegExp, string]> = [
   [/\bnovablast\b/gi, "โนวาบลาสต์"],
 ];
 
+// ลบ markdown ที่หลุดมาจาก source (bold **, italic *, inline code `)
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/(?<!\*)\*(?!\*)([^*]+?)\*(?!\*)/g, "$1")
+    .replace(/`([^`]+?)`/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/`/g, "");
+}
+
 export function thaiText(value: string | null | undefined, fallback = "-") {
   if (!value) return fallback;
   const isTag = value.trim().startsWith("#");
-  let text = value;
+  let text = stripMarkdown(value);
   replacements.forEach(([pattern, replacement]) => {
     text = text.replace(pattern, replacement);
   });
