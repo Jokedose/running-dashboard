@@ -2149,11 +2149,13 @@ button.cal-modal-close {
     white-space: nowrap;
   }
 
+  .mobile-tabbar a.primary,
   .mobile-tabbar a.active,
   .mobile-tabbar button.active,
   .mobile-tabbar a.primary.active {
-    background: linear-gradient(135deg, #d9f0ff, #d0f3ec);
-    color: #23746f;
+    background: var(--color-primary-soft);
+    color: var(--color-primary);
+    box-shadow: none;
   }
 
   button.mobile-sheet-backdrop {
