@@ -68,26 +68,30 @@ export function Layout({
       </Box>
 
       <Box className="mobile-tabbar" component="nav" aria-label="เมนูหลักมือถือ">
-        <a className={route === "zone2" ? "active" : ""} href="#/zone2" onClick={closePanel}>
-          <Gauge size={20} />
-          <span>โซน 2</span>
-        </a>
-        <a className={route === "race" ? "active" : ""} href="#/race" onClick={closePanel}>
-          <Trophy size={20} />
-          <span>แข่ง</span>
-        </a>
+        <div className="tab-group left">
+          <a className={route === "zone2" ? "active" : ""} href="#/zone2" onClick={closePanel}>
+            <Gauge size={20} />
+            <span>โซน 2</span>
+          </a>
+          <a className={route === "race" ? "active" : ""} href="#/race" onClick={closePanel}>
+            <Trophy size={20} />
+            <span>แข่ง</span>
+          </a>
+        </div>
         <a className={route === "plan" ? "active primary" : "primary"} href="#/plan" onClick={closePanel}>
-          <Home size={22} />
+          <Home size={24} />
           <span>หน้าหลัก</span>
         </a>
-        <a className={route === "calendar" ? "active" : ""} href="#/calendar" onClick={closePanel}>
-          <CalendarRange size={20} />
-          <span>ปฏิทิน</span>
-        </a>
-        <button className={isMoreActive || panel === "more" ? "active" : ""} onClick={() => setPanel(panel === "more" ? null : "more")} type="button">
-          <Ellipsis size={22} />
-          <span>เพิ่มเติม</span>
-        </button>
+        <div className="tab-group right">
+          <a className={route === "calendar" ? "active" : ""} href="#/calendar" onClick={closePanel}>
+            <CalendarRange size={20} />
+            <span>ปฏิทิน</span>
+          </a>
+          <button className={isMoreActive || panel === "more" ? "active" : ""} onClick={() => setPanel(panel === "more" ? null : "more")} type="button">
+            <Ellipsis size={22} />
+            <span>เพิ่มเติม</span>
+          </button>
+        </div>
       </Box>
 
       {panel && <button className="mobile-sheet-backdrop" aria-label="ปิดเมนู" onClick={closePanel} type="button" />}
