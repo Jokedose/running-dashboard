@@ -2144,12 +2144,14 @@ button.cal-modal-close {
 
   .mobile-tabbar .tab-group.left {
     border-radius: 18px;
+    padding-right: 40px;
     -webkit-mask: radial-gradient(circle 36px at calc(100% + 2px) 50%, transparent 0 35px, #000 36px);
     mask: radial-gradient(circle 36px at calc(100% + 2px) 50%, transparent 0 35px, #000 36px);
   }
 
   .mobile-tabbar .tab-group.right {
     border-radius: 18px;
+    padding-left: 40px;
     -webkit-mask: radial-gradient(circle 36px at -2px 50%, transparent 0 35px, #000 36px);
     mask: radial-gradient(circle 36px at -2px 50%, transparent 0 35px, #000 36px);
   }
