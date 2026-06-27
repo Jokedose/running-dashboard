@@ -2206,6 +2206,12 @@ button.cal-modal-close {
     display: none;
   }
 
+  .mobile-tabbar a.primary:hover,
+  .mobile-tabbar a.primary:active {
+    background: linear-gradient(135deg, #c9e8ff, #d3ecdd);
+    border-color: var(--color-primary);
+  }
+
   .mobile-tabbar a.primary.active {
     background: linear-gradient(135deg, #d9f0ff, var(--color-primary-soft));
     color: var(--color-primary);
