@@ -2152,7 +2152,7 @@ button.cal-modal-close {
   .mobile-tabbar a.active,
   .mobile-tabbar button.active,
   .mobile-tabbar a.primary.active {
-    background: #e6f6ff;
+    background: linear-gradient(135deg, #d9f0ff, #d0f3ec);
     color: #23746f;
   }
 
