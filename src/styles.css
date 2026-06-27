@@ -2142,18 +2142,23 @@ button.cal-modal-close {
     backdrop-filter: blur(16px);
   }
 
+  .mobile-tabbar .tab-group a,
+  .mobile-tabbar .tab-group button {
+    flex: 1;
+  }
+
   .mobile-tabbar .tab-group.left {
     border-radius: 18px;
-    padding-right: 40px;
-    -webkit-mask: radial-gradient(circle 36px at calc(100% + 2px) 50%, transparent 0 35px, #000 36px);
-    mask: radial-gradient(circle 36px at calc(100% + 2px) 50%, transparent 0 35px, #000 36px);
+    padding-right: 34px;
+    -webkit-mask: radial-gradient(circle 32px at calc(100% + 8px) 50%, transparent 0 31px, #000 32px);
+    mask: radial-gradient(circle 32px at calc(100% + 8px) 50%, transparent 0 31px, #000 32px);
   }
 
   .mobile-tabbar .tab-group.right {
     border-radius: 18px;
-    padding-left: 40px;
-    -webkit-mask: radial-gradient(circle 36px at -2px 50%, transparent 0 35px, #000 36px);
-    mask: radial-gradient(circle 36px at -2px 50%, transparent 0 35px, #000 36px);
+    padding-left: 34px;
+    -webkit-mask: radial-gradient(circle 32px at -8px 50%, transparent 0 31px, #000 32px);
+    mask: radial-gradient(circle 32px at -8px 50%, transparent 0 31px, #000 32px);
   }
 
   .mobile-tabbar a,
