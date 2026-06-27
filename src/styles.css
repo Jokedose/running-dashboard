@@ -963,8 +963,7 @@ button.mobile-sheet-backdrop {
 .readiness-status-badge {
   display: inline-flex;
   align-items: center;
-  height: 22px;
-  padding: 0 10px;
+  padding: 4px 10px;
   border-radius: 11px;
   font-size: 11px;
   font-weight: 750;
@@ -973,6 +972,7 @@ button.mobile-sheet-backdrop {
   background: #e6ece8;
   color: #445d66;
   margin-bottom: 4px;
+  line-height: 1.35;
 }
 
 .readiness-hero.good .readiness-status-badge { background: #d8eee5; color: #1a6847; }
