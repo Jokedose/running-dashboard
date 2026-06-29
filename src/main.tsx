@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Target, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Target, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
   { key: "load", label: "โหลด", icon: HeartPulse },
   { key: "injury", label: "บาดเจ็บ", icon: Cross },
+  { key: "strength", label: "เวต KB", icon: Dumbbell },
   { key: "gear", label: "รองเท้า", icon: Footprints },
   { key: "body", label: "ร่างกาย", icon: Scale },
   { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
@@ -56,6 +57,7 @@ const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
 const Pace = lazy(() => import("./pages/Pace").then((module) => ({ default: module.Pace })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
+const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -182,6 +184,7 @@ function App() {
     if (route === "trends") return <Trends data={data} />;
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
+    if (route === "strength") return <Strength />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "body") return <Body data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
