@@ -18,6 +18,50 @@ export const KB_GROUP_LABEL: Record<KbGroup, string> = {
   stability: "Day B — Stability / Mobility",
 };
 
+// ตาราง KB รายวัน (8kg) — injury-aware: เลี่ยง thruster/pistol/lunge ช่วงขาเจ็บ
+export type KbSet = { name: string; sets: string };
+export type KbDay = { weekday: number; day: string; label: string; items: KbSet[] };
+
+// weekday: 1=จันทร์ ... 5=ศุกร์ (ตรงกับ Date.getDay() จันทร์=1)
+export const kbRoutine: KbDay[] = [
+  {
+    weekday: 1, day: "จันทร์", label: "Day A — Power",
+    items: [
+      { name: "KB swing", sets: "3 × 15" },
+      { name: "KB sumo high pull", sets: "3 × 10" },
+      { name: "KB two arm clean", sets: "3 × 8" },
+    ],
+  },
+  {
+    weekday: 2, day: "อังคาร", label: "Upper / Core",
+    items: [
+      { name: "KB two arm military press", sets: "3 × 10" },
+      { name: "KB arnold press", sets: "3 × 8" },
+      { name: "KB one arm row", sets: "3 × 10/ข้าง" },
+      { name: "KB alternating renegade row", sets: "3 × 8/ข้าง" },
+      { name: "KB figure 8", sets: "3 × 10" },
+    ],
+  },
+  {
+    weekday: 4, day: "พฤหัส", label: "Day B — Stability",
+    items: [
+      { name: "KB turkish get up (squat style)", sets: "3 × 3/ข้าง" },
+      { name: "KB goblet squat", sets: "3 × 10" },
+      { name: "KB windmill", sets: "3 × 6/ข้าง" },
+      { name: "KB one arm row", sets: "3 × 10/ข้าง" },
+    ],
+  },
+  {
+    weekday: 5, day: "ศุกร์", label: "Mobility",
+    items: [
+      { name: "KB goblet squat", sets: "2 × 10 tempo" },
+      { name: "KB windmill", sets: "2 × 6/ข้าง" },
+      { name: "KB figure 8", sets: "2 × 8" },
+      { name: "KB turkish get up (squat style)", sets: "1-2/ข้าง ช้า" },
+    ],
+  },
+];
+
 export const kbExercises: KbExercise[] = [
   { name: "KB swing", group: "power", injurySafe: true, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0549-UHJlbu3.gif", note: "Swing สะโพก hip-hinge" },
   { name: "KB sumo high pull", group: "power", injurySafe: true, target: "ทราพีเซียส", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0548-8ARQ9Hw.gif", note: "ดึงขึ้นท่า sumo" },
