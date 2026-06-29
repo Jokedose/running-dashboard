@@ -644,8 +644,12 @@ button.mobile-sheet-backdrop {
   position: relative;
   display: grid;
   justify-items: center;
-  gap: 10px;
-  max-width: min(460px, 92vw);
+  gap: 12px;
+  width: min(600px, 92vw);
+}
+
+.kb-lightbox-name {
+  font-size: 18px;
 }
 
 .kb-lightbox-gif {
