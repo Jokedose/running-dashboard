@@ -1,15 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Panel } from "../components/Panel";
 import { KB_GROUP_LABEL, kbExercises, kbRoutine, type KbGroup } from "../data/kbExercises";
 
 const GROUPS: KbGroup[] = ["power", "upper", "core", "stability"];
-const gifByName = new Map(kbExercises.map((e) => [e.name, e.gif]));
+const framesByName = new Map(kbExercises.map((e) => [e.name, e.frames]));
 const safeByName = new Map(kbExercises.map((e) => [e.name, e.injurySafe]));
+
+// สลับ 2 เฟรม (start/end) แทน gif เคลื่อนไหว
+function FlipImage({ frames, alt, className, onClick }: { frames: [string, string]; alt: string; className?: string; onClick?: () => void }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((v) => (v === 0 ? 1 : 0)), 700);
+    return () => clearInterval(id);
+  }, []);
+  return <img src={frames[i]} alt={alt} loading="lazy" className={className} onClick={onClick} />;
+}
 
 export function Strength() {
   const [safeOnly, setSafeOnly] = useState(true);
-  const [zoom, setZoom] = useState<{ gif: string; name: string } | null>(null);
+  const [zoom, setZoom] = useState<{ frames: [string, string]; name: string } | null>(null);
   const todayWeekday = new Date().getDay(); // 0=อา 1=จ ...
 
   const list = safeOnly ? kbExercises.filter((e) => e.injurySafe) : kbExercises;
@@ -20,7 +30,7 @@ export function Strength() {
         <div className="kb-lightbox" role="dialog" aria-label={zoom.name} onClick={() => setZoom(null)}>
           <div className="kb-lightbox-inner" onClick={(e) => e.stopPropagation()}>
             <button className="kb-lightbox-close" onClick={() => setZoom(null)} aria-label="ปิด" type="button">✕</button>
-            <img src={zoom.gif} alt={zoom.name} className="kb-lightbox-gif" />
+            <FlipImage frames={zoom.frames} alt={zoom.name} className="kb-lightbox-gif" />
             <strong className="kb-lightbox-name">{zoom.name}</strong>
           </div>
         </div>
@@ -54,7 +64,7 @@ export function Strength() {
                   const safe = safeByName.get(it.name);
                   return (
                     <div className="kb-day-row" key={`${it.name}-${i}`}>
-                      <img src={gifByName.get(it.name)} alt={it.name} loading="lazy" className="kb-day-thumb" onClick={() => setZoom({ gif: gifByName.get(it.name) ?? "", name: it.name })} />
+                      <FlipImage frames={framesByName.get(it.name) ?? ["", ""]} alt={it.name} className="kb-day-thumb" onClick={() => setZoom({ frames: framesByName.get(it.name) ?? ["", ""], name: it.name })} />
                       <span className="kb-day-name">
                         {it.name}
                         {safe === false && <TriangleAlert size={12} style={{ marginLeft: 4, verticalAlign: "-1px", color: "#9d1c37" }} />}
@@ -78,7 +88,7 @@ export function Strength() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
               {items.map((ex) => (
                 <div key={ex.name} className="kb-card">
-                  <img src={ex.gif} alt={ex.name} loading="lazy" className="kb-gif" onClick={() => setZoom({ gif: ex.gif, name: ex.name })} />
+                  <FlipImage frames={ex.frames} alt={ex.name} className="kb-gif" onClick={() => setZoom({ frames: ex.frames, name: ex.name })} />
                   <div className="kb-card-body">
                     <div className="kb-card-head">
                       <strong>{ex.name}</strong>

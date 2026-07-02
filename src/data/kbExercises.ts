@@ -1,5 +1,5 @@
-// ท่า kettlebell จาก dataset hasaneyldrm/exercises-dataset (educational/non-commercial)
-// gif hotlink จาก raw.githubusercontent — injurySafe = ทำได้ช่วงขาเจ็บ (no/low impact)
+// ท่า kettlebell จาก dataset yuhonas/free-exercise-db (Public Domain)
+// รูป hotlink จาก raw.githubusercontent — 2 เฟรม (start/end) สลับกันแสดงเป็น pseudo-animation แทน gif
 export type KbGroup = "power" | "upper" | "core" | "stability";
 
 export type KbExercise = {
@@ -7,7 +7,7 @@ export type KbExercise = {
   group: KbGroup;
   injurySafe: boolean;
   target: string;
-  gif: string;
+  frames: [string, string];
   note: string;
 };
 
@@ -62,19 +62,22 @@ export const kbRoutine: KbDay[] = [
   },
 ];
 
+const FEDB = "https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises";
+const frames = (dir: string): [string, string] => [`${FEDB}/${dir}/0.jpg`, `${FEDB}/${dir}/1.jpg`];
+
 export const kbExercises: KbExercise[] = [
-  { name: "KB swing", group: "power", injurySafe: true, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0549-UHJlbu3.gif", note: "Swing สะโพก hip-hinge" },
-  { name: "KB sumo high pull", group: "power", injurySafe: true, target: "ทราพีเซียส", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0548-8ARQ9Hw.gif", note: "ดึงขึ้นท่า sumo" },
-  { name: "KB two arm clean", group: "power", injurySafe: true, target: "ไหล่", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0552-7Ba7bQ2.gif", note: "Clean สองมือ" },
-  { name: "KB thruster", group: "power", injurySafe: false, target: "ไหล่", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0550-yWxMvB5.gif", note: "Squat + press ต่อเนื่อง" },
-  { name: "KB two arm military press", group: "upper", injurySafe: true, target: "ไหล่", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0553-blBXysN.gif", note: "ดันบ่าสองมือ" },
-  { name: "KB arnold press", group: "upper", injurySafe: true, target: "ไหล่", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0523-UM8mgyG.gif", note: "Arnold press" },
-  { name: "KB one arm row", group: "upper", injurySafe: true, target: "หลังบน", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0541-g9AsZ8P.gif", note: "โรว์มือเดียว" },
-  { name: "KB alternating renegade row", group: "upper", injurySafe: true, target: "หลังบน", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0521-b9kqlBy.gif", note: "Renegade row สลับ" },
-  { name: "KB figure 8", group: "core", injurySafe: true, target: "core", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0532-L4ay0PW.gif", note: "เลข 8 รอบขา" },
-  { name: "KB windmill", group: "core", injurySafe: true, target: "core", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0554-9Tkqa9O.gif", note: "Windmill core+hip" },
-  { name: "KB turkish get up (squat style)", group: "stability", injurySafe: true, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0551-Ha7SZ3y.gif", note: "TGU squat style" },
-  { name: "KB goblet squat", group: "stability", injurySafe: true, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0534-ZA8b5hc.gif", note: "Goblet squat" },
-  { name: "KB pistol squat", group: "stability", injurySafe: false, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0544-5bpPTHv.gif", note: "Pistol squat ขาเดียว" },
-  { name: "KB lunge pass through", group: "stability", injurySafe: false, target: "สะโพก", gif: "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0536-WKMQzCD.gif", note: "Lunge ส่ง KB" },
+  { name: "KB swing", group: "power", injurySafe: true, target: "สะโพก", frames: frames("One-Arm_Kettlebell_Swings"), note: "Swing สะโพก hip-hinge" },
+  { name: "KB sumo high pull", group: "power", injurySafe: true, target: "ทราพีเซียส", frames: frames("Kettlebell_Sumo_High_Pull"), note: "ดึงขึ้นท่า sumo" },
+  { name: "KB two arm clean", group: "power", injurySafe: true, target: "ไหล่", frames: frames("Two-Arm_Kettlebell_Clean"), note: "Clean สองมือ" },
+  { name: "KB thruster", group: "power", injurySafe: false, target: "ไหล่", frames: frames("Kettlebell_Thruster"), note: "Squat + press ต่อเนื่อง" },
+  { name: "KB two arm military press", group: "upper", injurySafe: true, target: "ไหล่", frames: frames("Two-Arm_Kettlebell_Military_Press"), note: "ดันบ่าสองมือ" },
+  { name: "KB arnold press", group: "upper", injurySafe: true, target: "ไหล่", frames: frames("Kettlebell_Arnold_Press"), note: "Arnold press" },
+  { name: "KB one arm row", group: "upper", injurySafe: true, target: "หลังบน", frames: frames("One-Arm_Kettlebell_Row"), note: "โรว์มือเดียว" },
+  { name: "KB alternating renegade row", group: "upper", injurySafe: true, target: "หลังบน", frames: frames("Alternating_Renegade_Row"), note: "Renegade row สลับ" },
+  { name: "KB figure 8", group: "core", injurySafe: true, target: "core", frames: frames("Kettlebell_Figure_8"), note: "เลข 8 รอบขา" },
+  { name: "KB windmill", group: "core", injurySafe: true, target: "core", frames: frames("Kettlebell_Windmill"), note: "Windmill core+hip" },
+  { name: "KB turkish get up (squat style)", group: "stability", injurySafe: true, target: "สะโพก", frames: frames("Kettlebell_Turkish_Get-Up_Squat_style"), note: "TGU squat style" },
+  { name: "KB goblet squat", group: "stability", injurySafe: true, target: "สะโพก", frames: frames("Goblet_Squat"), note: "Goblet squat" },
+  { name: "KB pistol squat", group: "stability", injurySafe: false, target: "สะโพก", frames: frames("Kettlebell_Pistol_Squat"), note: "Pistol squat ขาเดียว" },
+  { name: "KB lunge pass through", group: "stability", injurySafe: false, target: "สะโพก", frames: frames("Lunge_Pass_Through"), note: "Lunge ส่ง KB" },
 ];
