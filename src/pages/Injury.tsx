@@ -1,9 +1,74 @@
-import { Activity, AlertTriangle, CalendarCheck, MapPin } from "lucide-react";
+import { Activity, AlertTriangle, CalendarCheck, HeartPulse, MapPin, ShieldAlert } from "lucide-react";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData, RunLog } from "../types";
+import type { DashboardData, InjuryStatus } from "../types";
 import { shortDate } from "../utils/format";
 import { painLevel, type PainLevel } from "../utils/session";
+
+type Tone = "good" | "warn" | "hot" | "neutral";
+
+// tone ตามสถานะ injury_status: OPEN=hot, HEALING=warn, CLOSED=good
+function statusTone(status: string): Tone {
+  const s = status.toUpperCase();
+  if (s === "OPEN") return "hot";
+  if (s === "HEALING") return "warn";
+  if (s === "CLOSED") return "good";
+  return "neutral";
+}
+
+const STATUS_LABEL: Record<string, string> = { OPEN: "กำลังเจ็บ", HEALING: "กำลังฟื้น", CLOSED: "หายแล้ว" };
+
+function ActiveInjuryPanel({ injury }: { injury: InjuryStatus }) {
+  const tone = statusTone(injury.status);
+  const label = STATUS_LABEL[injury.status.toUpperCase()] ?? injury.status;
+  const days = injury.last_symptom_date ? daysSince(injury.last_symptom_date) : null;
+  const rows: { icon: typeof HeartPulse; text: string | null; tag: string }[] = [
+    { icon: Activity, text: injury.trend, tag: "แนวโน้ม" },
+    { icon: HeartPulse, text: injury.care, tag: "ดูแล" },
+    { icon: ShieldAlert, text: injury.current_rule, tag: "กติกาวิ่ง" },
+  ];
+  return (
+    <Panel
+      title={`🩹 ${injury.title ?? injury.injury_slug}`}
+      subtitle={`สถานะจาก injury_status · อัปเดต ${injury.last_updated_date ? shortDate(injury.last_updated_date) : "-"}`}
+      className="span-12"
+      action={<strong className={tone}>{label}</strong>}
+    >
+      <div className="metric-grid" style={{ marginBottom: 12 }}>
+        <MetricCard
+          label="สถานะ"
+          value={label}
+          detail={injury.status.toUpperCase()}
+          icon={ShieldAlert}
+          tone={tone}
+        />
+        <MetricCard
+          label="เจ็บล่าสุด"
+          value={days == null ? "ไม่ระบุ" : `${days} วันก่อน`}
+          detail={injury.last_symptom_date ? shortDate(injury.last_symptom_date) : "ไม่มีวันที่"}
+          icon={CalendarCheck}
+          tone={days == null ? "neutral" : days >= 14 ? "good" : days >= 5 ? "warn" : "hot"}
+        />
+      </div>
+      <div className="signal-list">
+        {rows.filter((r) => r.text).map((r) => (
+          <div key={r.tag}>
+            <r.icon size={16} />
+            <span>{r.text}</span>
+            <strong>{r.tag}</strong>
+          </div>
+        ))}
+        {injury.tags?.length ? (
+          <div>
+            <MapPin size={16} />
+            <span>{injury.tags.join(" · ")}</span>
+            <strong>tags</strong>
+          </div>
+        ) : null}
+      </div>
+    </Panel>
+  );
+}
 
 // แยกจุดที่เจ็บจาก free-text pain note (Thai keywords)
 const BODY_PARTS: { key: string; label: string; match: RegExp }[] = [
@@ -64,8 +129,19 @@ export function Injury({ data }: { data: DashboardData }) {
 
   const highCount = niggles.filter((r) => painLevel(r.pain) === "high").length;
 
+  // source of truth: injury_status (open ก่อน). run_logs = supporting detail ด้านล่าง
+  const openInjuries = data.injuries.filter((i) => i.is_open);
+
   return (
     <section className="page-stack">
+      {openInjuries.length > 0 && (
+        <div className="content-grid">
+          {openInjuries.map((injury) => (
+            <ActiveInjuryPanel key={injury.injury_slug} injury={injury} />
+          ))}
+        </div>
+      )}
+
       <div className="metric-grid">
         <MetricCard
           label="ปลอดเจ็บล่าสุด"

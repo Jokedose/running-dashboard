@@ -12,6 +12,7 @@ import type {
   DailyReadiness,
   DashboardData,
   GearMileage,
+  InjuryStatus,
   LoadState,
   MonthlySummary,
   NavItem,
@@ -83,7 +84,7 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan, body, monthly] = await Promise.all([
+    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
@@ -92,6 +93,7 @@ function App() {
       supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
       supabase.from("body_composition").select("*").order("measured_date", { ascending: true }),
       supabase.from("monthly_summaries").select("*").order("month", { ascending: true }),
+      supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }),
     ]);
     if (daily.error || runs.error || weekly.error || gear.error || race.error) {
       setLoadState("error");
@@ -107,6 +109,7 @@ function App() {
       plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
       body: body.error ? [] : ((body.data ?? []) as BodyComposition[]),
       monthly: monthly.error ? [] : ((monthly.data ?? []) as MonthlySummary[]),
+      injuries: injuries.error ? [] : ((injuries.data ?? []) as InjuryStatus[]),
     });
     setLoadState("ready");
   }

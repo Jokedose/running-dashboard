@@ -144,6 +144,21 @@ export type BodyComposition = {
   source: string | null;
 };
 
+export type InjuryStatus = {
+  injury_slug: string;
+  title: string | null;
+  status: "OPEN" | "HEALING" | "CLOSED" | string;
+  is_open: boolean;
+  last_symptom_date: string | null;
+  last_updated_date: string | null;
+  trend: string | null;
+  care: string | null;
+  current_rule: string | null;
+  tags: string[] | null;
+  source_path: string | null;
+  updated_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -153,6 +168,7 @@ export type DashboardData = {
   plan: TrainingPlan[];
   body: BodyComposition[];
   monthly: MonthlySummary[];
+  injuries: InjuryStatus[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
