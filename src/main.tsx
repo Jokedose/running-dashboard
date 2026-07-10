@@ -117,7 +117,18 @@ function App() {
       return;
     }
 
-    supabase.auth.getSession().then(({ data: sessionData }) => {
+    supabase.auth.getSession().then(async ({ data: sessionData }) => {
+      // validate session กับ server ทุกครั้งที่ refresh (getSession อ่านแค่ localStorage)
+      // ถ้า session ถูก revoke (เช่น login เครื่องอื่น) → เตะออกทันทีตอน refresh
+      if (sessionData.session) {
+        const { error } = await supabase.auth.getUser();
+        if (error) {
+          await supabase.auth.signOut();
+          setSession(null);
+          setLoading(false);
+          return;
+        }
+      }
       setSession(sessionData.session);
       setLoading(false);
     });
