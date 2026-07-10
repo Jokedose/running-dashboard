@@ -2845,3 +2845,29 @@ button.mobile-sheet-backdrop {
   display: block !important;
   background: transparent !important;
 }
+
+/* 8. A11y polish */
+/* keyboard focus ชัดเจนบน nav/link/ปุ่ม (ไม่กระทบ mouse click) */
+a:focus-visible,
+button:focus-visible,
+.logout:focus-visible,
+nav a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* เคารพ prefers-reduced-motion — ปิด transition/animation ของ hover ต่าง ๆ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .metric-card--interactive:hover {
+    transform: none;
+  }
+}
