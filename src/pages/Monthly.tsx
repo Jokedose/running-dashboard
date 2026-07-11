@@ -174,7 +174,7 @@ export function Monthly({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="ระยะ · เพซ รายเดือน" subtitle="คลิกที่แท่งเพื่อดู runs ในเดือนนั้น · เพซยิ่งต่ำยิ่งเร็ว" className="span-12">
+        <Panel title="Monthly distance · pace" subtitle="คลิกที่แท่งเพื่อดู runs ในเดือนนั้น · เพซยิ่งต่ำยิ่งเร็ว" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -200,7 +200,7 @@ export function Monthly({ data }: { data: DashboardData }) {
         {/* Desktop: inline box below chart, fixed-height + inner scroll */}
         {inlineAgg && (
           <Panel
-            title={`รายงานเดือน ${inlineAgg.label}`}
+            title={`Month report ${inlineAgg.label}`}
             subtitle="คลิกแท่งในกราฟเพื่อเปลี่ยนเดือน"
             className="span-12 report-detail-box"
           >

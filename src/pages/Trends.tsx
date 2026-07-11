@@ -110,7 +110,7 @@ export function Trends({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="ระยะรายสัปดาห์" subtitle="ระยะรวมและซ้อมคุณภาพรายสัปดาห์ (สูงสุด 20 สัปดาห์)" className="span-12">
+        <Panel title="Weekly distance" subtitle="ระยะรวมและซ้อมคุณภาพรายสัปดาห์ (สูงสุด 20 สัปดาห์)" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -144,7 +144,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="HRV · โหลดการซ้อม" subtitle="30 วันล่าสุด — HRV ms (เส้นทึบ) · อัตราโหลด (เส้นประ)" className="span-6">
+        <Panel title="HRV · training load" subtitle="30 วันล่าสุด — HRV ms (เส้นทึบ) · อัตราโหลด (เส้นประ)" className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={hrvRows} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
@@ -204,7 +204,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="🧠 HRV ก่อนวิ่ง vs Quality" subtitle={`ความสัมพันธ์ HRV (วันก่อน) กับ run quality (${qualityRows.length} ครั้ง)`} className="span-6">
+        <Panel title="🧠 Pre-run HRV vs Quality" subtitle={`ความสัมพันธ์ HRV (วันก่อน) กับ run quality (${qualityRows.length} ครั้ง)`} className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ScatterChart margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
@@ -220,7 +220,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="คุณภาพการนอน" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-6">
+        <Panel title="Sleep quality" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={sleepRows} margin={chartMargin}>
               <ChartGradientDefs />

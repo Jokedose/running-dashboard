@@ -190,7 +190,7 @@ export function Today({ data }: { data: DashboardData }) {
 
       {/* ── Content grid (ไม่เปลี่ยน) ── */}
       <div className="content-grid">
-        <Panel title="วิ่งล่าสุด" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
+        <Panel title="Latest run" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
             <strong>{sessionLabel(lastRun?.session_type)}</strong>
             <div className="mini-metrics">
@@ -203,7 +203,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🤖 คำแนะนำจากโค้ช" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
+        <Panel title="🤖 Smart coach advice" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {coachAdvice.map((a, i) => {
               const color = a.tone === "hot" ? "#9d1c37" : a.tone === "warn" ? "#7a5300" : "#1a6847";
@@ -219,7 +219,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="สรุปจากโค้ช" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
           <div className={`coach-verdict ${verdict.tone}`}>
             <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
             <div>
@@ -232,7 +232,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="HRV · การนอน (14 วัน)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
+        <Panel title="HRV · Sleep (14 days)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={recentDaily} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />
@@ -245,7 +245,7 @@ export function Today({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="ภาพรวมความคืบหน้า" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-12">
+        <Panel title="Progress overview" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />

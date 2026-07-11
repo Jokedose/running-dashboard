@@ -65,7 +65,7 @@ export function Pace({ data }: { data: DashboardData }) {
   return (
     <section className="page-stack">
       <Panel
-        title="คาลิเบรต → โซนเพซ & HR"
+        title="Calibration → Pace & HR Zones"
         subtitle="กรอกค่าอ้างอิงเพื่อคำนวณโซนซ้อมของตัวเอง (ค่าเริ่มต้นดึงจากข้อมูลล่าสุด)"
       >
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
@@ -89,7 +89,7 @@ export function Pace({ data }: { data: DashboardData }) {
 
       <div className="content-grid">
         <Panel
-          title="โซนเพซ (pace zones)"
+          title="Pace zones"
           subtitle={tPace == null ? "กรอก threshold pace รูปแบบ mm:ss" : `อิง threshold ${fmtPace(tPace)}/km`}
           className="span-6"
         >
@@ -109,7 +109,7 @@ export function Pace({ data }: { data: DashboardData }) {
         </Panel>
 
         <Panel
-          title="โซนหัวใจ (HR zones)"
+          title="HR zones"
           subtitle={hrValid ? (useKarvonen ? "Karvonen (HRR)" : "% Max HR") : "กรอก Max HR"}
           className="span-6"
         >
@@ -128,7 +128,7 @@ export function Pace({ data }: { data: DashboardData }) {
           )}
         </Panel>
 
-        <Panel title="🎯 Calibration test 17 มิ.ย." subtitle="วิธีใช้ผลทดสอบมา calibrate" className="span-12">
+        <Panel title="🎯 Calibration test · 17 Jun" subtitle="วิธีใช้ผลทดสอบมา calibrate" className="span-12">
           <ul className="clean-list">
             <li>วิ่ง 3K controlled ที่ 8:30–9:00/km แล้วจด <b>pace เฉลี่ย + HR เฉลี่ย</b> ของช่วง 3K</li>
             <li>ถ้า HR เฉลี่ยตกในช่วง Z2–Z3 ด้านบน แปลว่าเพซ easy ที่ตั้งไว้เหมาะแล้ว</li>

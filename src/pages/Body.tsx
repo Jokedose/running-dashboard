@@ -246,7 +246,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
 
       <div className="content-grid">
         <Panel
-          title="น้ำหนัก · ไขมัน trend"
+          title="Weight · body-fat trend"
           subtitle={`เส้นทึบ = น้ำหนักจริง · เส้นประเขียว = เส้นแนะนำ (คงน้ำหนักช่วงแข่ง ก.ค. แล้วค่อยลดไป ${TARGET_WEIGHT} kg ธ.ค.)`}
           className="span-12"
           action={
@@ -300,7 +300,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
 
         {projection && (
           <Panel
-            title="คาดการณ์น้ำหนัก (เส้น regression)"
+            title="Weight projection (regression)"
             subtitle={`อิงแนวโน้มน้ำหนักจริง · เป้า ${TARGET_WEIGHT} kg ภายในวันแข่ง ${RACE_DAY}`}
             className="span-12"
           >
@@ -325,7 +325,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
         )}
 
         {latest && (
-          <Panel title="องค์ประกอบร่างกายล่าสุด" subtitle={latest.measured_date} className="span-12">
+          <Panel title="Latest body composition" subtitle={latest.measured_date} className="span-12">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 10 }}>
               {[
                 { label: "BMI", value: latest.bmi },

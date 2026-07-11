@@ -249,8 +249,8 @@ function RacePaceCalculator({ targetMin }: { targetMin: number }) {
           <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
             <th style={{ textAlign: "left", padding: "8px 6px" }}>Km</th>
             <th style={{ textAlign: "right", padding: "8px 6px" }}>Pace</th>
-            <th style={{ textAlign: "right", padding: "8px 6px" }}>สะสม</th>
-            <th style={{ textAlign: "left", padding: "8px 6px" }}>กลยุทธ์</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>Cumulative</th>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>Strategy</th>
           </tr>
         </thead>
         <tbody>
@@ -432,7 +432,7 @@ export function Race({ data }: { data: DashboardData }) {
 
       <div className="content-grid">
         <Panel
-          title={`กราฟเป้าหมาย 10K · ${IS_B_RACE ? "B-race" : "A-race"}`}
+          title={`10K goal chart · ${IS_B_RACE ? "B-race" : "A-race"}`}
           subtitle="เปรียบเทียบสถานะจริงกับเส้นพัฒนาที่ควรเป็นจนถึงวันแข่ง"
           className="span-12 race-panel"
         >
@@ -521,17 +521,17 @@ export function Race({ data }: { data: DashboardData }) {
           </p>
         </Panel>
 
-        <Panel title="แนวทางตัดสินใจวันแข่ง" subtitle="แนวทางวันแข่ง" className="span-12">
+        <Panel title="Race-day decision guide" subtitle="แนวทางวันแข่ง" className="span-12">
           <div className="coach-card race-decision">
             <p>{thaiText(race?.race_decision)}</p>
           </div>
         </Panel>
-        <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
-        <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+        <ListPanel title="Strengths" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
+        <ListPanel title="Risks" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
 
         {IS_B_RACE && (
           <Panel
-            title="🌉 แผนวันแข่ง Disney Run · Rama 8 + ทางยกระดับ"
+            title="🌉 Race-day plan · Disney Run · Rama 8 + expressway"
             subtitle="เป้า A 1:30 · ปรับตาม elevation จริง (สะพาน ×2, ทางยกระดับบรมราชชนนี, ออกตัว 04:00)"
             className="span-12"
           >
@@ -539,7 +539,7 @@ export function Race({ data }: { data: DashboardData }) {
           </Panel>
         )}
 
-        <Panel title="🏆 สถิติส่วนตัว" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
+        <Panel title="🏆 Personal Records" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             {[
               { label: "Longest run", value: km(longestRun?.distance_km), sub: longestRun?.run_date, icon: "🏔" },
@@ -562,12 +562,12 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🧮 คำนวณเพซวันแข่ง" subtitle={`แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`} className="span-12">
+        <Panel title="🧮 Race pace calculator" subtitle={`แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`} className="span-12">
           <RacePaceCalculator targetMin={TARGET_MINUTES} />
         </Panel>
 
         {race?.milestones && race.milestones.length > 0 && (
-          <Panel title="🎯 Milestones ที่ต้องผ่านก่อนแข่ง" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
+          <Panel title="🎯 Milestones before race day" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {race.milestones.map((m, i) => {
                 const color = m.status === "done" ? "#1a6847" : m.status === "skipped" ? "#9d1c37" : "#7a5300";

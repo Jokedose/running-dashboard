@@ -146,7 +146,7 @@ export function Weekly({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="แนวโน้มระยะรายสัปดาห์" subtitle="คลิกที่แท่งเพื่อดูรายละเอียดสัปดาห์นั้น" className="span-12">
+        <Panel title="Weekly distance trend" subtitle="คลิกที่แท่งเพื่อดูรายละเอียดสัปดาห์นั้น" className="span-12">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={weekRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -181,7 +181,7 @@ export function Weekly({ data }: { data: DashboardData }) {
 
         {inlineSummary && (
           <Panel
-            title={`รายละเอียดสัปดาห์ ${inlineWeekId ?? "-"}`}
+            title={`Week detail ${inlineWeekId ?? "-"}`}
             subtitle="คลิกแท่งในกราฟเพื่อเปลี่ยนสัปดาห์"
             className="span-12 report-detail-box"
           >
@@ -189,7 +189,7 @@ export function Weekly({ data }: { data: DashboardData }) {
           </Panel>
         )}
 
-        <Panel title="คำแนะนำโค้ช" subtitle="คำแนะนำปรับแผน" className="span-8">
+        <Panel title="Coach recommendation" subtitle="คำแนะนำปรับแผน" className="span-8">
           <div className="coach-card">
             {(week?.coach_recommendation ?? "-").split("\n").map((line) => (
               <p key={line}>{thaiText(line)}</p>
@@ -197,7 +197,7 @@ export function Weekly({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="ธงเตือนความพร้อม" subtitle="ธงเตือนประจำสัปดาห์" className="span-4">
+        <Panel title="Readiness flags" subtitle="ธงเตือนประจำสัปดาห์" className="span-4">
           <div className="issue-card">
             <AlertTriangle size={22} />
             <p>{thaiText(week?.readiness_issues, "ไม่พบธงเตือนความพร้อมเพิ่มเติม")}</p>

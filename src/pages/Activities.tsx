@@ -164,7 +164,7 @@ export function Activities({ data }: { data: DashboardData }) {
         <MetricCard label="เพซเฉลี่ยรวม" value={pace(avgPaceSeconds)} detail="คำนวณจากเวลารวมและระยะรวม" icon={Clock3} />
       </div>
 
-      <Panel title="ไทม์ไลน์อาการเจ็บ/ปวด" subtitle={`30 ครั้งล่าสุด · มีอาการ ${painCount} ครั้ง`}>
+      <Panel title="Pain / soreness timeline" subtitle={`30 ครั้งล่าสุด · มีอาการ ${painCount} ครั้ง`}>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
           {recentPain.map((p) => (
             <div key={p.date} title={`${p.date} · ${p.session ?? ""} · ${p.pain ?? "ไม่มี"}`}

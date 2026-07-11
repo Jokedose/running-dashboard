@@ -18,7 +18,7 @@ export function Layout({
   onLogout: () => void;
   children: ReactNode;
 }) {
-  const title = navItems.find((item) => item.key === route)?.label ?? "แดชบอร์ด";
+  const title = navItems.find((item) => item.key === route)?.label ?? "Dashboard";
   const [panel, setPanel] = useState<"more" | "profile" | null>(null);
   const email = session.user.email ?? "ผู้ใช้ Supabase";
   const profileInitial = email.trim().slice(0, 1).toUpperCase();
