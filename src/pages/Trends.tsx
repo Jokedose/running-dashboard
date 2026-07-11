@@ -220,7 +220,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Sleep quality" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-6">
+        <Panel title="Sleep quality" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-12">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={sleepRows} margin={chartMargin}>
               <ChartGradientDefs />

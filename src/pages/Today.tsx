@@ -203,6 +203,19 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
+        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+          <div className={`coach-verdict ${verdict.tone}`}>
+            <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
+            <div>
+              <strong>{verdict.title}</strong><p>{verdict.message}</p>
+              <div className="mini-metrics">
+                <span>RPE {thaiText(lastRun?.rpe)}</span><span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
+                <span>Decoupling {percent(lastRun?.decoupling_percent)}</span><span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>
+              </div>
+            </div>
+          </div>
+        </Panel>
+
         <Panel title="🤖 Smart coach advice" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {coachAdvice.map((a, i) => {
@@ -219,20 +232,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
-          <div className={`coach-verdict ${verdict.tone}`}>
-            <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
-            <div>
-              <strong>{verdict.title}</strong><p>{verdict.message}</p>
-              <div className="mini-metrics">
-                <span>RPE {thaiText(lastRun?.rpe)}</span><span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
-                <span>Decoupling {percent(lastRun?.decoupling_percent)}</span><span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>
-              </div>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel title="HRV · Sleep (14 days)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
+        <Panel title="HRV · Sleep (14 days)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-6">
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={recentDaily} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />
@@ -245,7 +245,7 @@ export function Today({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Progress overview" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-12">
+        <Panel title="Progress overview" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-6">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />
