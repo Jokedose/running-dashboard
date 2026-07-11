@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Target, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -32,7 +32,6 @@ const navItems: NavItem[] = [
   { key: "calendar", label: "Calendar", icon: CalendarRange },
   { key: "race", label: "Race", icon: Trophy },
   { key: "zone2", label: "Zone 2", icon: Gauge },
-  { key: "pace", label: "Pace", icon: Target },
   { key: "weekly", label: "Weekly", icon: Activity },
   // { key: "monthly", label: "Monthly", icon: CalendarRange }, // ซ่อนชั่วคราว
   { key: "trends", label: "Trends", icon: TrendingUp },
@@ -56,7 +55,6 @@ const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: mo
 const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
 const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default: module.Monthly })));
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
-const Pace = lazy(() => import("./pages/Pace").then((module) => ({ default: module.Pace })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
 const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
 
@@ -192,7 +190,6 @@ function App() {
     if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
-    if (route === "pace") return <Pace data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
     if (route === "monthly") return <Monthly data={data} />;
     if (route === "trends") return <Trends data={data} />;
