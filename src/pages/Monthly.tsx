@@ -94,7 +94,7 @@ export function Monthly({ data }: { data: DashboardData }) {
           <DataRow label="จำนวนวิ่ง" value={`${agg.runs} ครั้ง`} />
           <DataRow label="วิ่งยาว" value={`${agg.longRuns} ครั้ง`} />
           <DataRow label="ซ้อมคุณภาพ" value={`${agg.quality} ครั้ง`} />
-          <DataRow label="avg pace" value={pace(agg.paceSec)} />
+          <DataRow label="เพซเฉลี่ย" value={pace(agg.paceSec)} />
           {agg.avgWeightKg != null && <DataRow label="น้ำหนักเฉลี่ย" value={`${agg.avgWeightKg.toFixed(1)} kg`} />}
         </div>
 

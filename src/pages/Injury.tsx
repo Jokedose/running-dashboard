@@ -190,7 +190,7 @@ export function Injury({ data }: { data: DashboardData }) {
       )}
 
       <div className="content-grid">
-        <Panel title="Timeline อาการเจ็บ" subtitle="จาก pain note ใน run log (ล่าสุดก่อน)" className="span-7">
+        <Panel title="ไทม์ไลน์อาการเจ็บ" subtitle="จาก pain note ใน run log (ล่าสุดก่อน)" className="span-7">
           {niggles.length === 0 ? (
             <p className="chart-note">ยังไม่มีอาการเจ็บที่บันทึก — รักษาแบบนี้ไว้</p>
           ) : (
@@ -231,7 +231,7 @@ export function Injury({ data }: { data: DashboardData }) {
           )}
         </Panel>
 
-        <Panel title="Return-to-run guide" subtitle="หลักกลับวิ่งหลังบาดเจ็บ" className="span-12">
+        <Panel title="แนวทางกลับมาวิ่ง" subtitle="หลักกลับวิ่งหลังบาดเจ็บ" className="span-12">
           <ul className="clean-list">
             <li>กลับวิ่งเมื่อ <b>เดิน + กดจุดเจ็บไม่เจ็บ</b> เท่านั้น</li>
             <li>เริ่ม run/walk หรือ continuous easy สั้น (20-30 นาที) ดู onset pain</li>

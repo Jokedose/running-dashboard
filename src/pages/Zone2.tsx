@@ -117,7 +117,7 @@ export function Zone2({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="Cadence trend" subtitle={`รอบขา spm · เป้า ${TARGET_CADENCE_MIN}–${TARGET_CADENCE_MAX} · ต่ำกว่า 165 = stride สูง risk บาดเจ็บ`} className="span-12">
+        <Panel title="แนวโน้ม cadence" subtitle={`รอบขา spm · เป้า ${TARGET_CADENCE_MIN}–${TARGET_CADENCE_MAX} · ต่ำกว่า 165 = stride สูง risk บาดเจ็บ`} className="span-12">
           <ResponsiveContainer width="100%" height={260}>
             <LineChart data={cadenceRows} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />

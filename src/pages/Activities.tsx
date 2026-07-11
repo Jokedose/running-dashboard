@@ -103,8 +103,8 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
           <span className="cal-block-title">🦵 Biomechanics</span>
           <div className="cal-data-grid">
             <DataRow label="Cadence" value={`${run.cadence_spm?.toFixed(0) ?? "-"} spm${cadenceWarn ? " ⚠ ต่ำกว่า 168" : ""}`} />
-            <DataRow label="Stride length" value={`${run.stride_cm?.toFixed(1) ?? "-"} cm`} />
-            <DataRow label="Ground contact" value={`${run.gct_ms?.toFixed(0) ?? "-"} ms`} />
+            <DataRow label="ความยาวก้าว" value={`${run.stride_cm?.toFixed(1) ?? "-"} cm`} />
+            <DataRow label="เวลาสัมผัสพื้น" value={`${run.gct_ms?.toFixed(0) ?? "-"} ms`} />
             <DataRow label="Power" value={`${run.power_w?.toFixed(0) ?? "-"} w`} />
           </div>
         </div>
@@ -164,7 +164,7 @@ export function Activities({ data }: { data: DashboardData }) {
         <MetricCard label="เพซเฉลี่ยรวม" value={pace(avgPaceSeconds)} detail="คำนวณจากเวลารวมและระยะรวม" icon={Clock3} />
       </div>
 
-      <Panel title="Pain / soreness timeline" subtitle={`30 ครั้งล่าสุด · มีอาการ ${painCount} ครั้ง`}>
+      <Panel title="ไทม์ไลน์อาการเจ็บ/ปวด" subtitle={`30 ครั้งล่าสุด · มีอาการ ${painCount} ครั้ง`}>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
           {recentPain.map((p) => (
             <div key={p.date} title={`${p.date} · ${p.session ?? ""} · ${p.pain ?? "ไม่มี"}`}

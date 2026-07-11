@@ -72,7 +72,7 @@ function DisneyRunPacingPlan() {
         <div>⏱ รวม ≈ <b style={{ color: "var(--color-ink)" }}>1:29:20</b> (buffer 40 วิ ใต้ 1:30) · เฉลี่ย ~8:56/km</div>
         <div>🌙 Gun start 04:00 น. = เย็นสุดของวัน ไม่มีแดด — heat ไม่ใช่ปัญหาใหญ่ แต่ชื้น จิบน้ำทุกจุด</div>
         <div>⛰ <b style={{ color: "var(--color-ink)" }}>climb อยู่ต้นเกม (กม.1-2)</b> ช้า/หนัก = ปกติ อย่าเร่งชด · ทุนอยู่ทางยกระดับ + descent กม.8</div>
-        <div>🚦 <b style={{ color: "var(--color-ink)" }}>Decision gate กม.5:</b> HR นิ่ง → ลุย 1:30 / HR พุ่ง → ดรอป B (1:40-1:50)</div>
+        <div>🚦 <b style={{ color: "var(--color-ink)" }}>จุดตัดสินใจ กม.5:</b> HR นิ่ง → ลุย 1:30 / HR พุ่ง → ดรอป B (1:40-1:50)</div>
       </div>
     </div>
   );
@@ -249,8 +249,8 @@ function RacePaceCalculator({ targetMin }: { targetMin: number }) {
           <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
             <th style={{ textAlign: "left", padding: "8px 6px" }}>Km</th>
             <th style={{ textAlign: "right", padding: "8px 6px" }}>Pace</th>
-            <th style={{ textAlign: "right", padding: "8px 6px" }}>Cumulative</th>
-            <th style={{ textAlign: "left", padding: "8px 6px" }}>Strategy</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>สะสม</th>
+            <th style={{ textAlign: "left", padding: "8px 6px" }}>กลยุทธ์</th>
           </tr>
         </thead>
         <tbody>
@@ -384,7 +384,7 @@ export function Race({ data }: { data: DashboardData }) {
             tone="good"
           />
           <MetricCard
-            label="COROS 10K prediction"
+            label="COROS ทำนาย 10K"
             value={raceTime(coros10k)}
             detail={corosDelta == null ? undefined : corosDelta <= 0 ? `เกินเป้า A ${Math.abs(corosDelta).toFixed(1)} นาที` : `ช้ากว่าเป้า A ${corosDelta.toFixed(1)} นาที`}
             icon={Trophy}
@@ -539,7 +539,7 @@ export function Race({ data }: { data: DashboardData }) {
           </Panel>
         )}
 
-        <Panel title="🏆 Personal Records" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
+        <Panel title="🏆 สถิติส่วนตัว" subtitle="สถิติส่วนตัวจากทุก session ที่ผ่านมา" className="span-12">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             {[
               { label: "Longest run", value: km(longestRun?.distance_km), sub: longestRun?.run_date, icon: "🏔" },
@@ -562,7 +562,7 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🧮 Race pace calculator" subtitle={`Split plan สำหรับ ${raceTime(TARGET_MINUTES)} · conservative start strategy`} className="span-12">
+        <Panel title="🧮 คำนวณเพซวันแข่ง" subtitle={`แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`} className="span-12">
           <RacePaceCalculator targetMin={TARGET_MINUTES} />
         </Panel>
 

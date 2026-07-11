@@ -65,7 +65,7 @@ export function Pace({ data }: { data: DashboardData }) {
   return (
     <section className="page-stack">
       <Panel
-        title="Calibration → Pace & HR Zones"
+        title="คาลิเบรต → โซนเพซ & HR"
         subtitle="กรอกค่าอ้างอิงเพื่อคำนวณโซนซ้อมของตัวเอง (ค่าเริ่มต้นดึงจากข้อมูลล่าสุด)"
       >
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>

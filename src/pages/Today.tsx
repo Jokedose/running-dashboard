@@ -203,7 +203,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🤖 Smart coach advice" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
+        <Panel title="🤖 คำแนะนำจากโค้ช" subtitle="คำแนะนำจากสัญญาณรวม" className="span-12">
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {coachAdvice.map((a, i) => {
               const color = a.tone === "hot" ? "#9d1c37" : a.tone === "warn" ? "#7a5300" : "#1a6847";
@@ -219,7 +219,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+        <Panel title="สรุปจากโค้ช" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
           <div className={`coach-verdict ${verdict.tone}`}>
             <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
             <div>
