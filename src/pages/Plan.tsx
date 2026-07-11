@@ -250,7 +250,7 @@ export function Plan({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="โฟกัสสัปดาห์นี้" subtitle={activeWeek ?? "แสดงจากแผนที่กำลังจะมาถึง"} className="span-7">
+        <Panel title="This week's focus" subtitle={activeWeek ?? "แสดงจากแผนที่กำลังจะมาถึง"} className="span-7">
           <div className="plan-focus-grid smart-plan-grid">
             {weekPlan.slice(0, 4).map((item) => (
               <article className={`plan-focus-card ${item.priority ?? "normal"}`} key={item.id}>
@@ -264,7 +264,7 @@ export function Plan({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="สัญญาณสำคัญ" subtitle="ดูง่ายก่อนตัดสินใจซ้อม" className="span-5">
+        <Panel title="Key signals" subtitle="ดูง่ายก่อนตัดสินใจซ้อม" className="span-5">
           <div className="signal-list">
             <div>
               <CalendarCheck size={18} />
@@ -284,7 +284,7 @@ export function Plan({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="ตารางซ้อมถัดไป" subtitle="จัดกลุ่มตาม Phase · sync จาก repo schedule" className="span-12">
+        <Panel title="Upcoming sessions" subtitle="จัดกลุ่มตาม Phase · sync จาก repo schedule" className="span-12">
           <div
             className="upcoming-training-scroll"
             style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}

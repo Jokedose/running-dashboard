@@ -72,7 +72,7 @@ function DisneyRunPacingPlan() {
         <div>⏱ รวม ≈ <b style={{ color: "var(--color-ink)" }}>1:29:20</b> (buffer 40 วิ ใต้ 1:30) · เฉลี่ย ~8:56/km</div>
         <div>🌙 Gun start 04:00 น. = เย็นสุดของวัน ไม่มีแดด — heat ไม่ใช่ปัญหาใหญ่ แต่ชื้น จิบน้ำทุกจุด</div>
         <div>⛰ <b style={{ color: "var(--color-ink)" }}>climb อยู่ต้นเกม (กม.1-2)</b> ช้า/หนัก = ปกติ อย่าเร่งชด · ทุนอยู่ทางยกระดับ + descent กม.8</div>
-        <div>🚦 <b style={{ color: "var(--color-ink)" }}>Decision gate กม.5:</b> HR นิ่ง → ลุย 1:30 / HR พุ่ง → ดรอป B (1:40-1:50)</div>
+        <div>🚦 <b style={{ color: "var(--color-ink)" }}>จุดตัดสินใจ กม.5:</b> HR นิ่ง → ลุย 1:30 / HR พุ่ง → ดรอป B (1:40-1:50)</div>
       </div>
     </div>
   );
@@ -384,7 +384,7 @@ export function Race({ data }: { data: DashboardData }) {
             tone="good"
           />
           <MetricCard
-            label="COROS 10K prediction"
+            label="COROS ทำนาย 10K"
             value={raceTime(coros10k)}
             detail={corosDelta == null ? undefined : corosDelta <= 0 ? `เกินเป้า A ${Math.abs(corosDelta).toFixed(1)} นาที` : `ช้ากว่าเป้า A ${corosDelta.toFixed(1)} นาที`}
             icon={Trophy}
@@ -432,7 +432,7 @@ export function Race({ data }: { data: DashboardData }) {
 
       <div className="content-grid">
         <Panel
-          title={`กราฟเป้าหมาย 10K · ${IS_B_RACE ? "B-race" : "A-race"}`}
+          title={`10K goal chart · ${IS_B_RACE ? "B-race" : "A-race"}`}
           subtitle="เปรียบเทียบสถานะจริงกับเส้นพัฒนาที่ควรเป็นจนถึงวันแข่ง"
           className="span-12 race-panel"
         >
@@ -521,17 +521,17 @@ export function Race({ data }: { data: DashboardData }) {
           </p>
         </Panel>
 
-        <Panel title="แนวทางตัดสินใจวันแข่ง" subtitle="แนวทางวันแข่ง" className="span-12">
+        <Panel title="Race-day decision guide" subtitle="แนวทางวันแข่ง" className="span-12">
           <div className="coach-card race-decision">
             <p>{thaiText(race?.race_decision)}</p>
           </div>
         </Panel>
-        <ListPanel title="จุดแข็ง" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
-        <ListPanel title="ความเสี่ยง" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+        <ListPanel title="Strengths" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
+        <ListPanel title="Risks" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
 
         {IS_B_RACE && (
           <Panel
-            title="🌉 แผนวันแข่ง Disney Run · Rama 8 + ทางยกระดับ"
+            title="🌉 Race-day plan · Disney Run · Rama 8 + expressway"
             subtitle="เป้า A 1:30 · ปรับตาม elevation จริง (สะพาน ×2, ทางยกระดับบรมราชชนนี, ออกตัว 04:00)"
             className="span-12"
           >
@@ -562,12 +562,12 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🧮 Race pace calculator" subtitle={`Split plan สำหรับ ${raceTime(TARGET_MINUTES)} · conservative start strategy`} className="span-12">
+        <Panel title="🧮 Race pace calculator" subtitle={`แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`} className="span-12">
           <RacePaceCalculator targetMin={TARGET_MINUTES} />
         </Panel>
 
         {race?.milestones && race.milestones.length > 0 && (
-          <Panel title="🎯 Milestones ที่ต้องผ่านก่อนแข่ง" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
+          <Panel title="🎯 Milestones before race day" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {race.milestones.map((m, i) => {
                 const color = m.status === "done" ? "#1a6847" : m.status === "skipped" ? "#9d1c37" : "#7a5300";

@@ -117,7 +117,7 @@ export function Load({ data }: { data: DashboardData }) {
 
       <div className="content-grid">
         <Panel
-          title="ACWR — อัตราส่วนโหลดเฉียบพลัน : เรื้อรัง"
+          title="ACWR — acute : chronic load ratio"
           subtitle="แถบเขียว 0.8–1.3 = ปลอดภัย · เกิน 1.5 = เสี่ยงบาดเจ็บ (42 วันล่าสุด)"
           className="span-12"
         >
@@ -146,7 +146,7 @@ export function Load({ data }: { data: DashboardData }) {
           )}
         </Panel>
 
-        <Panel title="อาการเจ็บ (niggle) ล่าสุด" subtitle="ดึงจากช่อง pain ใน run log (markdown source)" className="span-12">
+        <Panel title="Latest niggles" subtitle="ดึงจากช่อง pain ใน run log (markdown source)" className="span-12">
           {recentNiggles.length === 0 ? (
             <p className="chart-note">ยังไม่มีอาการเจ็บที่บันทึก — ดีมาก รักษา ACWR ในโซนเขียวต่อไป</p>
           ) : (

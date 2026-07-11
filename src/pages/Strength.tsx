@@ -36,7 +36,7 @@ export function Strength() {
         </div>
       )}
       <Panel
-        title="Kettlebell (8kg) — ตารางรายวัน + ท่าซ้อม"
+        title="Kettlebell (8kg) — daily plan + exercises"
         subtitle="แผน KB แต่ละวัน + คลังท่า (gif) · injury-safe = ทำได้ช่วงขาเจ็บ"
       >
         <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
@@ -84,7 +84,7 @@ export function Strength() {
         const items = list.filter((e) => e.group === g);
         if (!items.length) return null;
         return (
-          <Panel key={g} title={`คลังท่า · ${KB_GROUP_LABEL[g]}`} subtitle={`${items.length} ท่า`}>
+          <Panel key={g} title={`Exercise library · ${KB_GROUP_LABEL[g]}`} subtitle={`${items.length} ท่า`}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 14 }}>
               {items.map((ex) => (
                 <div key={ex.name} className="kb-card">

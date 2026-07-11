@@ -175,7 +175,7 @@ export function Injury({ data }: { data: DashboardData }) {
 
       {recurrenceAlert && (
         <div className="content-grid">
-          <Panel title="⚠️ เตือน: อาการซ้ำ" subtitle="จุดเดิมเจ็บหลายครั้งในเดือนนี้" className="span-12">
+          <Panel title="⚠️ Recurrence alert" subtitle="จุดเดิมเจ็บหลายครั้งในเดือนนี้" className="span-12">
             <div className="signal-list">
               <div>
                 <AlertTriangle size={16} />
@@ -190,7 +190,7 @@ export function Injury({ data }: { data: DashboardData }) {
       )}
 
       <div className="content-grid">
-        <Panel title="Timeline อาการเจ็บ" subtitle="จาก pain note ใน run log (ล่าสุดก่อน)" className="span-7">
+        <Panel title="Pain timeline" subtitle="จาก pain note ใน run log (ล่าสุดก่อน)" className="span-7">
           {niggles.length === 0 ? (
             <p className="chart-note">ยังไม่มีอาการเจ็บที่บันทึก — รักษาแบบนี้ไว้</p>
           ) : (
@@ -211,7 +211,7 @@ export function Injury({ data }: { data: DashboardData }) {
           )}
         </Panel>
 
-        <Panel title="จุดที่เจ็บ (ความถี่)" subtitle="รวมทุกบันทึก" className="span-5">
+        <Panel title="Pain locations" subtitle="รวมทุกบันทึก" className="span-5">
           {partRanked.length === 0 ? (
             <p className="chart-note">ยังไม่มีข้อมูล</p>
           ) : (

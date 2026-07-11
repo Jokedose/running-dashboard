@@ -190,7 +190,7 @@ export function Today({ data }: { data: DashboardData }) {
 
       {/* ── Content grid (ไม่เปลี่ยน) ── */}
       <div className="content-grid">
-        <Panel title="วิ่งล่าสุด" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
+        <Panel title="Latest run" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
             <strong>{sessionLabel(lastRun?.session_type)}</strong>
             <div className="mini-metrics">
@@ -200,6 +200,19 @@ export function Today({ data }: { data: DashboardData }) {
               {lastRun?.drift_bpm != null && <span>Drift {lastRun.drift_bpm.toFixed(1)} bpm</span>}
             </div>
             {lastRun?.note && <p className="run-note">{thaiText(lastRun.note)}</p>}
+          </div>
+        </Panel>
+
+        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+          <div className={`coach-verdict ${verdict.tone}`}>
+            <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
+            <div>
+              <strong>{verdict.title}</strong><p>{verdict.message}</p>
+              <div className="mini-metrics">
+                <span>RPE {thaiText(lastRun?.rpe)}</span><span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
+                <span>Decoupling {percent(lastRun?.decoupling_percent)}</span><span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>
+              </div>
+            </div>
           </div>
         </Panel>
 
@@ -219,20 +232,7 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
-          <div className={`coach-verdict ${verdict.tone}`}>
-            <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
-            <div>
-              <strong>{verdict.title}</strong><p>{verdict.message}</p>
-              <div className="mini-metrics">
-                <span>RPE {thaiText(lastRun?.rpe)}</span><span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
-                <span>Decoupling {percent(lastRun?.decoupling_percent)}</span><span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>
-              </div>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel title="HRV · การนอน (14 วัน)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-7">
+        <Panel title="HRV · Sleep (14 days)" subtitle="HRV ms (เส้น) · ชั่วโมงนอน (แท่ง)" className="span-6">
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={recentDaily} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />
@@ -245,7 +245,7 @@ export function Today({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="ภาพรวมความคืบหน้า" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-12">
+        <Panel title="Progress overview" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-6">
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />

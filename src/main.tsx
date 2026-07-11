@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Target, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -27,21 +27,20 @@ import { theme } from "./theme";
 import "./styles.css";
 
 const navItems: NavItem[] = [
-  { key: "plan", label: "10K แผน", icon: CalendarCheck },
-  { key: "today", label: "วันนี้", icon: CalendarDays },
-  { key: "calendar", label: "ปฏิทิน", icon: CalendarRange },
-  { key: "race", label: "แข่ง", icon: Trophy },
-  { key: "zone2", label: "โซน 2", icon: Gauge },
-  { key: "pace", label: "เพซโซน", icon: Target },
-  { key: "weekly", label: "สัปดาห์", icon: Activity },
-  // { key: "monthly", label: "เดือน", icon: CalendarRange }, // ซ่อนชั่วคราว
-  { key: "trends", label: "แนวโน้ม", icon: TrendingUp },
-  { key: "load", label: "โหลด", icon: HeartPulse },
-  { key: "injury", label: "บาดเจ็บ", icon: Cross },
-  { key: "strength", label: "เวต KB", icon: Dumbbell },
-  { key: "gear", label: "รองเท้า", icon: Footprints },
-  { key: "body", label: "ร่างกาย", icon: Scale },
-  { key: "activities", label: "กิจกรรม", icon: ShieldCheck },
+  { key: "plan", label: "10K Plan", icon: CalendarCheck },
+  { key: "today", label: "Today", icon: CalendarDays },
+  { key: "calendar", label: "Calendar", icon: CalendarRange },
+  { key: "race", label: "Race", icon: Trophy },
+  { key: "zone2", label: "Zone 2", icon: Gauge },
+  { key: "weekly", label: "Weekly", icon: Activity },
+  // { key: "monthly", label: "Monthly", icon: CalendarRange }, // ซ่อนชั่วคราว
+  { key: "trends", label: "Trends", icon: TrendingUp },
+  { key: "load", label: "Load", icon: HeartPulse },
+  { key: "injury", label: "Injury", icon: Cross },
+  { key: "strength", label: "Strength", icon: Dumbbell },
+  { key: "gear", label: "Gear", icon: Footprints },
+  { key: "body", label: "Body", icon: Scale },
+  { key: "activities", label: "Activities", icon: ShieldCheck },
 ];
 
 const Activities = lazy(() => import("./pages/Activities").then((module) => ({ default: module.Activities })));
@@ -56,7 +55,6 @@ const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: mo
 const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
 const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default: module.Monthly })));
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
-const Pace = lazy(() => import("./pages/Pace").then((module) => ({ default: module.Pace })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
 const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
 
@@ -192,7 +190,6 @@ function App() {
     if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
-    if (route === "pace") return <Pace data={data} />;
     if (route === "weekly") return <Weekly data={data} />;
     if (route === "monthly") return <Monthly data={data} />;
     if (route === "trends") return <Trends data={data} />;
