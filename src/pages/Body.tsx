@@ -87,12 +87,18 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
   const rows = data.body;
   const latest = rows[rows.length - 1] ?? null;
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState<Record<string, string>>({ measured_date: new Date().toISOString().slice(0, 10) });
+  // A review list — one entry per measurement. Manual entry seeds a single
+  // blank row; uploading images appends one row per successfully-read image.
+  const [entries, setEntries] = useState<Record<string, string>[]>([]);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ocrErr, setOcrErr] = useState<string | null>(null);
   const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const today = () => new Date().toISOString().slice(0, 10);
+  const blankEntry = () => ({ measured_date: today() });
 
   // Merge actual measurements with the recommended guide trajectory into one
   // date-sorted series. The guide starts from the latest actual weight so the
@@ -125,54 +131,82 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
     return { color: "#7a5300", text: "ช้ากว่าเป้า — อาจถึง 63 kg หลังวันแข่ง" };
   })();
 
-  async function onUpload(file: File) {
+  async function ocrOne(file: File): Promise<Record<string, string>> {
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
+    });
+    const out = await res.json();
+    if (!res.ok || out.error) {
+      // Surface the Claude API status + detail (e.g. 400 bad image) so the
+      // modal shows something actionable instead of failing silently.
+      const detail = typeof out.detail === "string" ? out.detail.slice(0, 300) : "";
+      throw new Error([out.error ?? `OCR failed (${res.status})`, detail].filter(Boolean).join(" — "));
+    }
+    const parsed = out.data as Record<string, number | string>;
+    // Use the date OCR read from the image (top of the screenshot, DD/MM/YYYY →
+    // YYYY-MM-DD). Fall back to today only when it's missing or malformed. The
+    // user can still edit it before saving.
+    const ocrDate = typeof parsed.measured_date === "string" ? parsed.measured_date.trim() : "";
+    const entry: Record<string, string> = {
+      measured_date: /^\d{4}-\d{2}-\d{2}$/.test(ocrDate) ? ocrDate : today(),
+    };
+    for (const [k, v] of Object.entries(parsed)) {
+      if (k === "measured_date") continue;
+      if (v != null && v !== "") entry[k] = String(v);
+    }
+    return entry;
+  }
+
+  async function onUpload(files: File[]) {
+    if (files.length === 0) return;
     setOcrBusy(true);
     setOcrErr(null);
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ocr-body-composition`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
-        body: JSON.stringify({ image: base64, mediaType: file.type || "image/jpeg" }),
-      });
-      const out = await res.json();
-      if (!res.ok || out.error) {
-        // Surface the Claude API status + detail (e.g. 400 bad image) so the
-        // modal shows something actionable instead of failing silently.
-        const detail = typeof out.detail === "string" ? out.detail.slice(0, 300) : "";
-        throw new Error([out.error ?? `OCR failed (${res.status})`, detail].filter(Boolean).join(" — "));
+    const parsed: Record<string, string>[] = [];
+    const failed: string[] = [];
+    for (let i = 0; i < files.length; i++) {
+      setOcrProgress(files.length > 1 ? `กำลังอ่านรูป ${i + 1}/${files.length}...` : "กำลังอ่านรูป...");
+      try {
+        parsed.push(await ocrOne(files[i]));
+      } catch (e) {
+        failed.push(`${files[i].name || `รูปที่ ${i + 1}`}: ${e instanceof Error ? e.message : "OCR error"}`);
       }
-      const parsed = out.data as Record<string, number | string>;
-      // Use the date OCR read from the image (top of the screenshot, DD/MM/YYYY →
-      // YYYY-MM-DD). Fall back to today only when it's missing or malformed. The
-      // user can still edit it before saving.
-      const today = new Date().toISOString().slice(0, 10);
-      const ocrDate = typeof parsed.measured_date === "string" ? parsed.measured_date.trim() : "";
-      const next: Record<string, string> = {
-        measured_date: /^\d{4}-\d{2}-\d{2}$/.test(ocrDate) ? ocrDate : today,
-      };
-      for (const [k, v] of Object.entries(parsed)) {
-        if (k === "measured_date") continue;
-        if (v != null && v !== "") next[k] = String(v);
-      }
-      setForm(next);
-      setShowForm(true);
-    } catch (e) {
-      setOcrErr(e instanceof Error ? e.message : "OCR error");
-    } finally {
-      setOcrBusy(false);
     }
+    setOcrProgress(null);
+    setOcrBusy(false);
+    if (parsed.length > 0) {
+      // Append the newly-read rows to whatever is already in the review list,
+      // sorted by date so the list reads chronologically.
+      setEntries((prev) => [...prev, ...parsed].sort((a, b) => (a.measured_date ?? "").localeCompare(b.measured_date ?? "")));
+      setShowForm(true);
+    }
+    if (failed.length > 0) setOcrErr(`อ่านไม่สำเร็จ ${failed.length} รูป:\n${failed.join("\n")}`);
+  }
+
+  function updateEntry(idx: number, key: string, value: string) {
+    setEntries((prev) => prev.map((e, i) => (i === idx ? { ...e, [key]: value } : e)));
+  }
+
+  function removeEntry(idx: number) {
+    setEntries((prev) => prev.filter((_, i) => i !== idx));
   }
 
   async function save() {
+    const rowsToSave = entries.filter((e) => e.measured_date);
+    if (rowsToSave.length === 0) {
+      setErr("ต้องมีวันที่อย่างน้อย 1 แถว");
+      return;
+    }
     setSaving(true);
     setErr(null);
     const { data: userData } = await supabase.auth.getUser();
@@ -182,13 +216,16 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       setSaving(false);
       return;
     }
-    const payload: Record<string, unknown> = { user_id: uid, source: "manual" };
-    for (const f of FIELD_DEFS) {
-      const v = form[f.key];
-      if (v == null || v === "") continue;
-      payload[f.key] = f.key === "measured_date" ? v : Number(v);
-    }
-    const { error } = await supabase.from("body_composition").upsert(payload, { onConflict: "user_id,measured_date" });
+    const payloads = rowsToSave.map((entry) => {
+      const payload: Record<string, unknown> = { user_id: uid, source: "manual" };
+      for (const f of FIELD_DEFS) {
+        const v = entry[f.key];
+        if (v == null || v === "") continue;
+        payload[f.key] = f.key === "measured_date" ? v : Number(v);
+      }
+      return payload;
+    });
+    const { error } = await supabase.from("body_composition").upsert(payloads, { onConflict: "user_id,measured_date" });
     if (error) {
       setErr(error.message);
       setSaving(false);
@@ -196,7 +233,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
     }
     setSaving(false);
     setShowForm(false);
-    setForm({ measured_date: new Date().toISOString().slice(0, 10) });
+    setEntries([]);
     onSaved();
   }
 
@@ -256,35 +293,48 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
           className="span-12"
           action={
             <div style={{ display: "flex", gap: 8 }}>
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }} />
+              <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { const fs = Array.from(e.target.files ?? []); if (fs.length) onUpload(fs); e.target.value = ""; }} />
               <button type="button" onClick={() => fileRef.current?.click()} disabled={ocrBusy} style={{ minHeight: 32, padding: "0 12px", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <Upload size={14} />{ocrBusy ? "กำลังอ่านรูป..." : "อัปโหลดรูป"}
+                <Upload size={14} />{ocrBusy ? (ocrProgress ?? "กำลังอ่านรูป...") : "อัปโหลดรูป"}
               </button>
-              <button type="button" onClick={() => setShowForm((s) => !s)} style={{ minHeight: 32, padding: "0 12px", fontSize: 13, background: "transparent", color: "var(--color-ink)", border: "1px solid var(--color-line)" }}>{showForm ? "ปิด" : "กรอกเอง"}</button>
+              <button type="button" onClick={() => { if (showForm) { setShowForm(false); } else { setEntries((prev) => (prev.length ? prev : [blankEntry()])); setShowForm(true); } }} style={{ minHeight: 32, padding: "0 12px", fontSize: 13, background: "transparent", color: "var(--color-ink)", border: "1px solid var(--color-line)" }}>{showForm ? "ปิด" : "กรอกเอง"}</button>
             </div>
           }
         >
           {showForm && (
             <div style={{ marginBottom: 16, padding: 14, border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-nav)" }}>
-              <p style={{ fontSize: 12, color: "var(--color-muted)", margin: "0 0 10px" }}>ตรวจค่าที่อ่านจากรูปก่อนบันทึก — แก้ตรงไหนก็ได้</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
-                {FIELD_DEFS.map((f) => (
-                  <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--color-muted)" }}>
-                    {f.label}
-                    <input
-                      type={f.key === "measured_date" ? "date" : "number"}
-                      step={f.step}
-                      value={form[f.key] ?? ""}
-                      onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                      style={{ minHeight: 34, fontSize: 13 }}
-                    />
-                  </label>
-                ))}
-              </div>
+              <p style={{ fontSize: 12, color: "var(--color-muted)", margin: "0 0 10px" }}>
+                ตรวจค่าที่อ่านจากรูปก่อนบันทึก — แก้ตรงไหนก็ได้ · อัปโหลดหลายรูปพร้อมกันได้ ({entries.length} รายการ)
+              </p>
+              {entries.map((entry, idx) => (
+                <div key={idx} style={{ marginBottom: 12, padding: 12, border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--color-ink)" }}>รายการ {idx + 1} · {entry.measured_date || "ไม่มีวันที่"}</span>
+                    <button type="button" onClick={() => removeEntry(idx)} style={{ minHeight: 28, padding: "0 10px", fontSize: 12, background: "transparent", color: "#9d1c37", border: "1px solid var(--color-line)" }}>ลบ</button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+                    {FIELD_DEFS.map((f) => (
+                      <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 12, color: "var(--color-muted)" }}>
+                        {f.label}
+                        <input
+                          type={f.key === "measured_date" ? "date" : "number"}
+                          step={f.step}
+                          value={entry[f.key] ?? ""}
+                          onChange={(e) => updateEntry(idx, f.key, e.target.value)}
+                          style={{ minHeight: 34, fontSize: 13 }}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
               {err && <p style={{ color: "#9d1c37", fontSize: 13, marginTop: 8 }}>{err}</p>}
-              <button type="button" onClick={save} disabled={saving} style={{ marginTop: 12, minHeight: 38, padding: "0 18px" }}>
-                {saving ? "กำลังบันทึก..." : "บันทึก"}
-              </button>
+              <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <button type="button" onClick={save} disabled={saving || entries.length === 0} style={{ minHeight: 38, padding: "0 18px" }}>
+                  {saving ? "กำลังบันทึก..." : `บันทึก${entries.length > 1 ? ` ${entries.length} รายการ` : ""}`}
+                </button>
+                <button type="button" onClick={() => setEntries((prev) => [...prev, blankEntry()])} style={{ minHeight: 38, padding: "0 14px", background: "transparent", color: "var(--color-ink)", border: "1px solid var(--color-line)" }}>+ เพิ่มแถว</button>
+              </div>
             </div>
           )}
           <ResponsiveContainer width="100%" height={300}>
