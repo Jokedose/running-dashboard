@@ -3,7 +3,7 @@
 // verify_jwt is enabled by default, so only authenticated dashboard users can call it.
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-sonnet-5";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -23,7 +23,6 @@ const TOOL = {
       body_score: { type: "integer", description: "Body score, typically 60-100. NOT visceral fat level." },
       body_fat_pct: { type: "number", description: "Body fat % (เปอร์เซ็นต์ไขมันในร่างกาย), near the top next to BMI, typically 18-25." },
       body_fat_mass_kg: { type: "number", description: "Fat mass in kg (มวลไขมัน). Sanity check: this ≈ weight_kg × body_fat_pct / 100. Usually LARGER than protein mass. Listed near the top of องค์ประกอบของร่างกาย." },
-      subcutaneous_fat_pct: { type: "number", description: "Subcutaneous fat percent (เปอร์เซ็นต์ไขมัน), typically 15-22. The LARGER fat % value, NOT the small ไขมันช่องท้อง/visceral percent (~4%)." },
       visceral_fat_level: { type: "number", description: "Visceral fat LEVEL (ระดับไขมันในอวัยวะใน), a small standalone integer 1-15 with NO unit. NOT the ไขมันช่องท้อง percent." },
       muscle_mass_kg: { type: "number", description: "Muscle mass kg (มวลกล้ามเนื้อ), typically 50-55." },
       muscle_pct: { type: "number", description: "Muscle percent (เปอร์เซ็นต์ของกล้ามเนื้อ), with %, typically 70-78." },
@@ -40,8 +39,8 @@ const TOOL = {
 
 const PROMPT =
   "This is a COROS / smart-scale body composition screenshot in Thai. Each metric has a NUMBER directly above its Thai LABEL. Match each number to its label CAREFULLY using the field descriptions. " +
-  "IMPORTANT: the image contains EXTRA values that do NOT map to any field — ignore them: มวลน้ำในร่างกาย (body water MASS ~38 kg, we only want body water PERCENT), ไขมันช่องท้อง percent (~4%), and any ratio like 0.7. " +
-  "Do not let these extra values push into skeletal_muscle, subcutaneous_fat_pct, body_water_pct, or fat_free_mass. " +
+  "IMPORTANT: the image contains EXTRA values that do NOT map to any field — ignore them: มวลน้ำในร่างกาย (body water MASS ~38 kg, we only want body water PERCENT), เปอร์เซ็นต์แร่ธาตุในกระดูก (bone mineral %, ~4%), and any ratio like 0.7. " +
+  "Do not let these extra values push into skeletal_muscle, body_water_pct, or fat_free_mass. " +
   "The date at the very top is DD/MM/YYYY HH:MM (day first) — read the DAY digits carefully then convert to YYYY-MM-DD (e.g. '15/06/2026 07:56' -> '2026-06-15'). " +
   "The องค์ประกอบของร่างกาย section lists masses in this order: มวลน้ำในร่างกาย (ignore), มวลไขมัน (=fat mass, larger), แร่ธาตุกระดูก (bone), มวลโปรตีน (=protein, smaller, last). " +
   "Read each value exactly. Omit any field you cannot read with high confidence.";
