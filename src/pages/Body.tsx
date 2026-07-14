@@ -29,7 +29,6 @@ const FIELD_DEFS: { key: FieldKey | "measured_date"; label: string; step?: strin
   { key: "body_score", label: "คะแนนร่างกาย" },
   { key: "body_fat_pct", label: "ไขมัน %", step: "0.1" },
   { key: "body_fat_mass_kg", label: "มวลไขมัน (kg)", step: "0.1" },
-  { key: "subcutaneous_fat_pct", label: "ไขมันใต้ผิว %", step: "0.1" },
   { key: "visceral_fat_level", label: "ไขมันในช่องท้อง", step: "0.1" },
   { key: "muscle_mass_kg", label: "มวลกล้ามเนื้อ (kg)", step: "0.1" },
   { key: "muscle_pct", label: "กล้ามเนื้อ %", step: "0.1" },
