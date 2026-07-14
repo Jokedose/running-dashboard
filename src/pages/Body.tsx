@@ -151,9 +151,14 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
         throw new Error([out.error ?? `OCR failed (${res.status})`, detail].filter(Boolean).join(" — "));
       }
       const parsed = out.data as Record<string, number | string>;
-      // Default to today — the user uploads the morning's photo, and OCR date digits
-      // (e.g. 15 vs 13) are the least reliable field. They can still edit it.
-      const next: Record<string, string> = { measured_date: new Date().toISOString().slice(0, 10) };
+      // Use the date OCR read from the image (top of the screenshot, DD/MM/YYYY →
+      // YYYY-MM-DD). Fall back to today only when it's missing or malformed. The
+      // user can still edit it before saving.
+      const today = new Date().toISOString().slice(0, 10);
+      const ocrDate = typeof parsed.measured_date === "string" ? parsed.measured_date.trim() : "";
+      const next: Record<string, string> = {
+        measured_date: /^\d{4}-\d{2}-\d{2}$/.test(ocrDate) ? ocrDate : today,
+      };
       for (const [k, v] of Object.entries(parsed)) {
         if (k === "measured_date") continue;
         if (v != null && v !== "") next[k] = String(v);
