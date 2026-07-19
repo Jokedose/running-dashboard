@@ -30,7 +30,7 @@ const replacements: Array<[RegExp, string]> = [
 ];
 
 // ลบ markdown ที่หลุดมาจาก source (bold **, italic *, inline code `)
-function stripMarkdown(text: string): string {
+export function stripMarkdown(text: string): string {
   return text
     .replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/(?<!\*)\*(?!\*)([^*]+?)\*(?!\*)/g, "$1")
