@@ -12,36 +12,89 @@ import { BrandLogo } from "../components/BrandLogo";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
-import type { DashboardData, PacingSplit, RunLog } from "../types";
+import type { ActualSplit, DashboardData, PacingSplit, RunLog } from "../types";
 import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { classifySession, isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
-function RoutePacingPlan({ splits, rules }: { splits: PacingSplit[]; rules: string[] | null }) {
+function cumToSec(value: string): number | null {
+  const match = value.match(/^(\d+):(\d{2})$/);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function formatMmSs(sec: number): string {
+  const s = Math.round(sec);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function RoutePacingPlan({
+  splits,
+  rules,
+  actualSplits,
+}: {
+  splits: PacingSplit[];
+  rules: string[] | null;
+  actualSplits?: ActualSplit[] | null;
+}) {
   const phaseBg: Record<string, string> = { climb: "#fef3c7", flat: "#dff7f2", descent: "#dbeafe", finish: "#fee2e8" };
+  const actualByKm = new Map((actualSplits ?? []).filter((s) => Number.isInteger(s.km)).map((s) => [s.km, s]));
+  const hasActual = actualByKm.size > 0;
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", fontSize: "0.85rem" }}>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
             <th style={{ textAlign: "left", padding: "8px 6px" }}>Km</th>
-            <th style={{ textAlign: "right", padding: "8px 6px" }}>Pace</th>
-            <th style={{ textAlign: "right", padding: "8px 6px" }}>สะสม</th>
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>{hasActual ? "แผน pace" : "Pace"}</th>
+            {hasActual && <th style={{ textAlign: "right", padding: "8px 6px" }}>จริง pace</th>}
+            <th style={{ textAlign: "right", padding: "8px 6px" }}>{hasActual ? "แผน สะสม" : "สะสม"}</th>
+            {hasActual && <th style={{ textAlign: "right", padding: "8px 6px" }}>จริง สะสม</th>}
+            {hasActual && <th style={{ textAlign: "right", padding: "8px 6px" }}>Δ</th>}
+            {hasActual && <th style={{ textAlign: "right", padding: "8px 6px" }}>HR</th>}
             <th style={{ textAlign: "left", padding: "8px 6px" }}>โน้ต</th>
           </tr>
         </thead>
         <tbody>
-          {splits.map((r) => (
-            <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
-              <td style={{ padding: "8px 6px", fontWeight: 650 }}>
-                <span style={{ background: phaseBg[r.phase], padding: "2px 8px", borderRadius: 4 }}>{r.km}</span>
-              </td>
-              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.pace}</td>
-              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.cum}</td>
-              <td style={{ padding: "8px 6px", fontSize: "0.8rem" }}>{r.note}</td>
-            </tr>
-          ))}
+          {splits.map((r) => {
+            const actual = actualByKm.get(r.km);
+            const planCumSec = cumToSec(r.cum);
+            const delta = actual != null && planCumSec != null ? actual.cum_sec - planCumSec : null;
+            return (
+              <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
+                <td style={{ padding: "8px 6px", fontWeight: 650 }}>
+                  <span style={{ background: phaseBg[r.phase], padding: "2px 8px", borderRadius: 4 }}>{r.km}</span>
+                </td>
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.pace}</td>
+                {hasActual && (
+                  <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>
+                    {actual ? formatMmSs(actual.split_sec) : "-"}
+                  </td>
+                )}
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.cum}</td>
+                {hasActual && (
+                  <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>
+                    {actual ? formatMmSs(actual.cum_sec) : "-"}
+                  </td>
+                )}
+                {hasActual && (
+                  <td style={{ padding: "8px 6px", textAlign: "right" }}>
+                    {delta == null ? (
+                      "-"
+                    ) : (
+                      <span style={{ color: delta <= 0 ? "#1a6847" : "#9d1c37", fontWeight: 650 }}>
+                        {delta <= 0 ? "-" : "+"}
+                        {formatMmSs(Math.abs(delta))}
+                      </span>
+                    )}
+                  </td>
+                )}
+                {hasActual && <td style={{ padding: "8px 6px", textAlign: "right" }}>{actual?.hr_avg ?? "-"}</td>}
+                <td style={{ padding: "8px 6px", fontSize: "0.8rem" }}>{r.note}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {rules && rules.length > 0 && (
@@ -293,7 +346,7 @@ function RaceResultCard({ race }: { race: NonNullable<DashboardData["race"]> }) 
         />
       </div>
       {race.result_note ? (
-        <Panel title="สรุปผลแข่ง" subtitle="บันทึกจาก race day" className="span-12">
+        <Panel title="สรุปผลแข่ง" subtitle="บันทึกจาก race day">
           <p style={{ margin: 0, lineHeight: 1.7 }}>{thaiText(race.result_note)}</p>
         </Panel>
       ) : null}
@@ -354,7 +407,7 @@ export function Race({ data }: { data: DashboardData }) {
   if (!race && !currentGoal) {
     return (
       <section className="page-stack">
-        <Panel title="ยังไม่มีการตั้งเป้าแข่งขัน" subtitle="เพิ่มไฟล์เป้าหมายใน running-results/goals/ แล้ว sync เพื่อดูหน้านี้" className="span-12">
+        <Panel title="ยังไม่มีการตั้งเป้าแข่งขัน" subtitle="เพิ่มไฟล์เป้าหมายใน running-results/goals/ แล้ว sync เพื่อดูหน้านี้">
           <p className="chart-note">ยังไม่มีข้อมูล race goal หรือผลแข่งในระบบ</p>
         </Panel>
       </section>
@@ -555,12 +608,16 @@ export function Race({ data }: { data: DashboardData }) {
             title={`🌉 Race-day plan · ${currentGoal.race_name ?? ""}`}
             subtitle={
               raceCompleted
-                ? "แผนก่อนวันแข่ง — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง"
+                ? "แผนเทียบผลจริงรายกิโล — เก็บไว้เป็นข้อมูลอ้างอิง"
                 : "แผน pacing ตามเส้นทางจริง"
             }
             className="span-12"
           >
-            <RoutePacingPlan splits={currentGoal.pacing_splits} rules={currentGoal.route_rules} />
+            <RoutePacingPlan
+              splits={currentGoal.pacing_splits}
+              rules={currentGoal.route_rules}
+              actualSplits={race?.actual_splits}
+            />
           </Panel>
         )}
 

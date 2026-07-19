@@ -69,6 +69,13 @@ export type GearMileage = {
   used_percent: number | null;
 };
 
+export type ActualSplit = {
+  km: number;
+  split_sec: number;
+  cum_sec: number;
+  hr_avg: number | null;
+};
+
 export type RaceReadiness = {
   id: string;
   race_date: string;
@@ -96,6 +103,7 @@ export type RaceReadiness = {
   target_achieved: string | null;
   cutoff_buffer_min: number | null;
   result_note: string | null;
+  actual_splits: ActualSplit[] | null;
 };
 
 export type Milestone = {
