@@ -199,6 +199,23 @@ export type RaceGoal = {
   updated_at: string | null;
 };
 
+export type WeightMilestone = {
+  date: string;
+  weight: number;
+  note: string;
+};
+
+export type PersonalTargets = {
+  id: string;
+  target_weight_kg: number | null;
+  target_body_fat_pct: number | null;
+  target_cadence_min: number | null;
+  target_cadence_max: number | null;
+  weight_milestones: WeightMilestone[] | null;
+  source_path: string | null;
+  updated_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -210,6 +227,7 @@ export type DashboardData = {
   monthly: MonthlySummary[];
   injuries: InjuryStatus[];
   raceGoals: RaceGoal[];
+  personalTargets: PersonalTargets | null;
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";

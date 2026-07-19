@@ -6,19 +6,12 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import { supabase } from "../supabase";
 import type { BodyComposition, DashboardData } from "../types";
+import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { shortDate } from "../utils/format";
 
-const TARGET_WEIGHT = 63;
-const TARGET_BODY_FAT = 18;
-const RACE_DAY = "2026-12-06";
-
-// เส้นแนะนำ: คงน้ำหนักช่วง peak ก.ค. แล้วค่อยๆ ลดไป 63 kg ภายใน ธ.ค.
-const GUIDE_MILESTONES: { date: string; weight: number; note: string }[] = [
-  { date: "2026-07-19", weight: 70, note: "B-race — คงน้ำหนัก ไม่ลดช่วง peak" },
-  { date: "2026-09-01", weight: 68, note: "Phase B — เริ่มลดไขมันเบาๆ" },
-  { date: "2026-10-15", weight: 66, note: "Phase C — ลดต่อเนื่อง" },
-  { date: "2026-12-06", weight: TARGET_WEIGHT, note: `A-race — เป้า ${TARGET_WEIGHT} kg` },
-];
+// body-fat target ยังไม่มีแหล่งข้อมูลใน profile.md — ใช้เป็น fallback
+// เมื่อ personalTargets.target_body_fat_pct เป็น null (ดู plan Phase 2)
+const FALLBACK_TARGET_BODY_FAT = 18;
 
 type FieldKey = keyof Omit<BodyComposition, "id" | "measured_date" | "source">;
 
@@ -51,8 +44,8 @@ function delta(rows: BodyComposition[], key: FieldKey): string | undefined {
   return `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toFixed(1)} จากครั้งก่อน`;
 }
 
-// Linear regression บนน้ำหนักจริง — ทำนายวันที่ถึงเป้า และน้ำหนักคาดวันแข่ง
-function weightProjection(rows: BodyComposition[]) {
+// Linear regression บนน้ำหนักจริง — ทำนายวันที่ถึงเป้า และน้ำหนักคาดวันแข่ง (ถ้ามีวันแข่ง)
+function weightProjection(rows: BodyComposition[], targetWeight: number, deadline: string | null) {
   const pts = rows
     .filter((r) => r.weight_kg != null)
     .map((r) => ({ t: Date.parse(`${r.measured_date}T00:00:00Z`), w: r.weight_kg as number }))
@@ -72,11 +65,10 @@ function weightProjection(rows: BodyComposition[]) {
   const slope = (n * sxy - sx * sy) / denom; // kg/วัน
   const intercept = (sy - slope * sx) / n;
   const perWeek = slope * 7;
-  const raceX = (Date.parse(`${RACE_DAY}T00:00:00Z`) - t0) / 86400000;
-  const raceWeight = intercept + slope * raceX;
+  const raceWeight = deadline == null ? null : intercept + slope * ((Date.parse(`${deadline}T00:00:00Z`) - t0) / 86400000);
   let reachDate: string | null = null;
   if (slope < -0.0001) {
-    const reachX = (TARGET_WEIGHT - intercept) / slope;
+    const reachX = (targetWeight - intercept) / slope;
     if (reachX >= xs[n - 1]) reachDate = new Date(t0 + reachX * 86400000).toISOString().slice(0, 10);
   }
   return { perWeek, raceWeight, reachDate };
@@ -85,6 +77,10 @@ function weightProjection(rows: BodyComposition[]) {
 export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => void }) {
   const rows = data.body;
   const latest = rows[rows.length - 1] ?? null;
+  const targets = data.personalTargets;
+  const targetWeight = targets?.target_weight_kg ?? null;
+  const targetBodyFat = targets?.target_body_fat_pct ?? FALLBACK_TARGET_BODY_FAT;
+  const deadline = resolveCurrentRaceGoal(data.raceGoals, todayIso())?.race_date ?? null;
   const [showForm, setShowForm] = useState(false);
   // A review list — one entry per measurement. Manual entry seeds a single
   // blank row; uploading images appends one row per successfully-read image.
@@ -111,23 +107,30 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       const seed = byDate.get(latest.measured_date);
       if (seed) seed.guide = latest.weight_kg;
     }
-    for (const m of GUIDE_MILESTONES) {
-      const existing = byDate.get(m.date);
-      if (existing) existing.guide = m.weight;
-      else byDate.set(m.date, { date: m.date, weight: null, fat: null, guide: m.weight });
+    // ยังไม่มีแหล่งข้อมูล milestone ระหว่างทางใน profile.md — ใช้เส้นตรงจากปัจจุบันไปเป้าที่วันแข่งแทน
+    if (targets?.weight_milestones?.length) {
+      for (const m of targets.weight_milestones) {
+        const existing = byDate.get(m.date);
+        if (existing) existing.guide = m.weight;
+        else byDate.set(m.date, { date: m.date, weight: null, fat: null, guide: m.weight });
+      }
+    } else if (targetWeight != null && deadline) {
+      const existing = byDate.get(deadline);
+      if (existing) existing.guide = targetWeight;
+      else byDate.set(deadline, { date: deadline, weight: null, fat: null, guide: targetWeight });
     }
     return [...byDate.values()]
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((d) => ({ ...d, label: shortDate(d.date) }));
   })();
 
-  const projection = weightProjection(rows);
+  const projection = targetWeight != null ? weightProjection(rows, targetWeight, deadline) : null;
   const projStatus = (() => {
-    if (!projection) return null;
+    if (!projection || targetWeight == null) return null;
     if (projection.perWeek >= -0.02) return { color: "#7a5300", text: "ยังไม่มีแนวโน้มลด — ปรับ deficit เพิ่ม" };
     if (projection.perWeek < -1.0) return { color: "#9d1c37", text: "ลดเร็วเกินไป (>1 kg/สัปดาห์) เสี่ยงเสียกล้ามเนื้อ" };
-    if (projection.reachDate && projection.reachDate <= RACE_DAY) return { color: "#1a6847", text: `on track — น่าจะถึง ${TARGET_WEIGHT} kg ก่อนวันแข่ง` };
-    return { color: "#7a5300", text: "ช้ากว่าเป้า — อาจถึง 63 kg หลังวันแข่ง" };
+    if (deadline && projection.reachDate && projection.reachDate <= deadline) return { color: "#1a6847", text: `on track — น่าจะถึง ${targetWeight} kg ก่อนวันแข่ง` };
+    return { color: "#7a5300", text: `ช้ากว่าเป้า — อาจถึง ${targetWeight} kg หลังวันแข่ง` };
   })();
 
   async function ocrOne(file: File): Promise<Record<string, string>> {
@@ -267,11 +270,11 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       )}
 
       <div className="metric-grid">
-        <MetricCard label="น้ำหนัก" value={latest?.weight_kg == null ? "-" : `${latest.weight_kg} kg`} detail={delta(rows, "weight_kg") ?? `เป้า ${TARGET_WEIGHT} kg`} icon={Scale} />
+        <MetricCard label="น้ำหนัก" value={latest?.weight_kg == null ? "-" : `${latest.weight_kg} kg`} detail={delta(rows, "weight_kg") ?? (targetWeight != null ? `เป้า ${targetWeight} kg` : "")} icon={Scale} />
         <MetricCard
           label="ไขมันร่างกาย"
           value={latest?.body_fat_pct == null ? "-" : `${latest.body_fat_pct}%`}
-          detail={`เป้า ${TARGET_BODY_FAT}% · ${delta(rows, "body_fat_pct") ?? ""}`}
+          detail={`เป้า ${targetBodyFat}% · ${delta(rows, "body_fat_pct") ?? ""}`}
           icon={Flame}
           tone={latest?.body_fat_pct != null && latest.body_fat_pct > 20 ? "warn" : "good"}
         />
@@ -288,7 +291,11 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
       <div className="content-grid">
         <Panel
           title="Weight · body-fat trend"
-          subtitle={`เส้นทึบ = น้ำหนักจริง · เส้นประเขียว = เส้นแนะนำ (คงน้ำหนักช่วงแข่ง ก.ค. แล้วค่อยลดไป ${TARGET_WEIGHT} kg ธ.ค.)`}
+          subtitle={
+            targetWeight != null
+              ? `เส้นทึบ = น้ำหนักจริง · เส้นประเขียว = เส้นแนะนำ${deadline ? ` (เป้า ${targetWeight} kg ภายใน ${deadline})` : ` (เป้า ${targetWeight} kg)`}`
+              : "เส้นทึบ = น้ำหนักจริง"
+          }
           className="span-12"
           action={
             <div style={{ display: "flex", gap: 8 }}>
@@ -340,10 +347,12 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
             <LineChart data={chartData} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
               <XAxis dataKey="label" {...chartAxis} />
-              <YAxis yAxisId="left" domain={[TARGET_WEIGHT - 2, "dataMax + 2"]} {...chartAxis} />
+              <YAxis yAxisId="left" domain={[targetWeight != null ? targetWeight - 2 : "dataMin - 2", "dataMax + 2"]} {...chartAxis} />
               <YAxis yAxisId="right" orientation="right" domain={[10, 30]} {...chartAxis} />
               <ChartTooltip />
-              <ReferenceLine yAxisId="left" y={TARGET_WEIGHT} stroke={chartColors.muted} strokeDasharray="2 4" label={{ value: `${TARGET_WEIGHT}kg`, position: "insideBottomRight", fontSize: 10, fill: chartColors.muted }} />
+              {targetWeight != null && (
+                <ReferenceLine yAxisId="left" y={targetWeight} stroke={chartColors.muted} strokeDasharray="2 4" label={{ value: `${targetWeight}kg`, position: "insideBottomRight", fontSize: 10, fill: chartColors.muted }} />
+              )}
               <Line yAxisId="left" dataKey="guide" stroke={chartColors.primary} strokeWidth={2.5} strokeDasharray="7 6" dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} name="เส้นแนะนำ kg" connectNulls />
               <Line yAxisId="left" dataKey="weight" stroke={chartColors.ink} strokeWidth={3} dot={{ r: 4, fill: chartColors.ink, strokeWidth: 0 }} name="น้ำหนักจริง kg" connectNulls />
               <Line yAxisId="right" dataKey="fat" stroke={chartColors.accent} strokeWidth={2} strokeDasharray="3 4" dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }} name="ไขมัน %" connectNulls />
@@ -355,7 +364,7 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
         {projection && (
           <Panel
             title="Weight projection (regression)"
-            subtitle={`อิงแนวโน้มน้ำหนักจริง · เป้า ${TARGET_WEIGHT} kg ภายในวันแข่ง ${RACE_DAY}`}
+            subtitle={`อิงแนวโน้มน้ำหนักจริง · เป้า ${targetWeight} kg${deadline ? ` ภายในวันแข่ง ${deadline}` : ""}`}
             className="span-12"
           >
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10 }}>
@@ -364,13 +373,15 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
                 <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.perWeek >= 0 ? "+" : ""}{projection.perWeek.toFixed(2)} kg/สัปดาห์</div>
               </div>
               <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
-                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>คาดถึง {TARGET_WEIGHT} kg</div>
+                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>คาดถึง {targetWeight} kg</div>
                 <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.reachDate ?? "—"}</div>
               </div>
-              <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
-                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>น้ำหนักวันแข่ง (คาด)</div>
-                <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.raceWeight.toFixed(1)} kg</div>
-              </div>
+              {projection.raceWeight != null && (
+                <div style={{ padding: "10px 12px", border: "1px solid var(--color-line)", borderRadius: 6, background: "var(--color-panel)" }}>
+                  <div style={{ fontSize: 12, color: "var(--color-muted)" }}>น้ำหนักวันแข่ง (คาด)</div>
+                  <div style={{ fontWeight: 700, fontSize: 18, fontVariantNumeric: "tabular-nums" }}>{projection.raceWeight.toFixed(1)} kg</div>
+                </div>
+              )}
             </div>
             {projStatus && (
               <p className="chart-note" style={{ marginTop: 12, fontWeight: 700, color: projStatus.color }}>{projStatus.text}</p>

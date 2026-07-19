@@ -20,10 +20,13 @@ import { isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
-const TARGET_CADENCE_MIN = 168;
-const TARGET_CADENCE_MAX = 172;
+// cadence target ยังไม่มีแหล่งข้อมูลใน profile.md — ใช้ fallback เมื่อ personalTargets ไม่มีค่า
+const FALLBACK_TARGET_CADENCE_MIN = 168;
+const FALLBACK_TARGET_CADENCE_MAX = 172;
 
 export function Zone2({ data }: { data: DashboardData }) {
+  const TARGET_CADENCE_MIN = data.personalTargets?.target_cadence_min ?? FALLBACK_TARGET_CADENCE_MIN;
+  const TARGET_CADENCE_MAX = data.personalTargets?.target_cadence_max ?? FALLBACK_TARGET_CADENCE_MAX;
   const rows = data.runs
     .filter((run) => run.z2_percent != null || run.pace_sec_per_km != null || run.drift_bpm != null)
     .slice(-20)
