@@ -277,6 +277,52 @@ function RacePaceCalculator({ targetMin }: { targetMin: number }) {
   );
 }
 
+function RaceResultCard({ race }: { race: NonNullable<DashboardData["race"]> }) {
+  if (race.result_time_min == null) return null;
+  const achievedTone =
+    race.target_achieved === "A" || race.target_achieved === "B" ? "good"
+    : race.target_achieved === "C" ? "warn" : "hot";
+  return (
+    <>
+      <div className="metric-grid">
+        <MetricCard
+          label="ผลแข่งจริง"
+          value={raceTime(race.result_time_min)}
+          detail={`${km(race.result_distance_km)} · ${shortDate(race.race_date)}`}
+          icon={Trophy}
+          tone="good"
+        />
+        <MetricCard
+          label="เป้าที่ทำได้"
+          value={race.target_achieved ?? "-"}
+          detail={`วางแผนไว้เป้า ${race.target_planned ?? "-"}`}
+          icon={Sparkles}
+          tone={achievedTone}
+        />
+        <MetricCard
+          label="Pace เฉลี่ย"
+          value={pace(race.result_pace_sec_per_km)}
+          detail="จากผลแข่งจริง"
+          icon={Gauge}
+          tone="good"
+        />
+        <MetricCard
+          label="Buffer ก่อน cutoff"
+          value={race.cutoff_buffer_min == null ? "-" : `${Math.round(race.cutoff_buffer_min)} นาที`}
+          detail="เหลือก่อนเวลาตัด"
+          icon={Clock3}
+          tone={race.cutoff_buffer_min != null && race.cutoff_buffer_min >= 8 ? "good" : "warn"}
+        />
+      </div>
+      {race.result_note ? (
+        <Panel title="สรุปผลแข่ง" subtitle="บันทึกจาก race day" className="span-12">
+          <p style={{ margin: 0, lineHeight: 1.7 }}>{thaiText(race.result_note)}</p>
+        </Panel>
+      ) : null}
+    </>
+  );
+}
+
 export function Race({ data }: { data: DashboardData }) {
   const race = data.race;
   const raceDate = race?.race_date ?? RACE_DATE;
@@ -337,6 +383,8 @@ export function Race({ data }: { data: DashboardData }) {
           </span>
         </div>
       </div>
+
+      {race ? <RaceResultCard race={race} /> : null}
 
       <div className="metric-grid">
         <MetricCard

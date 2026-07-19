@@ -89,6 +89,13 @@ export type RaceReadiness = {
   risks: string[] | null;
   race_decision: string | null;
   milestones: Milestone[] | null;
+  result_time_min: number | null;
+  result_distance_km: number | null;
+  result_pace_sec_per_km: number | null;
+  target_planned: string | null;
+  target_achieved: string | null;
+  cutoff_buffer_min: number | null;
+  result_note: string | null;
 };
 
 export type Milestone = {
