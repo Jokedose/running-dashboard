@@ -1,3 +1,5 @@
+import { stripMarkdown } from "./thaiText";
+
 export function pace(value: number | null | undefined) {
   if (!value) return "-";
   const seconds = Math.round(value);
@@ -70,5 +72,5 @@ export function sessionLabel(value: string | null | undefined, fallback = "-"): 
   for (const [re, label] of SESSION_NORMALIZE) {
     if (re.test(trimmed)) return label;
   }
-  return trimmed;
+  return stripMarkdown(trimmed);
 }

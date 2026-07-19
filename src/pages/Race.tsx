@@ -365,6 +365,7 @@ export function Race({ data }: { data: DashboardData }) {
   const corosDelta = coros10k == null ? null : coros10k - B_RACE_TARGET;
   const latestGap = latestPoint && latestExpected ? latestPoint.actual - latestExpected : null;
   const targetPaceSec = (TARGET_MINUTES * 60) / 10;
+  const raceCompleted = race?.result_time_min != null;
   void bestPoint;
 
   return (
@@ -386,41 +387,43 @@ export function Race({ data }: { data: DashboardData }) {
 
       {race ? <RaceResultCard race={race} /> : null}
 
-      <div className="metric-grid">
-        <MetricCard
-          label={IS_B_RACE ? "นับถอยหลัง B-race" : "นับถอยหลัง A-race"}
-          value={`${daysLeft > 0 ? daysLeft : 0} วัน`}
-          detail={raceDate}
-          icon={Clock3}
-          tone="hot"
-        />
-        <MetricCard
-          label="ความพร้อม"
-          value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`}
-          detail="คะแนนวันแข่ง"
-          icon={Trophy}
-          tone="good"
-        />
-        <MetricCard
-          label="คาดการณ์วันแข่ง"
-          value={raceTime(forecast)}
-          detail={
-            forecastDelta == null
-              ? undefined
-              : forecastDelta <= 0
-              ? `เร็วกว่าเป้า ${Math.abs(forecastDelta).toFixed(1)} นาที`
-              : `ช้ากว่าเป้า ${forecastDelta.toFixed(1)} นาที`
-          }
-          icon={Activity}
-          tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"}
-        />
-        <MetricCard
-          label="ตำแหน่งล่าสุด"
-          value={raceTime(latestPoint?.actual)}
-          detail={latestPoint ? `${finishPace(latestPoint.actual)} · ${latestPoint.date}` : undefined}
-          icon={Gauge}
-        />
-      </div>
+      {!raceCompleted && (
+        <div className="metric-grid">
+          <MetricCard
+            label={IS_B_RACE ? "นับถอยหลัง B-race" : "นับถอยหลัง A-race"}
+            value={`${daysLeft > 0 ? daysLeft : 0} วัน`}
+            detail={raceDate}
+            icon={Clock3}
+            tone="hot"
+          />
+          <MetricCard
+            label="ความพร้อม"
+            value={race?.readiness_score == null ? "-" : `${race.readiness_score}/100`}
+            detail="คะแนนวันแข่ง"
+            icon={Trophy}
+            tone="good"
+          />
+          <MetricCard
+            label="คาดการณ์วันแข่ง"
+            value={raceTime(forecast)}
+            detail={
+              forecastDelta == null
+                ? undefined
+                : forecastDelta <= 0
+                ? `เร็วกว่าเป้า ${Math.abs(forecastDelta).toFixed(1)} นาที`
+                : `ช้ากว่าเป้า ${forecastDelta.toFixed(1)} นาที`
+            }
+            icon={Activity}
+            tone={forecastDelta != null && forecastDelta <= 0 ? "good" : "warn"}
+          />
+          <MetricCard
+            label="ตำแหน่งล่าสุด"
+            value={raceTime(latestPoint?.actual)}
+            detail={latestPoint ? `${finishPace(latestPoint.actual)} · ${latestPoint.date}` : undefined}
+            icon={Gauge}
+          />
+        </div>
+      )}
 
       {(coros10k != null || race?.vo2max != null) && (
         <div className="metric-grid">
@@ -580,7 +583,11 @@ export function Race({ data }: { data: DashboardData }) {
         {IS_B_RACE && (
           <Panel
             title="🌉 Race-day plan · Disney Run · Rama 8 + expressway"
-            subtitle="เป้า A 1:30 · ปรับตาม elevation จริง (สะพาน ×2, ทางยกระดับบรมราชชนนี, ออกตัว 04:00)"
+            subtitle={
+              raceCompleted
+                ? "แผนก่อนวันแข่ง (เป้า A 1:30) — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง"
+                : "เป้า A 1:30 · ปรับตาม elevation จริง (สะพาน ×2, ทางยกระดับบรมราชชนนี, ออกตัว 04:00)"
+            }
             className="span-12"
           >
             <DisneyRunPacingPlan />
@@ -610,7 +617,15 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="🧮 Race pace calculator" subtitle={`แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`} className="span-12">
+        <Panel
+          title="🧮 Race pace calculator"
+          subtitle={
+            raceCompleted
+              ? `แผน split เดิมก่อนแข่ง สำหรับ ${raceTime(TARGET_MINUTES)} — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง`
+              : `แผน split สำหรับ ${raceTime(TARGET_MINUTES)} · กลยุทธ์ออกตัวแบบระมัดระวัง`
+          }
+          className="span-12"
+        >
           <RacePaceCalculator targetMin={TARGET_MINUTES} />
         </Panel>
 
