@@ -458,21 +458,25 @@ export function Race({ data }: { data: DashboardData }) {
 
       {IS_B_RACE && aDaysLeft > 0 && (
         <div className="smart-strip">
-          <div>
-            <span>B-race เหลือ</span>
-            <strong>{bDaysLeft > 0 ? bDaysLeft : 0}</strong>
-            <small>วัน · {B_RACE_DATE}</small>
-          </div>
+          {!raceCompleted && (
+            <div>
+              <span>B-race เหลือ</span>
+              <strong>{bDaysLeft > 0 ? bDaysLeft : 0}</strong>
+              <small>วัน · {B_RACE_DATE}</small>
+            </div>
+          )}
           <div>
             <span>A-race เหลือ</span>
             <strong>{aDaysLeft}</strong>
             <small>วัน · {A_RACE_DATE}</small>
           </div>
-          <div>
-            <span>เป้า B-race</span>
-            <strong>{raceTime(B_RACE_TARGET)}</strong>
-            <small>1:22–1:32</small>
-          </div>
+          {!raceCompleted && (
+            <div>
+              <span>เป้า B-race</span>
+              <strong>{raceTime(B_RACE_TARGET)}</strong>
+              <small>1:22–1:32</small>
+            </div>
+          )}
           <div>
             <span>เป้า A-race</span>
             <strong>{raceTime(A_RACE_TARGET)}</strong>
