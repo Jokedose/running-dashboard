@@ -12,6 +12,7 @@ export const emptyData: DashboardData = {
   injuries: [],
   raceGoals: [],
   personalTargets: null,
+  trainingPhases: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

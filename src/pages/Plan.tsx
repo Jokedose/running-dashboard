@@ -1,35 +1,25 @@
 import { Activity, CalendarCheck, CheckCircle2, Clock3, Flag, Footprints, Gauge, HeartPulse, Trophy } from "lucide-react";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData, TrainingPlan } from "../types";
+import type { DashboardData, TrainingPhase, TrainingPlan } from "../types";
 import { latest, resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { km, minutes, pace, percent, raceTime, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
-const PHASES = [
-  { label: "Pre-race", sub: "มิ.ย.–ก.ค.", from: "2026-06-11", to: "2026-07-19" },
-  { label: "Phase A", sub: "Recovery", from: "2026-07-20", to: "2026-08-01" },
-  { label: "Phase B", sub: "Base Rebuild", from: "2026-08-03", to: "2026-09-05" },
-  { label: "Phase C", sub: "Threshold", from: "2026-09-07", to: "2026-10-10" },
-  { label: "Phase D", sub: "Race-Specific", from: "2026-10-12", to: "2026-11-14" },
-  { label: "Phase E", sub: "Taper", from: "2026-11-16", to: "2026-12-06" },
-];
-
-function phaseFor(date: string) {
-  return PHASES.find((p) => date >= p.from && date <= p.to) ?? null;
+function phaseFor(date: string, phases: TrainingPhase[]) {
+  return phases.find((p) => date >= p.start_date && date <= p.end_date) ?? null;
 }
 
-function groupByPhase(rows: TrainingPlan[]) {
-  const groups: { label: string; sub: string; items: TrainingPlan[] }[] = [];
+function groupByPhase(rows: TrainingPlan[], phases: TrainingPhase[]) {
+  const groups: { label: string; items: TrainingPlan[] }[] = [];
   for (const row of rows) {
-    const phase = phaseFor(row.plan_date);
-    const label = phase?.label ?? "อื่น ๆ";
-    const sub = phase?.sub ?? "";
+    const phase = phaseFor(row.plan_date, phases);
+    const label = phase?.phase_name ?? "อื่น ๆ";
     const last = groups.at(-1);
     if (last?.label === label) {
       last.items.push(row);
     } else {
-      groups.push({ label, sub, items: [row] });
+      groups.push({ label, items: [row] });
     }
   }
   return groups;
@@ -125,7 +115,7 @@ export function Plan({ data }: { data: DashboardData }) {
   const plannedKm = plannedDistance(weekPlan);
   const progress = weekProgress(weekPlan);
   const heroTone = readinessTone(todayReadiness?.readiness_status ?? null);
-  const phaseGroups = groupByPhase(scheduleRows);
+  const phaseGroups = groupByPhase(scheduleRows, data.trainingPhases);
 
   return (
     <section className="page-stack home-dashboard">
@@ -277,8 +267,8 @@ export function Plan({ data }: { data: DashboardData }) {
             style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}
           >
             <div className="mobile-schedule-list">
-              {phaseGroups.map(({ label, sub, items }) => (
-                <div key={label}>
+              {phaseGroups.map(({ label, items }, groupIdx) => (
+                <div key={`${label}-${groupIdx}`}>
                   <div
                     style={{
                       padding: "6px 12px",
@@ -291,7 +281,6 @@ export function Plan({ data }: { data: DashboardData }) {
                     }}
                   >
                     <strong style={{ fontSize: "0.8rem", letterSpacing: "0.04em" }}>{label}</strong>
-                    {sub && <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>{sub}</span>}
                   </div>
                   {items.map((item) => (
                     <article key={item.id}>

@@ -20,6 +20,7 @@ import type {
   RaceGoal,
   RaceReadiness,
   RunLog,
+  TrainingPhase,
   TrainingPlan,
   WeeklySummary,
 } from "./types";
@@ -84,7 +85,7 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, personalTargets] = await Promise.all([
+    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, personalTargets, trainingPhases] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
@@ -96,6 +97,7 @@ function App() {
       supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }),
       supabase.from("race_goals").select("*").order("race_date", { ascending: true }),
       supabase.from("personal_targets").select("*").limit(1),
+      supabase.from("training_phases").select("*").order("sort_order", { ascending: true }),
     ]);
     if (daily.error || runs.error || weekly.error || gear.error || race.error) {
       setLoadState("error");
@@ -114,6 +116,7 @@ function App() {
       injuries: injuries.error ? [] : ((injuries.data ?? []) as InjuryStatus[]),
       raceGoals: raceGoals.error ? [] : ((raceGoals.data ?? []) as RaceGoal[]),
       personalTargets: personalTargets.error ? null : (((personalTargets.data ?? [])[0] as PersonalTargets | undefined) ?? null),
+      trainingPhases: trainingPhases.error ? [] : ((trainingPhases.data ?? []) as TrainingPhase[]),
     });
     setLoadState("ready");
   }

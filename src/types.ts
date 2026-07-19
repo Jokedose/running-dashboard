@@ -216,6 +216,17 @@ export type PersonalTargets = {
   updated_at: string | null;
 };
 
+export type TrainingPhase = {
+  id: string;
+  phase_name: string;
+  start_date: string;
+  end_date: string;
+  sort_order: number;
+  tags: string[] | null;
+  source_path: string | null;
+  updated_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -228,6 +239,7 @@ export type DashboardData = {
   injuries: InjuryStatus[];
   raceGoals: RaceGoal[];
   personalTargets: PersonalTargets | null;
+  trainingPhases: TrainingPhase[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
