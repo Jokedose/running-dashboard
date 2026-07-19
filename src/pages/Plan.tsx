@@ -2,13 +2,9 @@ import { Activity, CalendarCheck, CheckCircle2, Clock3, Flag, Footprints, Gauge,
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, TrainingPlan } from "../types";
-import { latest } from "../utils/data";
+import { latest, resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { km, minutes, pace, percent, raceTime, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
-
-const B_RACE_DATE = "2026-07-19";
-const A_RACE_DATE = "2026-12-06";
-const TARGET_MINUTES = 80;
 
 const PHASES = [
   { label: "Pre-race", sub: "มิ.ย.–ก.ค.", from: "2026-06-11", to: "2026-07-19" },
@@ -37,10 +33,6 @@ function groupByPhase(rows: TrainingPlan[]) {
     }
   }
   return groups;
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function daysUntil(date: string) {
@@ -125,9 +117,9 @@ export function Plan({ data }: { data: DashboardData }) {
   const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
   const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
   const nextKeySession = upcoming.find((item) => item.priority === "high" || item.priority === "race");
-  const nextRaceDate = today <= B_RACE_DATE ? B_RACE_DATE : A_RACE_DATE;
-  const raceCountdown = daysUntil(nextRaceDate);
-  const aRaceCountdown = daysUntil(A_RACE_DATE);
+  const currentGoal = resolveCurrentRaceGoal(data.raceGoals, today);
+  const nextRaceDate = currentGoal?.race_date ?? null;
+  const raceCountdown = nextRaceDate == null ? null : daysUntil(nextRaceDate);
   const todayReadiness = latest(data.daily, "log_date");
   const latestRun = latest(data.runs, "run_date");
   const plannedKm = plannedDistance(weekPlan);
@@ -139,8 +131,8 @@ export function Plan({ data }: { data: DashboardData }) {
     <section className="page-stack home-dashboard">
       <div className={`home-hero ${heroTone}`}>
         <div className="home-hero-copy">
-          <span className="readiness-status-badge">แผน 10K 80 นาที</span>
-          <h2>{todayPlan ? sessionLabel(todayPlan.title) : "แผน 10K พร้อมเริ่ม"}</h2>
+          <span className="readiness-status-badge">{currentGoal?.race_name ? `แผน ${currentGoal.race_name}` : "แผนซ้อม"}</span>
+          <h2>{todayPlan ? sessionLabel(todayPlan.title) : "แผนพร้อมเริ่ม"}</h2>
           <p>
             {todayPlan
               ? `${todayPlan.plan_date} · ${sessionLabel(todayPlan.session_type, "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
@@ -154,17 +146,17 @@ export function Plan({ data }: { data: DashboardData }) {
 
         <div className="race-countdown">
           <span>เหลือ</span>
-          <strong>{raceCountdown >= 0 ? raceCountdown : 0}</strong>
-          <small>{nextRaceDate === B_RACE_DATE ? "วัน B-race" : "วัน A-race"}</small>
-          <i>{nextRaceDate}</i>
+          <strong>{raceCountdown != null && raceCountdown >= 0 ? raceCountdown : 0}</strong>
+          <small>{currentGoal?.race_name ? `วัน ${currentGoal.race_name}` : "วันแข่ง"}</small>
+          <i>{nextRaceDate ?? "-"}</i>
         </div>
       </div>
 
       <div className="smart-strip">
         <div>
-          <span>A-race เป้าหมาย</span>
-          <strong>{raceTime(TARGET_MINUTES)}</strong>
-          <small>8:00/km</small>
+          <span>เป้าหมายแข่ง</span>
+          <strong>{currentGoal?.target_a_min != null ? raceTime(currentGoal.target_a_min) : (currentGoal?.target_a_text ?? "-")}</strong>
+          <small>{currentGoal?.race_date ?? "-"}</small>
         </div>
         <div className="highlight">
           <span>พร้อมซ้อม</span>
@@ -175,11 +167,6 @@ export function Plan({ data }: { data: DashboardData }) {
           <span>แผนสัปดาห์</span>
           <strong>{completionLabel(weekPlan)}</strong>
           <small>{activeWeek ?? "ยังไม่มีสัปดาห์"}</small>
-        </div>
-        <div>
-          <span>A-race เหลือ</span>
-          <strong>{aRaceCountdown >= 0 ? aRaceCountdown : 0}</strong>
-          <small>วัน · {A_RACE_DATE}</small>
         </div>
       </div>
 

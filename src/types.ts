@@ -166,6 +166,31 @@ export type InjuryStatus = {
   updated_at: string | null;
 };
 
+export type PacingSplit = {
+  km: number;
+  pace: string;
+  cum: string;
+  note: string;
+  phase: "climb" | "flat" | "descent" | "finish";
+};
+
+export type RaceGoal = {
+  id: string;
+  race_slug: string;
+  race_name: string | null;
+  race_date: string;
+  target_a_text: string | null;
+  target_a_min: number | null;
+  target_b_text: string | null;
+  target_c_text: string | null;
+  cutoff_min: number | null;
+  pacing_splits: PacingSplit[] | null;
+  route_rules: string[] | null;
+  tags: string[] | null;
+  source_path: string | null;
+  updated_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -176,6 +201,7 @@ export type DashboardData = {
   body: BodyComposition[];
   monthly: MonthlySummary[];
   injuries: InjuryStatus[];
+  raceGoals: RaceGoal[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
