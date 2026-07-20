@@ -210,6 +210,20 @@ export function evaluateRun(run: RunLog, criteria: SessionCriteria[]): RunEvalua
 }
 
 /* ─────────────────────────────────────────────
+   loadRatioBands — ดึงกรอบ ACWR จาก gate rules ที่ sync มา
+   (rule "Quality allowed" ให้ขอบล่าง, rule "load สูง" ให้ขอบบน)
+   ───────────────────────────────────────────── */
+
+export type LoadRatioBands = { sweetMin: number; cautionOver: number };
+
+export function loadRatioBands(rules: ReadinessGateRule[]): LoadRatioBands {
+  const source = rules.length ? rules : DEFAULT_GATE_RULES;
+  const min = source.find((rule) => rule.condition?.load_ratio_min != null)?.condition.load_ratio_min;
+  const over = source.find((rule) => rule.condition?.load_ratio_over != null)?.condition.load_ratio_over;
+  return { sweetMin: min ?? 0.8, cautionOver: over ?? 1.3 };
+}
+
+/* ─────────────────────────────────────────────
    evaluateGate — ตัดสิน readiness gate ของวันจาก rules ที่ sync มา
 
    Clause semantics (ต่อ 1 เงื่อนไขใน condition):

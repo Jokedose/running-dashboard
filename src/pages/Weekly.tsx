@@ -6,8 +6,16 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { latest } from "../utils/data";
+import { evaluateRun } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
+
+// verdict ต่อ run จาก evaluateRun (เกณฑ์ session_criteria ใน db)
+function verdictIcon(run: DashboardData["runs"][number], criteria: DashboardData["criteria"]): string {
+  const evaluation = evaluateRun(run, criteria);
+  if (!evaluation || evaluation.verdict === "unknown") return "–";
+  return evaluation.verdict === "pass" ? "✅" : evaluation.verdict === "warn" ? "⚠️" : "⛔";
+}
 
 type WeekTotals = {
   week_id: string;
@@ -108,13 +116,14 @@ export function Weekly({ data }: { data: DashboardData }) {
           <div className="table-scroll report-detail-scroll">
             <table>
               <thead>
-                <tr><th>วันที่</th><th>ประเภท</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>การไหล</th><th>Cadence</th></tr>
+                <tr><th>วันที่</th><th>ประเภท</th><th>เกณฑ์</th><th>ระยะ</th><th>เวลา</th><th>เพซ</th><th>Z2</th><th>การไหล</th><th>Cadence</th></tr>
               </thead>
               <tbody>
                 {runs.map((r) => (
                   <tr key={r.id}>
                     <td>{r.run_date}</td>
                     <td>{sessionLabel(r.session_type)}</td>
+                    <td>{verdictIcon(r, data.criteria)}</td>
                     <td>{km(r.distance_km)}</td>
                     <td>{minutes(r.duration_min)}</td>
                     <td>{pace(r.pace_sec_per_km)}</td>

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildTrainingContext, diffDays } from "../src/utils/context";
+import { buildTrainingContext, diffDays, longRunTargetKm } from "../src/utils/context";
 import { emptyData } from "../src/utils/data";
 import type { DashboardData, RaceGoal, RaceReadiness, RunLog, TrainingPhase, TrainingPlan } from "../src/types";
 
@@ -180,5 +180,21 @@ describe("buildTrainingContext — plan, injury, gate", () => {
   test("stale daily row (yesterday) does not become today's gate", () => {
     const daily = [{ id: "d0", log_date: "2026-07-19", recovery_percent: 90, tags: [] } as unknown as DashboardData["daily"][number]];
     expect(buildTrainingContext(data({ daily }), TODAY).todayReadiness).toBeNull();
+  });
+});
+
+describe("longRunTargetKm", () => {
+  test("uses the farthest upcoming planned long run, falling back sensibly", () => {
+    const plan = [
+      planRow({ id: "past-long", plan_date: "2026-06-14", session_type: "Long run", target_distance_km: 11 }),
+      planRow({ id: "future-long-1", plan_date: "2026-09-05", session_type: "Long run", target_distance_km: 14 }),
+      planRow({ id: "future-long-2", plan_date: "2026-11-01", session_type: "Long run", target_distance_km: 19 }),
+      planRow({ id: "future-easy", plan_date: "2026-08-01", session_type: "Easy run", target_distance_km: 30 }),
+    ];
+    expect(longRunTargetKm(plan, TODAY)).toBe(19);
+    // ไม่มี long ข้างหน้า -> ใช้ไกลสุดทั้งแผน
+    expect(longRunTargetKm(plan.slice(0, 1), TODAY)).toBe(11);
+    // ไม่มี long เลย -> fallback 9.5
+    expect(longRunTargetKm([], TODAY)).toBe(9.5);
   });
 });

@@ -224,3 +224,15 @@ describe("evaluateGate", () => {
     expect(evaluateGate(null, []).severity).toBeNull();
   });
 });
+
+describe("loadRatioBands", () => {
+  test("derives bands from gate rules, with defaults when empty", async () => {
+    const { loadRatioBands } = await import("../src/utils/evaluate");
+    expect(loadRatioBands([])).toEqual({ sweetMin: 0.8, cautionOver: 1.3 });
+    const rules: ReadinessGateRule[] = [
+      { id: "a", rule_order: 1, signal: "ok", condition: { load_ratio_min: 0.7, load_ratio_max: 1.1 }, decision: "Quality", severity: "ok" },
+      { id: "b", rule_order: 4, signal: "load", condition: { load_ratio_over: 1.4 }, decision: "ลด", severity: "caution" },
+    ];
+    expect(loadRatioBands(rules)).toEqual({ sweetMin: 0.7, cautionOver: 1.4 });
+  });
+});

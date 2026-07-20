@@ -14,6 +14,7 @@ import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, cha
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
+import { loadRatioBands, type LoadRatioBands } from "../utils/evaluate";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
 
@@ -35,16 +36,19 @@ function daysBetween(start: string, end: string): string[] {
   return out;
 }
 
-function acwrZone(v: number | null): { tone: "neutral" | "good" | "warn" | "hot"; label: string } {
+// กรอบ sweet spot มาจาก gate rules ใน db (rule 1 ขอบล่าง, rule load สูงขอบบน)
+// เกิน 1.5 = เสี่ยงบาดเจ็บ ตามงานวิจัย ACWR (ค่าคงที่ ไม่ใช่กติกาส่วนตัว)
+function acwrZone(v: number | null, bands: LoadRatioBands): { tone: "neutral" | "good" | "warn" | "hot"; label: string } {
   if (v == null) return { tone: "neutral", label: "ข้อมูลไม่พอ" };
-  if (v < 0.8) return { tone: "warn", label: "ต่ำ — เสี่ยง detraining" };
-  if (v <= 1.3) return { tone: "good", label: "ปลอดภัย (sweet spot)" };
+  if (v < bands.sweetMin) return { tone: "warn", label: "ต่ำ — เสี่ยง detraining" };
+  if (v <= bands.cautionOver) return { tone: "good", label: "ปลอดภัย (sweet spot)" };
   if (v <= 1.5) return { tone: "warn", label: "เริ่มสูง — ระวัง" };
   return { tone: "hot", label: "เสี่ยงบาดเจ็บ (>1.5)" };
 }
 
 export function Load({ data }: { data: DashboardData }) {
   const runs = data.runs.filter((r) => r.run_date);
+  const bands = loadRatioBands(data.gateRules);
 
   const loadByDate = new Map<string, number>();
   for (const r of runs) {
@@ -84,7 +88,7 @@ export function Load({ data }: { data: DashboardData }) {
     }
     return null;
   })();
-  const zone = acwrZone(hasEnoughHistory ? currentAcwr : null);
+  const zone = acwrZone(hasEnoughHistory ? currentAcwr : null, bands);
 
   const acute7 = series.length ? series[series.length - 1].acute : 0;
   const chronicWk = series.length ? series[series.length - 1].chronic : 0;
@@ -118,7 +122,7 @@ export function Load({ data }: { data: DashboardData }) {
       <div className="content-grid">
         <Panel
           title="ACWR — acute : chronic load ratio"
-          subtitle="แถบเขียว 0.8–1.3 = ปลอดภัย · เกิน 1.5 = เสี่ยงบาดเจ็บ (42 วันล่าสุด)"
+          subtitle={`แถบเขียว ${bands.sweetMin}–${bands.cautionOver} = ปลอดภัย (จาก gate rules) · เกิน 1.5 = เสี่ยงบาดเจ็บ (42 วันล่าสุด)`}
           className="span-12"
         >
           <ResponsiveContainer width="100%" height={280}>
@@ -129,7 +133,7 @@ export function Load({ data }: { data: DashboardData }) {
               <YAxis yAxisId="left" {...chartAxis} />
               <YAxis yAxisId="right" orientation="right" domain={[0, 2]} {...chartAxis} />
               <ChartTooltip />
-              <ReferenceArea yAxisId="right" y1={0.8} y2={1.3} fill={chartColors.primary} fillOpacity={0.12} />
+              <ReferenceArea yAxisId="right" y1={bands.sweetMin} y2={bands.cautionOver} fill={chartColors.primary} fillOpacity={0.12} />
               <ReferenceLine
                 yAxisId="right"
                 y={1.5}

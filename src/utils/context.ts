@@ -52,6 +52,19 @@ export function diffDays(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
+/** เป้า long run ปัจจุบันจาก training_plan (ระยะไกลสุดของ long run
+    ที่ยังไม่ถึงวัน — ถ้าไม่มีก็ใช้ไกลสุดทั้งแผน) แทนค่าคงที่ 9.5 เดิม
+    ซึ่งเป็นเป้าช่วง pre-race ที่จบไปแล้ว */
+export function longRunTargetKm(plan: TrainingPlan[], today: string = todayIso(), fallback = 9.5): number {
+  const longs = plan.filter(
+    (row) => classifySession(row.session_type ?? row.title) === "long" && row.target_distance_km != null,
+  );
+  const upcoming = longs.filter((row) => row.plan_date >= today);
+  const pool = upcoming.length ? upcoming : longs;
+  if (!pool.length) return fallback;
+  return Math.max(...pool.map((row) => row.target_distance_km as number));
+}
+
 export function buildTrainingContext(data: DashboardData, today: string = todayIso()): TrainingContext {
   const phase = data.phases.find((p) => p.start_date <= today && today <= p.end_date) ?? null;
   const phaseProgressPct = phase

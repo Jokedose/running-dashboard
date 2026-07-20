@@ -4,10 +4,19 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from 
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData, RunLog } from "../types";
+import type { DashboardData, RunLog, SessionCriteria } from "../types";
+import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { painLevel } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
+
+// verdict จาก evaluateRun (เกณฑ์ session_criteria ใน db) → icon + label + สี
+function verdictBadge(evaluation: RunEvaluation | null): { icon: string; label: string; bg: string; color: string } | null {
+  if (!evaluation || evaluation.verdict === "unknown") return null;
+  if (evaluation.verdict === "pass") return { icon: "✅", label: "ผ่านเกณฑ์", bg: "#d8eee5", color: "#1a6847" };
+  if (evaluation.verdict === "warn") return { icon: "⚠️", label: "หลุด 1 ข้อ", bg: "#fef9ec", color: "#7a5300" };
+  return { icon: "⛔", label: "หลุดหลายข้อ", bg: "#fee2e8", color: "#9d1c37" };
+}
 
 function painColor(level: ReturnType<typeof painLevel>): string {
   switch (level) {
@@ -27,7 +36,7 @@ function painText(level: ReturnType<typeof painLevel>): string {
   }
 }
 
-function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) {
+function RunDetailModal({ run, criteria, onClose }: { run: RunLog; criteria: SessionCriteria[]; onClose: () => void }) {
   const zones = [
     { name: "Z1", value: run.z1_percent ?? 0, color: "#94a3b8" },
     { name: "Z2", value: run.z2_percent ?? 0, color: "#3aa99e" },
@@ -36,9 +45,12 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
     { name: "Z5", value: run.z5_percent ?? 0, color: "#7c3aed" },
   ];
   const hasZones = zones.some((z) => z.value > 0);
+  const evaluation = evaluateRun(run, criteria);
+  const badge = verdictBadge(evaluation);
+  const failedKeys = new Set((evaluation?.checks ?? []).filter((c) => !c.ok).map((c) => c.key));
   const cadenceWarn = run.cadence_spm != null && run.cadence_spm < 168;
-  const driftWarn = run.drift_bpm != null && run.drift_bpm > 5;
-  const decouplingWarn = run.decoupling_percent != null && run.decoupling_percent > 5;
+  const driftWarn = failedKeys.has("drift");
+  const decouplingWarn = failedKeys.has("decoupling");
 
   return (
     <div className="cal-modal-overlay" onClick={onClose}>
@@ -49,6 +61,11 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
             <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#dbeafe", color: "#1d4ed8" }}>
               {sessionLabel(run.session_type)}
             </span>
+            {badge && (
+              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: badge.bg, color: badge.color }}>
+                {badge.icon} {badge.label}
+              </span>
+            )}
             {run.shoe_slug && (
               <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: "#e0e7ff", color: "#4338ca" }}>
                 {run.shoe_slug}
@@ -95,8 +112,24 @@ function RunDetailModal({ run, onClose }: { run: RunLog; onClose: () => void }) 
           <div className="cal-data-grid">
             <DataRow label="Drift" value={`${run.drift_bpm?.toFixed(1) ?? "-"} bpm${driftWarn ? " ⚠" : ""}`} />
             <DataRow label="Decoupling" value={`${percent(run.decoupling_percent)}${decouplingWarn ? " ⚠" : ""}`} />
-            <DataRow label="Z2 main" value={percent(run.z2_percent)} />
+            <DataRow label="Z2 main" value={`${percent(run.z2_percent)}${failedKeys.has("z2") ? " ⚠" : ""}`} />
           </div>
+          {evaluation && evaluation.checks.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, fontSize: "0.75rem" }}>
+              {evaluation.checks.map((check) => (
+                <span
+                  key={check.key}
+                  style={{
+                    padding: "2px 8px", borderRadius: 4,
+                    background: check.ok ? "#d8eee5" : "#fee2e8",
+                    color: check.ok ? "#1a6847" : "#9d1c37",
+                  }}
+                >
+                  {check.ok ? "✓" : "✗"} {check.label}: {check.actual.toFixed(1)} / {check.limit}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="cal-block" style={{ borderLeftColor: cadenceWarn ? "#c2410c" : chartColors.primary }}>
@@ -202,6 +235,7 @@ export function Activities({ data }: { data: DashboardData }) {
               <tr>
                 <th>วันที่</th>
                 <th>ประเภท</th>
+                <th>เกณฑ์</th>
                 <th>ระยะ</th>
                 <th>เวลา</th>
                 <th>เพซ</th>
@@ -217,6 +251,9 @@ export function Activities({ data }: { data: DashboardData }) {
                 <tr key={run.id} onClick={() => setSelectedRun(run)} style={{ cursor: "pointer" }}>
                   <td>{run.run_date}</td>
                   <td>{sessionLabel(run.session_type)}</td>
+                  <td title={verdictBadge(evaluateRun(run, data.criteria))?.label}>
+                    {verdictBadge(evaluateRun(run, data.criteria))?.icon ?? "–"}
+                  </td>
                   <td>{km(run.distance_km)}</td>
                   <td>{minutes(run.duration_min)}</td>
                   <td>{pace(run.pace_sec_per_km)}</td>
@@ -234,7 +271,7 @@ export function Activities({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {selectedRun && <RunDetailModal run={selectedRun} onClose={() => setSelectedRun(null)} />}
+      {selectedRun && <RunDetailModal run={selectedRun} criteria={data.criteria} onClose={() => setSelectedRun(null)} />}
     </section>
   );
 }

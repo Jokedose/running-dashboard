@@ -15,6 +15,7 @@ import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
+import { criteriaFor, resolveProfile } from "../utils/evaluate";
 import { pace, paceMinutes, percent, sessionLabel, shortDate } from "../utils/format";
 import { isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
@@ -24,6 +25,11 @@ const TARGET_CADENCE_MIN = 168;
 const TARGET_CADENCE_MAX = 172;
 
 export function Zone2({ data }: { data: DashboardData }) {
+  // เกณฑ์ easy + โปรไฟล์ HR จาก db (sync จาก rules/ + zones.md) — fallback ค่า default ใน engine
+  const easy = criteriaFor("easy", data.criteria);
+  const z2Min = easy?.z2_min_percent ?? 85;
+  const driftMax = easy?.drift_max_bpm ?? 5;
+  const profile = resolveProfile(data.profile);
   const rows = data.runs
     .filter((run) => run.z2_percent != null || run.pace_sec_per_km != null || run.drift_bpm != null)
     .slice(-20)
@@ -44,7 +50,7 @@ export function Zone2({ data }: { data: DashboardData }) {
       ? [Math.max(0, Math.floor(Math.min(...paceDomainValues) - 0.5)), Math.ceil(Math.max(...paceDomainValues) + 0.5)]
       : [TARGET_ZONE2_PACE_MIN - 1, TARGET_ZONE2_PACE_MIN + 1];
   const driftTone: "neutral" | "good" | "warn" | "hot" =
-    avgDrift == null ? "neutral" : avgDrift <= 5 ? "good" : avgDrift <= 8 ? "warn" : "hot";
+    avgDrift == null ? "neutral" : avgDrift <= driftMax ? "good" : avgDrift <= driftMax + 3 ? "warn" : "hot";
 
   const efficiencyRows = data.runs
     .filter((r) => isSteadyAerobic(r.session_type) && r.avg_hr_bpm != null && r.pace_sec_per_km != null)
@@ -76,9 +82,15 @@ export function Zone2({ data }: { data: DashboardData }) {
     <section className="page-stack">
       <div className="metric-grid">
         <MetricCard label="เป้าหมายระยะยาว" value="7:00/km" detail="เพซโซน 2" icon={Gauge} tone="hot" />
-        <MetricCard label="Z2 ล่าสุด" value={percent(latestRun?.z2_percent)} detail={latestRun?.run_date} icon={HeartPulse} tone={latestRun?.z2_percent != null && latestRun.z2_percent >= 80 ? "good" : "neutral"} />
+        <MetricCard
+          label="HR easy เป้า"
+          value={profile.easy_hr_min != null && profile.easy_hr_max != null ? `${profile.easy_hr_min}–${profile.easy_hr_max}` : "-"}
+          detail={`เพดาน ${profile.easy_hr_ceiling ?? "-"} bpm · sweet spot ${profile.sweet_spot_min ?? "-"}–${profile.sweet_spot_max ?? "-"}`}
+          icon={HeartPulse}
+        />
+        <MetricCard label="Z2 ล่าสุด" value={percent(latestRun?.z2_percent)} detail={latestRun?.run_date} icon={HeartPulse} tone={latestRun?.z2_percent != null && latestRun.z2_percent >= z2Min ? "good" : "neutral"} />
         <MetricCard label="เพซล่าสุด" value={pace(latestRun?.pace_sec_per_km)} detail={latestRun?.session_type ? sessionLabel(latestRun.session_type) : undefined} icon={Clock3} />
-        <MetricCard label="การไหลเฉลี่ย" value={avgDrift == null ? "-" : `${avgDrift.toFixed(1)} bpm`} detail={`เป้าหมาย ≤ 5 bpm · Z2 เฉลี่ย ${avgZ2 == null ? "-" : percent(avgZ2)}`} icon={Activity} tone={driftTone} />
+        <MetricCard label="การไหลเฉลี่ย" value={avgDrift == null ? "-" : `${avgDrift.toFixed(1)} bpm`} detail={`เป้าหมาย ≤ ${driftMax} bpm · Z2 เฉลี่ย ${avgZ2 == null ? "-" : percent(avgZ2)}`} icon={Activity} tone={driftTone} />
         <MetricCard
           label="Cadence ล่าสุด"
           value={latestCadence == null ? "-" : `${latestCadence.toFixed(0)} spm`}
@@ -96,8 +108,8 @@ export function Zone2({ data }: { data: DashboardData }) {
               <XAxis dataKey="date" {...chartAxis} />
               <YAxis {...chartAxis} />
               <ChartTooltip />
-              <ReferenceLine y={80} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: "Z2 80%", position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
-              <ReferenceLine y={5} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "ไหล 5", position: "insideBottomLeft", fontSize: 11, fill: chartColors.accent }} />
+              <ReferenceLine y={z2Min} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `Z2 ${z2Min}%`, position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
+              <ReferenceLine y={driftMax} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: `ไหล ${driftMax}`, position: "insideBottomLeft", fontSize: 11, fill: chartColors.accent }} />
               <Line dataKey="z2" stroke={chartColors.primary} strokeWidth={3} dot={{ r: 3, fill: chartColors.primary, strokeWidth: 0 }} activeDot={{ r: 6, strokeWidth: 0 }} name="Z2 %" />
               <Line dataKey="drift" stroke={chartColors.accent} strokeWidth={2.5} dot={false} name="การไหล bpm" />
               <Line dataKey="decoupling" stroke={chartColors.brown} strokeWidth={2.5} strokeDasharray="4 5" dot={false} name="หลุดแอโรบิก %" />

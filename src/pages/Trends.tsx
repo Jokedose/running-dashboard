@@ -16,11 +16,14 @@ import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, cha
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
+import { longRunTargetKm } from "../utils/context";
 import { average } from "../utils/data";
 import { km, minutes, shortDate } from "../utils/format";
 import { classifySession } from "../utils/session";
 
 export function Trends({ data }: { data: DashboardData }) {
+  // เป้า long run ตามแผนปัจจุบัน (ladder ไต่ตาม phase) แทนค่าคงที่ 9.5 ของช่วง pre-race
+  const longTarget = longRunTargetKm(data.plan);
   const avgHrv = average(data.daily.map((d) => d.hrv_avg_ms));
   const avgSleepMin = average(data.daily.map((d) => d.sleep_minutes));
   const avgWeeklyKm = average(data.weekly.map((w) => w.total_distance_km));
@@ -91,9 +94,9 @@ export function Trends({ data }: { data: DashboardData }) {
         <MetricCard
           label="Long run ยาวสุด"
           value={longRunRows.length === 0 ? "-" : km(Math.max(...longRunRows.map((r) => r.distance ?? 0)))}
-          detail={`${longRunRows.length} ครั้งที่บันทึก`}
+          detail={`${longRunRows.length} ครั้งที่บันทึก · เป้าแผน ${longTarget} km`}
           icon={Mountain}
-          tone={longRunRows.some((r) => (r.distance ?? 0) >= 9.5) ? "good" : "warn"}
+          tone={longRunRows.some((r) => (r.distance ?? 0) >= longTarget) ? "good" : "warn"}
         />
         <MetricCard
           label="HRV เฉลี่ย"
@@ -188,7 +191,7 @@ export function Trends({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <Panel title="🏔 Long run progression" subtitle={`พัฒนาการระยะและเพซของ long run (${longRunRows.length} ครั้ง) · เป้า ≥ 9.5 km`} className="span-6">
+        <Panel title="🏔 Long run progression" subtitle={`พัฒนาการระยะและเพซของ long run (${longRunRows.length} ครั้ง) · เป้าตามแผน ≥ ${longTarget} km`} className="span-6">
           <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={longRunRows} margin={chartMargin}>
               <ChartGradientDefs />
@@ -197,7 +200,7 @@ export function Trends({ data }: { data: DashboardData }) {
               <YAxis yAxisId="left" {...chartAxis} label={{ value: "km", angle: -90, position: "insideLeft", fontSize: 11 }} />
               <YAxis yAxisId="right" orientation="right" reversed {...chartAxis} label={{ value: "min/km", angle: 90, position: "insideRight", fontSize: 11 }} />
               <ChartTooltip />
-              <ReferenceLine yAxisId="left" y={9.5} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: "เป้า 9.5km", position: "insideTopLeft", fontSize: 11, fill: chartColors.accent }} />
+              <ReferenceLine yAxisId="left" y={longTarget} stroke={chartColors.accent} strokeDasharray="6 6" label={{ value: `เป้า ${longTarget}km`, position: "insideTopLeft", fontSize: 11, fill: chartColors.accent }} />
               <Bar yAxisId="left" dataKey="distance" fill="url(#primaryBar)" radius={[8, 8, 0, 0]} name="ระยะ km" />
               <Line yAxisId="right" dataKey="paceMin" stroke={chartColors.blue} strokeWidth={3} dot={{ r: 4, fill: chartColors.blue, strokeWidth: 0 }} name="เพซ นาที/กม." connectNulls={false} />
             </ComposedChart>
