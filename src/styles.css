@@ -572,27 +572,27 @@ button.mobile-sheet-backdrop {
   gap: var(--space-3);
 }
 
-.span-4 {
+.content-grid > .span-4 {
   grid-column: span 4;
 }
 
-.span-5 {
+.content-grid > .span-5 {
   grid-column: span 5;
 }
 
-.span-6 {
+.content-grid > .span-6 {
   grid-column: span 6;
 }
 
-.span-7 {
+.content-grid > .span-7 {
   grid-column: span 7;
 }
 
-.span-8 {
+.content-grid > .span-8 {
   grid-column: span 8;
 }
 
-.span-12 {
+.content-grid > .span-12 {
   grid-column: span 12;
 }
 
@@ -2547,12 +2547,12 @@ button.cal-modal-close {
     min-width: 0;
   }
 
-  .span-4,
-  .span-5,
-  .span-6,
-  .span-7,
-  .span-8,
-  .span-12 {
+  .content-grid > .span-4,
+  .content-grid > .span-5,
+  .content-grid > .span-6,
+  .content-grid > .span-7,
+  .content-grid > .span-8,
+  .content-grid > .span-12 {
     grid-column: span 12;
   }
 
