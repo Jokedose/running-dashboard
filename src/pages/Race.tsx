@@ -296,7 +296,7 @@ function RaceResultCard({ race, heading }: { race: DashboardData["races"][number
         />
       </div>
       {race.result_note ? (
-        <Panel title="สรุปผลแข่ง" subtitle="บันทึกจาก race day" className="span-12">
+        <Panel title="สรุปผลแข่ง" subtitle="บันทึกจาก race day">
           <p style={{ margin: 0, lineHeight: 1.7 }}>{thaiText(race.result_note)}</p>
         </Panel>
       ) : null}
@@ -364,7 +364,7 @@ export function Race({ data }: { data: DashboardData }) {
   if (!data.races.length && !currentGoal) {
     return (
       <section className="page-stack">
-        <Panel title="ยังไม่มีการตั้งเป้าแข่งขัน" subtitle="เพิ่มไฟล์เป้าหมายใน running-results/goals/ แล้ว sync เพื่อดูหน้านี้" className="span-12">
+        <Panel title="ยังไม่มีการตั้งเป้าแข่งขัน" subtitle="เพิ่มไฟล์เป้าหมายใน running-results/goals/ แล้ว sync เพื่อดูหน้านี้">
           <p className="chart-note">ยังไม่มีข้อมูล race goal หรือผลแข่งในระบบ</p>
         </Panel>
       </section>
@@ -379,7 +379,9 @@ export function Race({ data }: { data: DashboardData }) {
           <p>{currentGoal?.race_name ? `${currentGoal.race_name} · ความคืบหน้า 10K` : "ความคืบหน้า 10K"}</p>
           <h2>
             {raceDate
-              ? `เส้นทางสู่ ${raceDate}${currentGoal?.target_a_text ? ` (เป้า ${currentGoal.target_a_text})` : ""}`
+              ? // โชว์เป้าในวงเล็บเฉพาะเมื่อเป็นเวลาจริง (target_a_min มีค่า) — goal ที่ยัง
+                // ไม่ล็อกเป้าจะเป็นประโยคอธิบายยาว ไม่เหมาะกับ h2
+                `เส้นทางสู่ ${raceDate}${currentGoal?.target_a_min != null && currentGoal.target_a_text ? ` (เป้า ${currentGoal.target_a_text})` : ""}`
               : "ยังไม่มีเป้าแข่งขันที่ตั้งไว้"}
           </h2>
           <span>
