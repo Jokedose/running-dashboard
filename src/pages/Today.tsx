@@ -1,11 +1,10 @@
-import { useEffect, useRef } from "react";
-import { Activity, AlertTriangle, Brain, CalendarClock, Cross, Flame, HeartPulse, Moon, Route, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Brain, CalendarClock, Cross, Flame, HeartPulse, Moon, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import { ProgressBar } from "../components/ProgressBar";
+import { PhaseStrip } from "../components/PhaseStrip";
 import type { DashboardData, RunLog, SessionCriteria } from "../types";
 import { average, latest } from "../utils/data";
 import { buildTrainingContext, type TrainingContext } from "../utils/context";
@@ -261,66 +260,6 @@ function NextSessionCard({ ctx, criteria }: { ctx: TrainingContext; criteria: Se
 }
 
 /* ─────────────────────────────────────────────
-   Phase strip — timeline ของ training_phases + จุดที่อยู่ตอนนี้
-   ───────────────────────────────────────────── */
-
-function PhaseStrip({ ctx, data }: { ctx: TrainingContext; data: DashboardData }) {
-  const listRef = useRef<HTMLDivElement | null>(null);
-  // มือถือ: strip เลื่อนแนวนอนได้ — เลื่อนให้ phase ปัจจุบันอยู่ในวิวเองตอนโหลด
-  useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>('[data-current="true"]')
-      ?.scrollIntoView({ inline: "center", block: "nearest" });
-  }, [ctx.phase?.id]);
-  if (!data.phases.length) return null;
-  const phases = [...data.phases].sort((a, b) => a.sort_order - b.sort_order);
-  return (
-    <Panel
-      title="Training phase"
-      subtitle={
-        ctx.currentRace
-          ? `${ctx.currentRace.race_name ?? ctx.currentRace.race_slug} · ${ctx.daysToRace != null ? `อีก ${ctx.daysToRace} วัน` : ctx.currentRace.race_date}`
-          : "ยังไม่มีแข่งถัดไปในแผน"
-      }
-      className="span-12"
-      action={<Route size={18} />}
-    >
-      <div ref={listRef} style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
-        {phases.map((phase) => {
-          const isCurrent = ctx.phase?.id === phase.id;
-          const isPast = phase.end_date < ctx.today;
-          return (
-            <div
-              key={phase.id}
-              data-current={isCurrent || undefined}
-              style={{
-                minWidth: 132, flex: 1, padding: "10px 12px", borderRadius: 10,
-                border: isCurrent ? "2px solid var(--color-primary)" : "1px solid var(--color-line)",
-                background: isCurrent ? "rgba(79,138,120,0.10)" : "transparent",
-                opacity: isPast && !isCurrent ? 0.55 : 1,
-              }}
-            >
-              <div style={{ fontWeight: 650, fontSize: "0.82rem" }}>
-                {isPast && !isCurrent ? "✓ " : ""}
-                {phase.phase_name}
-              </div>
-              <div style={{ fontSize: "0.72rem", color: "var(--color-muted)", marginTop: 2 }}>
-                {shortDate(phase.start_date)} – {shortDate(phase.end_date)}
-              </div>
-              {isCurrent && (
-                <div style={{ marginTop: 8 }}>
-                  <ProgressBar value={ctx.phaseProgressPct} label={`คุณอยู่ตรงนี้ · ${ctx.phaseProgressPct.toFixed(0)}%`} />
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </Panel>
-  );
-}
-
-/* ─────────────────────────────────────────────
    Coach verdict — จาก evaluateRun (เกณฑ์ session_criteria ใน db)
    ───────────────────────────────────────────── */
 
@@ -399,7 +338,7 @@ export function Today({ data }: { data: DashboardData }) {
 
   const isQualityType = (v: string | null | undefined) => { const k = classifySession(v); return k === "tempo" || k === "vo2" || k === "test" || k === "race"; };
   const nextQuality = data.plan.filter((p) => p.plan_date >= ctx.today && isQualityType(p.session_type ?? p.title)).sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
-  const nextQualityDays = nextQuality == null ? null : Math.ceil((new Date(nextQuality.plan_date).getTime() - Date.now()) / 86400000);
+  const nextQualityDays = nextQuality == null ? null : Math.max(0, Math.round((Date.parse(nextQuality.plan_date) - Date.parse(ctx.today)) / 86400000));
 
   const loadRatio = today?.load_ratio ?? null;
   const acwrTone: "neutral" | "good" | "warn" | "hot" = loadRatio == null ? "neutral" : loadRatio >= 0.8 && loadRatio <= 1.3 ? "good" : loadRatio < 0.8 ? "warn" : loadRatio <= 1.5 ? "warn" : "hot";

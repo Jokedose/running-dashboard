@@ -1,30 +1,20 @@
 import { Activity, CalendarCheck, CheckCircle2, Clock3, Flag, Footprints, Gauge, HeartPulse, Trophy } from "lucide-react";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData, TrainingPlan } from "../types";
-import { latest, resolveCurrentRaceGoal, todayIso } from "../utils/data";
-import { km, minutes, pace, percent, raceTime, sessionLabel } from "../utils/format";
+import type { DashboardData, TrainingPhase, TrainingPlan } from "../types";
+import { latest, todayIso } from "../utils/data";
+import { buildTrainingContext } from "../utils/context";
+import { PhaseStrip } from "../components/PhaseStrip";
+import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
-const PHASES = [
-  { label: "Pre-race", sub: "มิ.ย.–ก.ค.", from: "2026-06-11", to: "2026-07-19" },
-  { label: "Phase A", sub: "Recovery", from: "2026-07-20", to: "2026-08-01" },
-  { label: "Phase B", sub: "Base Rebuild", from: "2026-08-03", to: "2026-09-05" },
-  { label: "Phase C", sub: "Threshold", from: "2026-09-07", to: "2026-10-10" },
-  { label: "Phase D", sub: "Race-Specific", from: "2026-10-12", to: "2026-11-14" },
-  { label: "Phase E", sub: "Taper", from: "2026-11-16", to: "2026-12-06" },
-];
-
-function phaseFor(date: string) {
-  return PHASES.find((p) => date >= p.from && date <= p.to) ?? null;
-}
-
-function groupByPhase(rows: TrainingPlan[]) {
+function groupByPhase(rows: TrainingPlan[], phases: TrainingPhase[]) {
+  const phaseFor = (date: string) => phases.find((p) => p.start_date <= date && date <= p.end_date) ?? null;
   const groups: { label: string; sub: string; items: TrainingPlan[] }[] = [];
   for (const row of rows) {
     const phase = phaseFor(row.plan_date);
-    const label = phase?.label ?? "อื่น ๆ";
-    const sub = phase?.sub ?? "";
+    const label = phase?.phase_name ?? "อื่น ๆ";
+    const sub = phase ? `${shortDate(phase.start_date)} – ${shortDate(phase.end_date)}` : "";
     const last = groups.at(-1);
     if (last?.label === label) {
       last.items.push(row);
@@ -33,10 +23,6 @@ function groupByPhase(rows: TrainingPlan[]) {
     }
   }
   return groups;
-}
-
-function daysUntil(date: string) {
-  return Math.ceil((new Date(date).getTime() - Date.now()) / 86400000);
 }
 
 function statusTone(status: TrainingPlan["status"]): "neutral" | "good" | "warn" | "hot" {
@@ -117,15 +103,16 @@ export function Plan({ data }: { data: DashboardData }) {
   const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
   const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
   const nextKeySession = upcoming.find((item) => item.priority === "high" || item.priority === "race");
-  const currentGoal = resolveCurrentRaceGoal(data.raceGoals, today);
+  const ctx = buildTrainingContext(data, today);
+  const currentGoal = ctx.currentRace;
   const nextRaceDate = currentGoal?.race_date ?? null;
-  const raceCountdown = nextRaceDate == null ? null : daysUntil(nextRaceDate);
+  const raceCountdown = ctx.daysToRace;
   const todayReadiness = latest(data.daily, "log_date");
   const latestRun = latest(data.runs, "run_date");
   const plannedKm = plannedDistance(weekPlan);
   const progress = weekProgress(weekPlan);
   const heroTone = readinessTone(todayReadiness?.readiness_status ?? null);
-  const phaseGroups = groupByPhase(scheduleRows);
+  const phaseGroups = groupByPhase(scheduleRows, data.phases);
 
   return (
     <section className="page-stack home-dashboard">
@@ -155,7 +142,7 @@ export function Plan({ data }: { data: DashboardData }) {
       <div className="smart-strip">
         <div>
           <span>เป้าหมายแข่ง</span>
-          <strong>{currentGoal?.target_a_min != null ? raceTime(currentGoal.target_a_min) : (currentGoal?.target_a_text ?? "-")}</strong>
+          <strong>{currentGoal?.target_a_min != null ? raceTime(currentGoal.target_a_min) : "ยังไม่ล็อกเป้า"}</strong>
           <small>{currentGoal?.race_date ?? "-"}</small>
         </div>
         <div className="highlight">
@@ -169,6 +156,8 @@ export function Plan({ data }: { data: DashboardData }) {
           <small>{activeWeek ?? "ยังไม่มีสัปดาห์"}</small>
         </div>
       </div>
+
+      <PhaseStrip ctx={ctx} data={data} />
 
       <div className="metric-grid">
         <MetricCard label="ระยะตามแผน" value={km(plannedKm)} detail="รวมในสัปดาห์นี้" icon={Activity} />

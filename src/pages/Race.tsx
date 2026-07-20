@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Activity, Clock3, Gauge, Sparkles, Trophy } from "lucide-react";
 import {
   CartesianGrid,
@@ -14,6 +15,7 @@ import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
 import type { DashboardData, PacingSplit, RunLog } from "../types";
 import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
+import { diffDays, raceShortLabel } from "../utils/context";
 import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { classifySession, isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
@@ -305,21 +307,25 @@ function RaceResultCard({ race, heading }: { race: DashboardData["races"][number
 }
 
 export function Race({ data }: { data: DashboardData }) {
-  const currentGoal = resolveCurrentRaceGoal(data.raceGoals, todayIso());
+  const today = todayIso();
+  const goals = [...data.raceGoals].sort((a, b) => a.race_date.localeCompare(b.race_date));
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+  // แข่งที่เลือกจาก list (default = แข่งถัดไปที่กำลังจะถึง)
+  const currentGoal = goals.find((g) => g.race_slug === selectedSlug) ?? resolveCurrentRaceGoal(data.raceGoals, today);
   // readiness report ของแข่งปัจจุบัน (จะมีเมื่อ report ถูก sync ก่อนวันแข่ง)
   const race = data.races.find((row) => row.race_date === currentGoal?.race_date) ?? null;
   // COROS fitness (VO2max, prediction) เป็นค่าระดับนักวิ่ง ไม่ใช่ของแข่งใดแข่งหนึ่ง —
   // ถ้าแข่งปัจจุบันยังไม่มี report ใช้แถวล่าสุดแทน (races เรียง race_date desc)
   const fitness = race ?? data.races[0] ?? null;
-  const pastResults = data.races.filter(
-    (row) => row.result_time_min != null && row.race_date !== currentGoal?.race_date,
-  );
-  const targetMinutes = currentGoal?.target_a_min ?? currentGoal?.cutoff_min ?? null;
+  // "เป้า" = target_a_min ที่ล็อกแล้วเท่านั้น — ห้าม fallback ไป cutoff_min
+  // (Allianz cutoff 2:30:00 เคยโผล่เป็น "เป้า 2:30 ชม" ทั้งหน้า ทั้งที่เป้ายังไม่ล็อก)
+  const targetMinutes = currentGoal?.target_a_min ?? null;
+  const targetLocked = targetMinutes != null;
   const cutoffMinutes = currentGoal?.cutoff_min ?? null;
   const raceDate = currentGoal?.race_date ?? race?.race_date ?? null;
   const raceCompleted = race?.result_time_min != null;
 
-  const daysLeft = raceDate == null ? null : Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000);
+  const daysLeft = raceDate == null ? null : Math.round((Date.parse(raceDate) - Date.parse(today)) / 86400000);
 
   const actualProjection = targetMinutes != null ? raceProjection(data.runs, targetMinutes, cutoffMinutes ?? targetMinutes) : [];
   const projection = targetMinutes != null && raceDate != null
@@ -373,6 +379,39 @@ export function Race({ data }: { data: DashboardData }) {
 
   return (
     <section className="page-stack">
+      {goals.length > 1 && (
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
+          {goals.map((g) => {
+            const result = data.races.find((r) => r.race_date === g.race_date && r.result_time_min != null);
+            const isSelected = g.race_slug === currentGoal?.race_slug;
+            const days = diffDays(today, g.race_date);
+            const status = result
+              ? `✓ ${raceTime(result.result_time_min)}`
+              : days >= 0
+              ? `อีก ${days} วัน`
+              : "ยังไม่มีผล";
+            return (
+              <button
+                key={g.race_slug}
+                type="button"
+                onClick={() => setSelectedSlug(g.race_slug)}
+                style={{
+                  display: "grid", gap: 2, textAlign: "left", minWidth: 148, padding: "10px 14px",
+                  borderRadius: 10, cursor: "pointer", font: "inherit", color: "var(--color-ink)",
+                  border: isSelected ? "2px solid var(--color-primary)" : "1px solid var(--color-line)",
+                  background: isSelected ? "rgba(79,138,120,0.10)" : "#fff",
+                }}
+              >
+                <strong style={{ fontSize: "0.88rem" }}>{raceShortLabel(g)}</strong>
+                <span style={{ fontSize: "0.74rem", color: "var(--color-muted)" }}>
+                  {g.race_date} · {status}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div className="race-hero-card">
         <BrandLogo />
         <div>
@@ -385,16 +424,14 @@ export function Race({ data }: { data: DashboardData }) {
               : "ยังไม่มีเป้าแข่งขันที่ตั้งไว้"}
           </h2>
           <span>
-            เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือเวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า {targetMinutes != null ? raceTime(targetMinutes) : "-"}
+            {targetLocked
+              ? `เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือเวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า ${raceTime(targetMinutes)}`
+              : "เป้าเวลายังไม่ล็อก — จะกำหนดหลังผ่าน Go/No-Go gate ระหว่างนี้ดูฟอร์มจากผลซ้อมจริง"}
           </span>
         </div>
       </div>
 
       {race ? <RaceResultCard race={race} /> : null}
-
-      {pastResults.map((row) => (
-        <RaceResultCard key={row.id} race={row} heading={`🏁 ผลแข่งที่ผ่านมา · ${row.race_name} (${row.race_date})`} />
-      ))}
 
       {!raceCompleted && (
         <div className="metric-grid">
@@ -417,7 +454,9 @@ export function Race({ data }: { data: DashboardData }) {
             value={raceTime(forecast)}
             detail={
               forecastDelta == null
-                ? undefined
+                ? targetLocked
+                  ? undefined
+                  : "รอล็อกเป้าหลัง Go/No-Go gate"
                 : forecastDelta <= 0
                 ? `เร็วกว่าเป้า ${Math.abs(forecastDelta).toFixed(1)} นาที`
                 : `ช้ากว่าเป้า ${forecastDelta.toFixed(1)} นาที`
@@ -466,6 +505,30 @@ export function Race({ data }: { data: DashboardData }) {
       )}
 
       <div className="content-grid">
+        {!targetLocked && currentGoal && (
+          <Panel
+            title="เป้าเวลายังไม่ล็อก"
+            subtitle={`${currentGoal.race_name ?? currentGoal.race_slug} · ${currentGoal.race_date}`}
+            className="span-12"
+          >
+            <div style={{ display: "grid", gap: 8 }}>
+              {currentGoal.target_a_text && (
+                <p style={{ margin: 0, lineHeight: 1.7 }}>เป้า A: {thaiText(currentGoal.target_a_text)}</p>
+              )}
+              {currentGoal.target_b_text && (
+                <p style={{ margin: 0, lineHeight: 1.7 }}>เป้า B: {thaiText(currentGoal.target_b_text)}</p>
+              )}
+              {currentGoal.cutoff_min != null && (
+                <div className="chip-row">
+                  <span>
+                    Cutoff {raceTime(currentGoal.cutoff_min)} (เพซเฉลี่ย ~{pace((currentGoal.cutoff_min * 60) / 10)}) — เส้นตัดตัว ไม่ใช่เป้า
+                  </span>
+                </div>
+              )}
+            </div>
+          </Panel>
+        )}
+
         {targetMinutes != null && raceDate != null && (
           <Panel
             title={`10K goal chart · ${currentGoal?.race_name ?? "-"}`}
