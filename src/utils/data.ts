@@ -24,7 +24,10 @@ export function latest<T>(rows: T[], dateKey: keyof T) {
 }
 
 export function todayIso(): string {
-  return new Date().toISOString().slice(0, 10);
+  // วันที่ตามเครื่องผู้ใช้ (Asia/Bangkok) — ห้ามใช้ toISOString() เพราะเป็น UTC:
+  // ช่วงเที่ยงคืนถึง 7 โมงเช้าไทยจะกลายเป็น "เมื่อวาน" ทำให้ gate/countdown เพี้ยน
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 // เลือก race goal ที่ "กำลังจะถึง" ก่อน (วันที่ใกล้สุดที่ >= วันนี้)

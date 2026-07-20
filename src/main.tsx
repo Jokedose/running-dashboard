@@ -105,7 +105,8 @@ function App() {
       supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }),
       supabase.from("training_phases").select("*").order("sort_order", { ascending: true }),
     ]);
-    if (daily.error || runs.error || weekly.error || gear.error || race.error) {
+    // hard-fail เฉพาะข้อมูลแกนหลัก — ตารางอื่น error ให้ degrade เป็นค่าว่างแทนที่จะบล็อกทั้งแอป
+    if (daily.error || runs.error) {
       setLoadState("error");
       return;
     }
