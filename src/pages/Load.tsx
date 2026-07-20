@@ -14,6 +14,7 @@ import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, cha
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
+import { todayIso } from "../utils/data";
 import { loadRatioBands, type LoadRatioBands } from "../utils/evaluate";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
@@ -57,7 +58,7 @@ export function Load({ data }: { data: DashboardData }) {
 
   const sortedDates = [...loadByDate.keys()].sort();
   const start = sortedDates[0];
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayIso();
   const lastDate = sortedDates.length ? sortedDates[sortedDates.length - 1] : today;
   const end = lastDate > today ? lastDate : today;
   const allDays = start ? daysBetween(start, end) : [];

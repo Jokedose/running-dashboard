@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Activity, AlertCircle, Clock3, Gauge, Timer, X } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
@@ -97,7 +97,7 @@ function RunDetailModal({ run, criteria, onClose }: { run: RunLog; criteria: Ses
                 <YAxis type="category" dataKey="name" {...chartAxis} width={32} />
                 <ChartTooltip formatter={(v) => [`${Number(v).toFixed(1)}%`, "เวลา"]} />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]}>
-                  {zones.map((z) => <rect key={z.name} fill={z.color} />)}
+                  {zones.map((z) => <Cell key={z.name} fill={z.color} />)}
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -222,7 +222,33 @@ export function Activities({ data }: { data: DashboardData }) {
         </div>
       </Panel>
 
-      <div className="table-panel">
+      {/* มือถือ (≤620px): card list แทนตาราง 11 คอลัมน์ — แตะเปิด modal เดิม */}
+      <div className="activities-cards">
+        {[...data.runs].reverse().map((run) => {
+          const badge = verdictBadge(evaluateRun(run, data.criteria));
+          return (
+            <button key={run.id} className="activity-card" onClick={() => setSelectedRun(run)} type="button">
+              <div className="activity-card-top">
+                <strong>{run.run_date}</strong>
+                <span className="activity-card-type">{sessionLabel(run.session_type)}</span>
+                {badge && (
+                  <span style={{ background: badge.bg, color: badge.color, borderRadius: 4, padding: "1px 7px", fontSize: "0.75rem" }}>
+                    {badge.icon} {badge.label}
+                  </span>
+                )}
+              </div>
+              <div className="activity-card-metrics">
+                <span>{km(run.distance_km)}</span>
+                <span>{pace(run.pace_sec_per_km)}</span>
+                <span>{run.avg_hr_bpm == null ? "-" : `${run.avg_hr_bpm.toFixed(0)} bpm`}</span>
+                <span>Z2 {percent(run.z2_percent)}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="table-panel activities-table">
         <div className="panel-head">
           <div>
             <h2>บันทึกกิจกรรม</h2>

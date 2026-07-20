@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Activity, AlertTriangle, Brain, CalendarClock, Cross, Flame, HeartPulse, Moon, Route, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
@@ -264,6 +265,13 @@ function NextSessionCard({ ctx, criteria }: { ctx: TrainingContext; criteria: Se
    ───────────────────────────────────────────── */
 
 function PhaseStrip({ ctx, data }: { ctx: TrainingContext; data: DashboardData }) {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  // มือถือ: strip เลื่อนแนวนอนได้ — เลื่อนให้ phase ปัจจุบันอยู่ในวิวเองตอนโหลด
+  useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>('[data-current="true"]')
+      ?.scrollIntoView({ inline: "center", block: "nearest" });
+  }, [ctx.phase?.id]);
   if (!data.phases.length) return null;
   const phases = [...data.phases].sort((a, b) => a.sort_order - b.sort_order);
   return (
@@ -277,13 +285,14 @@ function PhaseStrip({ ctx, data }: { ctx: TrainingContext; data: DashboardData }
       className="span-12"
       action={<Route size={18} />}
     >
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+      <div ref={listRef} style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
         {phases.map((phase) => {
           const isCurrent = ctx.phase?.id === phase.id;
           const isPast = phase.end_date < ctx.today;
           return (
             <div
               key={phase.id}
+              data-current={isCurrent || undefined}
               style={{
                 minWidth: 132, flex: 1, padding: "10px 12px", borderRadius: 10,
                 border: isCurrent ? "2px solid var(--color-primary)" : "1px solid var(--color-line)",
