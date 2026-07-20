@@ -26,14 +26,12 @@ import type {
   TrainingPlan,
   WeeklySummary,
 } from "./types";
-import { emptyData, resolveCurrentRaceGoal, todayIso } from "./utils/data";
-import { raceShortLabel } from "./utils/context";
+import { emptyData } from "./utils/data";
 import { useHashRoute } from "./hooks/useHashRoute";
 import { theme } from "./theme";
 import "./styles.css";
 
-// label ของเมนู plan ถูกแทนด้วยชื่อแข่งถัดไปจาก race_goals ตอน runtime (ดู navItems ใน App)
-const baseNavItems: NavItem[] = [
+const navItems: NavItem[] = [
   { key: "plan", label: "Plan", icon: CalendarCheck },
   { key: "today", label: "Today", icon: CalendarDays },
   { key: "calendar", label: "Calendar", icon: CalendarRange },
@@ -201,12 +199,6 @@ function App() {
   }, [session]);
 
   const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.races.length || data.plan.length || data.body.length);
-
-  // เมนู plan ใช้ชื่อแข่งถัดไป (เช่น "Allianz 10K") — เปลี่ยนเองเมื่อ race goal เปลี่ยน
-  const navItems = useMemo(() => {
-    const label = raceShortLabel(resolveCurrentRaceGoal(data.raceGoals, todayIso()));
-    return baseNavItems.map((item) => (item.key === "plan" && label ? { ...item, label: `${label} Plan` } : item));
-  }, [data.raceGoals]);
 
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;

@@ -134,7 +134,7 @@ export function Zone2({ data }: { data: DashboardData }) {
             <LineChart data={cadenceRows} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
               <XAxis dataKey="date" {...chartAxis} />
-              <YAxis domain={[150, 180]} {...chartAxis} />
+              <YAxis domain={["dataMin - 5", "dataMax + 5"]} {...chartAxis} />
               <ChartTooltip />
               <ReferenceLine y={TARGET_CADENCE_MIN} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `${TARGET_CADENCE_MIN}`, position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
               <ReferenceLine y={TARGET_CADENCE_MAX} stroke={chartColors.primary} strokeDasharray="6 6" label={{ value: `${TARGET_CADENCE_MAX}`, position: "insideTopLeft", fontSize: 11, fill: chartColors.primary }} />
