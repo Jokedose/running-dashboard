@@ -314,7 +314,10 @@ export function Race({ data }: { data: DashboardData }) {
   const pastResults = data.races.filter(
     (row) => row.result_time_min != null && row.race_date !== currentGoal?.race_date,
   );
-  const targetMinutes = currentGoal?.target_a_min ?? currentGoal?.cutoff_min ?? null;
+  // "เป้า" = target_a_min ที่ล็อกแล้วเท่านั้น — ห้าม fallback ไป cutoff_min
+  // (Allianz cutoff 2:30:00 เคยโผล่เป็น "เป้า 2:30 ชม" ทั้งหน้า ทั้งที่เป้ายังไม่ล็อก)
+  const targetMinutes = currentGoal?.target_a_min ?? null;
+  const targetLocked = targetMinutes != null;
   const cutoffMinutes = currentGoal?.cutoff_min ?? null;
   const raceDate = currentGoal?.race_date ?? race?.race_date ?? null;
   const raceCompleted = race?.result_time_min != null;
@@ -385,7 +388,9 @@ export function Race({ data }: { data: DashboardData }) {
               : "ยังไม่มีเป้าแข่งขันที่ตั้งไว้"}
           </h2>
           <span>
-            เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือเวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า {targetMinutes != null ? raceTime(targetMinutes) : "-"}
+            {targetLocked
+              ? `เส้นทึบคือสถานะจากผลซ้อมจริง ส่วนเส้นประคือเวลาที่ควรค่อย ๆ พัฒนาไปหาเป้า ${raceTime(targetMinutes)}`
+              : "เป้าเวลายังไม่ล็อก — จะกำหนดหลังผ่าน Go/No-Go gate ระหว่างนี้ดูฟอร์มจากผลซ้อมจริง"}
           </span>
         </div>
       </div>
@@ -417,7 +422,9 @@ export function Race({ data }: { data: DashboardData }) {
             value={raceTime(forecast)}
             detail={
               forecastDelta == null
-                ? undefined
+                ? targetLocked
+                  ? undefined
+                  : "รอล็อกเป้าหลัง Go/No-Go gate"
                 : forecastDelta <= 0
                 ? `เร็วกว่าเป้า ${Math.abs(forecastDelta).toFixed(1)} นาที`
                 : `ช้ากว่าเป้า ${forecastDelta.toFixed(1)} นาที`
@@ -466,6 +473,30 @@ export function Race({ data }: { data: DashboardData }) {
       )}
 
       <div className="content-grid">
+        {!targetLocked && currentGoal && (
+          <Panel
+            title="เป้าเวลายังไม่ล็อก"
+            subtitle={`${currentGoal.race_name ?? currentGoal.race_slug} · ${currentGoal.race_date}`}
+            className="span-12"
+          >
+            <div style={{ display: "grid", gap: 8 }}>
+              {currentGoal.target_a_text && (
+                <p style={{ margin: 0, lineHeight: 1.7 }}>เป้า A: {thaiText(currentGoal.target_a_text)}</p>
+              )}
+              {currentGoal.target_b_text && (
+                <p style={{ margin: 0, lineHeight: 1.7 }}>เป้า B: {thaiText(currentGoal.target_b_text)}</p>
+              )}
+              {currentGoal.cutoff_min != null && (
+                <div className="chip-row">
+                  <span>
+                    Cutoff {raceTime(currentGoal.cutoff_min)} (เพซเฉลี่ย ~{pace((currentGoal.cutoff_min * 60) / 10)}) — เส้นตัดตัว ไม่ใช่เป้า
+                  </span>
+                </div>
+              )}
+            </div>
+          </Panel>
+        )}
+
         {targetMinutes != null && raceDate != null && (
           <Panel
             title={`10K goal chart · ${currentGoal?.race_name ?? "-"}`}
