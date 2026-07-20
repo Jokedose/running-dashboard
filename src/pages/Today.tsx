@@ -1,12 +1,15 @@
-import { Activity, AlertTriangle, Brain, Flame, HeartPulse, Moon, ShieldCheck, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Brain, CalendarClock, Cross, Flame, HeartPulse, Moon, Route, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
-import type { DashboardData, RunLog } from "../types";
+import { ProgressBar } from "../components/ProgressBar";
+import type { DashboardData, RunLog, SessionCriteria } from "../types";
 import { average, latest } from "../utils/data";
-import { km, minutes, pace, percent, sessionLabel, shortDate } from "../utils/format";
+import { buildTrainingContext, type TrainingContext } from "../utils/context";
+import { criteriaFor, evaluateRun, type RunEvaluation } from "../utils/evaluate";
+import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { classifySession, isSteadyAerobic, painLevel } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
@@ -62,9 +65,6 @@ function ReadinessRing({
   );
 }
 
-/* ─────────────────────────────────────────────
-   Helpers (ไม่เปลี่ยน)
-   ───────────────────────────────────────────── */
 function readinessTone(status: string | null): "neutral" | "good" | "warn" | "hot" {
   const s = (status ?? "").toLowerCase();
   if (s.includes("green") || s.includes("เขียว") || s.includes("ดี")) return "good";
@@ -73,34 +73,308 @@ function readinessTone(status: string | null): "neutral" | "good" | "warn" | "ho
   return "neutral";
 }
 
-function runVerdict(run: RunLog | undefined) {
+/* ─────────────────────────────────────────────
+   Context banners — widget stack ส่วนบน เรียงตาม TrainingContext
+   (race recap → race week → injury) แสดงเฉพาะเมื่อบริบทเข้าเงื่อนไข
+   ───────────────────────────────────────────── */
+
+const BANNER_STYLE: Record<"celebrate" | "race" | "injury", { bg: string; border: string; color: string }> = {
+  celebrate: { bg: "#d8eee5", border: "#2a7f62", color: "#1a6847" },
+  race:      { bg: "#fef9ec", border: "#b08642", color: "#7a5300" },
+  injury:    { bg: "#fee2e8", border: "#b0593f", color: "#9d1c37" },
+};
+
+function ContextBanner({
+  kind,
+  icon,
+  title,
+  detail,
+  chips,
+}: {
+  kind: "celebrate" | "race" | "injury";
+  icon: React.ReactNode;
+  title: string;
+  detail?: string | null;
+  chips?: Array<string | null | undefined>;
+}) {
+  const style = BANNER_STYLE[kind];
+  const shown = (chips ?? []).filter((chip): chip is string => Boolean(chip));
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px", borderRadius: 10,
+        background: style.bg, borderLeft: `4px solid ${style.border}`,
+      }}
+    >
+      <span style={{ color: style.border, marginTop: 2 }}>{icon}</span>
+      <div style={{ display: "grid", gap: 6 }}>
+        <strong style={{ color: style.color }}>{title}</strong>
+        {detail && <span style={{ fontSize: "0.86rem", color: "var(--color-ink)" }}>{thaiText(detail)}</span>}
+        {shown.length > 0 && (
+          <div className="chip-row">
+            {shown.map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ContextBanners({ ctx }: { ctx: TrainingContext }) {
+  const banners: React.ReactNode[] = [];
+
+  if (ctx.justRaced && ctx.lastRace) {
+    const { goal, result, runLog } = ctx.lastRace;
+    const time = result?.result_time_min ?? runLog?.duration_min ?? null;
+    const paceValue = result?.result_pace_sec_per_km ?? runLog?.pace_sec_per_km ?? null;
+    banners.push(
+      <ContextBanner
+        key="recap"
+        kind="celebrate"
+        icon={<Trophy size={20} />}
+        title={`🎉 จบแข่ง ${goal.race_name ?? goal.race_slug} แล้ว — ช่วงนี้คือ recovery`}
+        detail={result?.result_note ?? "เก็บผลไว้ที่หน้า Race — สัปดาห์นี้เน้นฟื้นตัว อย่ารีบกลับไป quality"}
+        chips={[
+          time != null ? `เวลา ${raceTime(time)}` : null,
+          paceValue != null ? `เพซ ${pace(paceValue)}` : null,
+          result?.target_achieved ? `เป้า ${result.target_achieved}` : null,
+          result?.cutoff_buffer_min != null ? `เหลือจาก cutoff ${Math.round(result.cutoff_buffer_min)} นาที` : null,
+        ]}
+      />,
+    );
+  } else if (ctx.raceWeek && ctx.currentRace) {
+    banners.push(
+      <ContextBanner
+        key="race-week"
+        kind="race"
+        icon={<Timer size={20} />}
+        title={
+          ctx.daysToRace === 0
+            ? `🏁 วันนี้วันแข่ง ${ctx.currentRace.race_name ?? ctx.currentRace.race_slug}!`
+            : `🏁 อีก ${ctx.daysToRace} วันถึง ${ctx.currentRace.race_name ?? ctx.currentRace.race_slug}`
+        }
+        detail="สัปดาห์แข่ง — ดู pacing plan และกติกาเส้นทางที่หน้า Race, งดของใหม่ทุกอย่าง"
+        chips={[
+          ctx.currentRace.target_a_text ? `เป้า A: ${ctx.currentRace.target_a_text}` : null,
+          ctx.currentRace.cutoff_min != null ? `Cutoff ${raceTime(ctx.currentRace.cutoff_min)}` : null,
+        ]}
+      />,
+    );
+  }
+
+  if (ctx.openInjury) {
+    banners.push(
+      <ContextBanner
+        key="injury"
+        kind="injury"
+        icon={<Cross size={20} />}
+        title={`อาการที่ต้องตาม: ${ctx.openInjury.title ?? ctx.openInjury.injury_slug} (${ctx.openInjury.status})`}
+        detail={ctx.openInjury.current_rule ?? ctx.openInjury.trend}
+        chips={[ctx.openInjury.last_symptom_date ? `อาการล่าสุด ${ctx.openInjury.last_symptom_date}` : null]}
+      />,
+    );
+  }
+
+  if (!banners.length) return null;
+  return <div style={{ display: "grid", gap: 10 }}>{banners}</div>;
+}
+
+/* ─────────────────────────────────────────────
+   Gate verdict — ผลจาก evaluateGate (rules จาก db)
+   ───────────────────────────────────────────── */
+
+function GateVerdict({ ctx }: { ctx: TrainingContext }) {
+  const gate = ctx.gate;
+  if (!gate || !gate.matched.length) return null;
+  const tone = gate.severity === "ok" ? "good" : gate.severity === "caution" ? "warn" : "hot";
+  const color = tone === "good" ? "#1a6847" : tone === "warn" ? "#7a5300" : "#9d1c37";
+  const bg = tone === "good" ? "#d8eee5" : tone === "warn" ? "#fef9ec" : "#fee2e8";
+  return (
+    <Panel title="Readiness gate" subtitle="ตัดสินจากกติกา gate ที่ sync จาก repo" className="span-12">
+      <div style={{ display: "grid", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 8, background: bg, borderLeft: `4px solid ${color}` }}>
+          <span style={{ fontSize: 16 }}>{tone === "good" ? "✅" : tone === "warn" ? "⚠️" : "🛑"}</span>
+          <span style={{ color: "var(--color-ink)", fontWeight: 650 }}>{thaiText(gate.decision)}</span>
+        </div>
+        <div className="chip-row">
+          {gate.matched.map((rule) => (
+            <span key={rule.rule_order}>{thaiText(rule.signal)}</span>
+          ))}
+          {gate.unverified.includes("hrv_status") && <span>ยังไม่ได้เทียบ HRV status</span>}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Next session — จาก training_plan + เกณฑ์ผ่านของ session นั้น
+   ───────────────────────────────────────────── */
+
+function criteriaChips(criteria: SessionCriteria | null): string[] {
+  if (!criteria) return [];
+  const chips: string[] = [];
+  if (criteria.z2_min_percent != null) chips.push(`Z2 ≥ ${criteria.z2_min_percent}%`);
+  if (criteria.drift_max_bpm != null) chips.push(`Drift ≤ ${criteria.drift_max_bpm} bpm`);
+  if (criteria.decoupling_max_percent != null) chips.push(`Decoupling ≤ ${criteria.decoupling_max_percent}%`);
+  if (criteria.hr_avg_max_bpm != null) chips.push(`HR ≤ ${criteria.hr_avg_max_bpm} bpm`);
+  if (criteria.z4z5_max_percent != null) chips.push(`Z4+Z5 ≤ ${criteria.z4z5_max_percent}%`);
+  return chips;
+}
+
+function NextSessionCard({ ctx, criteria }: { ctx: TrainingContext; criteria: SessionCriteria[] }) {
+  const session = ctx.nextSession;
+  if (!session) return null;
+  const days = Math.round((Date.parse(session.plan_date) - Date.parse(ctx.today)) / 86_400_000);
+  const kind = classifySession(session.session_type ?? session.title);
+  const chips = criteriaChips(criteriaFor(kind, criteria));
+  return (
+    <Panel
+      title="Session ถัดไปตามแผน"
+      subtitle={days === 0 ? "วันนี้" : `อีก ${days} วัน · ${session.plan_date}`}
+      className="span-12"
+      action={<CalendarClock size={18} />}
+    >
+      <div style={{ display: "grid", gap: 8 }}>
+        <strong>{sessionLabel(session.session_type ?? session.title)}</strong>
+        <span style={{ fontSize: "0.86rem", color: "var(--color-muted)" }}>{thaiText(session.title)}</span>
+        <div className="chip-row">
+          {session.target_distance_km != null && <span>{km(session.target_distance_km)}</span>}
+          {session.target_duration_min != null && <span>{minutes(session.target_duration_min)}</span>}
+          {session.target_pace_sec_per_km != null && <span>{pace(session.target_pace_sec_per_km)}</span>}
+          {session.planned_shoe && <span>รองเท้า: {session.planned_shoe}</span>}
+        </div>
+        {chips.length > 0 && (
+          <div className="chip-row">
+            <span style={{ fontWeight: 650 }}>เกณฑ์ผ่าน:</span>
+            {chips.map((chip) => (
+              <span key={chip}>{chip}</span>
+            ))}
+          </div>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Phase strip — timeline ของ training_phases + จุดที่อยู่ตอนนี้
+   ───────────────────────────────────────────── */
+
+function PhaseStrip({ ctx, data }: { ctx: TrainingContext; data: DashboardData }) {
+  if (!data.phases.length) return null;
+  const phases = [...data.phases].sort((a, b) => a.sort_order - b.sort_order);
+  return (
+    <Panel
+      title="Training phase"
+      subtitle={
+        ctx.currentRace
+          ? `${ctx.currentRace.race_name ?? ctx.currentRace.race_slug} · ${ctx.daysToRace != null ? `อีก ${ctx.daysToRace} วัน` : ctx.currentRace.race_date}`
+          : "ยังไม่มีแข่งถัดไปในแผน"
+      }
+      className="span-12"
+      action={<Route size={18} />}
+    >
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+        {phases.map((phase) => {
+          const isCurrent = ctx.phase?.id === phase.id;
+          const isPast = phase.end_date < ctx.today;
+          return (
+            <div
+              key={phase.id}
+              style={{
+                minWidth: 132, flex: 1, padding: "10px 12px", borderRadius: 10,
+                border: isCurrent ? "2px solid var(--color-primary)" : "1px solid var(--color-line)",
+                background: isCurrent ? "rgba(79,138,120,0.10)" : "transparent",
+                opacity: isPast && !isCurrent ? 0.55 : 1,
+              }}
+            >
+              <div style={{ fontWeight: 650, fontSize: "0.82rem" }}>
+                {isPast && !isCurrent ? "✓ " : ""}
+                {phase.phase_name}
+              </div>
+              <div style={{ fontSize: "0.72rem", color: "var(--color-muted)", marginTop: 2 }}>
+                {shortDate(phase.start_date)} – {shortDate(phase.end_date)}
+              </div>
+              {isCurrent && (
+                <div style={{ marginTop: 8 }}>
+                  <ProgressBar value={ctx.phaseProgressPct} label={`คุณอยู่ตรงนี้ · ${ctx.phaseProgressPct.toFixed(0)}%`} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   Coach verdict — จาก evaluateRun (เกณฑ์ session_criteria ใน db)
+   ───────────────────────────────────────────── */
+
+function runVerdict(run: RunLog | undefined, evaluation: RunEvaluation | null) {
   if (!run) {
     return {
       tone: "neutral" as const,
       title: "ยังไม่มีผลวิ่งล่าสุด",
-      message: "เมื่อ sync run log แล้ว หน้านี้จะสรุปว่าผ่านแผนไหมและควรระวังอะไรต่อ",
+      message: "เมื่อ sync run log แล้ว หน้านี้จะสรุปว่าผ่านเกณฑ์ไหมและควรระวังอะไรต่อ",
+      failed: [] as string[],
     };
   }
-  const z2 = run.z2_percent ?? 0;
-  const drift = run.drift_bpm ?? 0;
   const hasPain = painLevel(run.pain) !== "none";
-  if (hasPain) return { tone: "warn" as const, title: "ผ่าน แต่ต้องเช็กอาการขา", message: "คุม easy ได้ดี แต่มี pain/soreness note ให้ดูอาการก่อน session คุณภาพครั้งถัดไป" };
-  if (z2 >= 85 && drift <= 5) return { tone: "good" as const, title: "ผ่านตามแผน", message: "Z2 และ drift อยู่ในเกณฑ์ดี เหมาะกับการสะสม aerobic base" };
-  if (z2 >= 85) return { tone: "warn" as const, title: "ผ่าน แต่ drift สูง", message: "Z2 ดีมาก แต่หัวใจไหลขึ้นช่วงท้าย ควรเน้น recovery และ hydration" };
-  return { tone: "neutral" as const, title: "ต้องดูบริบทเพิ่ม", message: "ข้อมูลล่าสุดยังไม่เข้าเกณฑ์ easy ชัดเจน ให้เทียบกับ RPE, อากาศ และ readiness ของวันนั้น" };
+  if (!evaluation || evaluation.verdict === "unknown") {
+    return {
+      tone: hasPain ? ("warn" as const) : ("neutral" as const),
+      title: hasPain ? "ต้องเช็กอาการขาก่อน" : "Session นี้ไม่มีเกณฑ์ตัวเลข",
+      message: hasPain
+        ? "มี pain/soreness note ให้ดูอาการก่อน session ถัดไป"
+        : "ดูตามบริบท (RPE, อากาศ, readiness) ประกอบ",
+      failed: [] as string[],
+    };
+  }
+  const failed = evaluation.checks.filter((check) => !check.ok).map((check) => `${check.label}: ${check.actual.toFixed(1)} (เกณฑ์ ${check.limit})`);
+  if (evaluation.verdict === "pass") {
+    return {
+      tone: hasPain ? ("warn" as const) : ("good" as const),
+      title: hasPain ? "ผ่านเกณฑ์ แต่ต้องเช็กอาการขา" : `ผ่านเกณฑ์ ${sessionLabel(run.session_type)}`,
+      message: hasPain
+        ? "ตัวเลขผ่านทุกข้อ แต่มี pain note — ดูอาการก่อน session คุณภาพครั้งถัดไป"
+        : `ผ่านครบทั้ง ${evaluation.checks.length} ข้อของเกณฑ์ (sync จาก rules/session-criteria.md)`,
+      failed,
+    };
+  }
+  if (evaluation.verdict === "warn") {
+    return {
+      tone: "warn" as const,
+      title: "ผ่านบางส่วน — มี 1 ข้อหลุดเกณฑ์",
+      message: "ดูรายการที่หลุดด้านล่าง แล้วปรับใน session ถัดไป",
+      failed,
+    };
+  }
+  return {
+    tone: "hot" as const,
+    title: "หลุดเกณฑ์หลายข้อ",
+    message: "ลดความหนัก/เพิ่ม recovery ก่อนกลับไปตามแผน",
+    failed,
+  };
 }
 
 /* ─────────────────────────────────────────────
-   Today page
+   Today page — widget stack เรียงตาม TrainingContext
    ───────────────────────────────────────────── */
 export function Today({ data }: { data: DashboardData }) {
-  const today = latest(data.daily, "log_date");
-  const lastRun = latest(data.runs, "run_date");
+  const ctx = buildTrainingContext(data);
+  const today = ctx.todayReadiness ?? latest(data.daily, "log_date");
+  const lastRun = ctx.lastRun ?? undefined;
   const recentRuns = data.runs.slice(-8);
   const totalDistance = data.runs.reduce((sum, run) => sum + (run.distance_km ?? 0), 0);
   const avgZ2 = average(data.runs.map((run) => run.z2_percent));
   const tone = readinessTone(today?.readiness_status ?? null);
-  const verdict = runVerdict(lastRun);
+  const evaluation = lastRun ? evaluateRun(lastRun, data.criteria) : null;
+  const verdict = runVerdict(lastRun, evaluation);
 
   const easyRuns = data.runs
     .filter((r) => isSteadyAerobic(r.session_type) && r.pace_sec_per_km != null)
@@ -114,9 +388,8 @@ export function Today({ data }: { data: DashboardData }) {
   const consistencyTone: "neutral" | "good" | "warn" | "hot" =
     paceConsistencyCoV == null ? "neutral" : paceConsistencyCoV < 3 ? "good" : paceConsistencyCoV < 6 ? "warn" : "hot";
 
-  const todayIso = new Date().toISOString().slice(0, 10);
   const isQualityType = (v: string | null | undefined) => { const k = classifySession(v); return k === "tempo" || k === "vo2" || k === "test" || k === "race"; };
-  const nextQuality = data.plan.filter((p) => p.plan_date >= todayIso && isQualityType(p.session_type ?? p.title)).sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
+  const nextQuality = data.plan.filter((p) => p.plan_date >= ctx.today && isQualityType(p.session_type ?? p.title)).sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
   const nextQualityDays = nextQuality == null ? null : Math.ceil((new Date(nextQuality.plan_date).getTime() - Date.now()) / 86400000);
 
   const loadRatio = today?.load_ratio ?? null;
@@ -145,6 +418,9 @@ export function Today({ data }: { data: DashboardData }) {
   return (
     <section className="page-stack">
 
+      {/* ── Context banners: race recap / race week / injury ── */}
+      <ContextBanners ctx={ctx} />
+
       {/* ── Readiness hero ── */}
       <div className={`readiness-hero ${tone}`}>
         <div className="readiness-hero-copy">
@@ -161,6 +437,13 @@ export function Today({ data }: { data: DashboardData }) {
         <div className="readiness-hero-ring">
           <ReadinessRing score={today?.recovery_percent} tone={tone} />
         </div>
+      </div>
+
+      {/* ── Gate verdict + next session + phase strip ── */}
+      <div className="content-grid">
+        <GateVerdict ctx={ctx} />
+        <NextSessionCard ctx={ctx} criteria={data.criteria} />
+        <PhaseStrip ctx={ctx} data={data} />
       </div>
 
       {/* ── Metric grid ── */}
@@ -188,7 +471,7 @@ export function Today({ data }: { data: DashboardData }) {
           icon={Activity} tone={consistencyTone} />
       </div>
 
-      {/* ── Content grid (ไม่เปลี่ยน) ── */}
+      {/* ── Content grid ── */}
       <div className="content-grid">
         <Panel title="Latest run" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
@@ -203,11 +486,18 @@ export function Today({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        <Panel title="Coach verdict" subtitle="สรุปจาก run log ล่าสุด" className="span-7">
+        <Panel title="Coach verdict" subtitle="ตัดสินจากเกณฑ์ราย session type ใน db" className="span-7">
           <div className={`coach-verdict ${verdict.tone}`}>
             <div className="coach-verdict-icon">{verdict.tone === "good" ? <ShieldCheck size={24} /> : <AlertTriangle size={24} />}</div>
             <div>
               <strong>{verdict.title}</strong><p>{verdict.message}</p>
+              {verdict.failed.length > 0 && (
+                <div className="chip-row" style={{ marginBottom: 6 }}>
+                  {verdict.failed.map((item) => (
+                    <span key={item}>⚠️ {item}</span>
+                  ))}
+                </div>
+              )}
               <div className="mini-metrics">
                 <span>RPE {thaiText(lastRun?.rpe)}</span><span>ขา/อาการ: {thaiText(lastRun?.pain, "ไม่มีข้อมูล")}</span>
                 <span>Decoupling {percent(lastRun?.decoupling_percent)}</span><span>รองเท้า {thaiText(lastRun?.shoe_slug)}</span>

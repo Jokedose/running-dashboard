@@ -14,6 +14,7 @@ export const emptyData: DashboardData = {
   profile: null,
   criteria: [],
   gateRules: [],
+  phases: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

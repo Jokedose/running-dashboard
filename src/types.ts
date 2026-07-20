@@ -122,6 +122,14 @@ export type TrainingPlan = {
   created_at: string | null;
 };
 
+export type TrainingPhase = {
+  id: string;
+  phase_name: string;
+  start_date: string;
+  end_date: string;
+  sort_order: number;
+};
+
 export type MonthlySummary = {
   id: string;
   month: string;
@@ -267,6 +275,7 @@ export type DashboardData = {
   profile: RunnerProfile | null;
   criteria: SessionCriteria[];
   gateRules: ReadinessGateRule[];
+  phases: TrainingPhase[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";

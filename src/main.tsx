@@ -22,6 +22,7 @@ import type {
   RunLog,
   RunnerProfile,
   SessionCriteria,
+  TrainingPhase,
   TrainingPlan,
   WeeklySummary,
 } from "./types";
@@ -86,7 +87,7 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules] = await Promise.all([
+    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
@@ -100,6 +101,7 @@ function App() {
       supabase.from("runner_profile").select("*").limit(1),
       supabase.from("session_criteria").select("*").order("session_kind", { ascending: true }),
       supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }),
+      supabase.from("training_phases").select("*").order("sort_order", { ascending: true }),
     ]);
     if (daily.error || runs.error || weekly.error || gear.error || race.error) {
       setLoadState("error");
@@ -120,6 +122,7 @@ function App() {
       profile: profile.error ? null : (((profile.data ?? [])[0] as RunnerProfile | undefined) ?? null),
       criteria: criteria.error ? [] : ((criteria.data ?? []) as SessionCriteria[]),
       gateRules: gateRules.error ? [] : ((gateRules.data ?? []) as ReadinessGateRule[]),
+      phases: phases.error ? [] : ((phases.data ?? []) as TrainingPhase[]),
     });
     setLoadState("ready");
   }
