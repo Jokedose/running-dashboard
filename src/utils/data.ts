@@ -5,12 +5,16 @@ export const emptyData: DashboardData = {
   runs: [],
   weekly: [],
   gear: [],
-  race: null,
+  races: [],
   plan: [],
   body: [],
   monthly: [],
   injuries: [],
   raceGoals: [],
+  profile: null,
+  criteria: [],
+  gateRules: [],
+  phases: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

@@ -255,13 +255,16 @@ function RacePaceCalculator({ targetMin }: { targetMin: number }) {
   );
 }
 
-function RaceResultCard({ race }: { race: NonNullable<DashboardData["race"]> }) {
+function RaceResultCard({ race, heading }: { race: DashboardData["races"][number]; heading?: string }) {
   if (race.result_time_min == null) return null;
   const achievedTone =
     race.target_achieved === "A" || race.target_achieved === "B" ? "good"
     : race.target_achieved === "C" ? "warn" : "hot";
   return (
     <>
+      {heading && (
+        <div style={{ fontWeight: 700, fontSize: "0.95rem", color: "var(--color-ink)", marginBottom: -6 }}>{heading}</div>
+      )}
       <div className="metric-grid">
         <MetricCard
           label="ผลแข่งจริง"
@@ -302,11 +305,18 @@ function RaceResultCard({ race }: { race: NonNullable<DashboardData["race"]> }) 
 }
 
 export function Race({ data }: { data: DashboardData }) {
-  const race = data.race;
   const currentGoal = resolveCurrentRaceGoal(data.raceGoals, todayIso());
+  // readiness report ของแข่งปัจจุบัน (จะมีเมื่อ report ถูก sync ก่อนวันแข่ง)
+  const race = data.races.find((row) => row.race_date === currentGoal?.race_date) ?? null;
+  // COROS fitness (VO2max, prediction) เป็นค่าระดับนักวิ่ง ไม่ใช่ของแข่งใดแข่งหนึ่ง —
+  // ถ้าแข่งปัจจุบันยังไม่มี report ใช้แถวล่าสุดแทน (races เรียง race_date desc)
+  const fitness = race ?? data.races[0] ?? null;
+  const pastResults = data.races.filter(
+    (row) => row.result_time_min != null && row.race_date !== currentGoal?.race_date,
+  );
   const targetMinutes = currentGoal?.target_a_min ?? currentGoal?.cutoff_min ?? null;
   const cutoffMinutes = currentGoal?.cutoff_min ?? null;
-  const raceDate = race?.race_date ?? currentGoal?.race_date ?? null;
+  const raceDate = currentGoal?.race_date ?? race?.race_date ?? null;
   const raceCompleted = race?.result_time_min != null;
 
   const daysLeft = raceDate == null ? null : Math.ceil((new Date(raceDate).getTime() - Date.now()) / 86400000);
@@ -321,7 +331,7 @@ export function Race({ data }: { data: DashboardData }) {
     (best, point) => (!best || point.actual < best.actual ? point : best),
     null,
   );
-  const coros10k = race?.coros_pred_10k_min ?? null;
+  const coros10k = fitness?.coros_pred_10k_min ?? null;
   const forecast = targetMinutes != null ? smartForecast(actualProjection, coros10k, data.runs, daysLeft, targetMinutes) : null;
 
   // Personal Records
@@ -351,7 +361,7 @@ export function Race({ data }: { data: DashboardData }) {
   const targetPaceSec = targetMinutes != null ? (targetMinutes * 60) / 10 : null;
   void bestPoint;
 
-  if (!race && !currentGoal) {
+  if (!data.races.length && !currentGoal) {
     return (
       <section className="page-stack">
         <Panel title="ยังไม่มีการตั้งเป้าแข่งขัน" subtitle="เพิ่มไฟล์เป้าหมายใน running-results/goals/ แล้ว sync เพื่อดูหน้านี้" className="span-12">
@@ -379,6 +389,10 @@ export function Race({ data }: { data: DashboardData }) {
       </div>
 
       {race ? <RaceResultCard race={race} /> : null}
+
+      {pastResults.map((row) => (
+        <RaceResultCard key={row.id} race={row} heading={`🏁 ผลแข่งที่ผ่านมา · ${row.race_name} (${row.race_date})`} />
+      ))}
 
       {!raceCompleted && (
         <div className="metric-grid">
@@ -418,12 +432,12 @@ export function Race({ data }: { data: DashboardData }) {
         </div>
       )}
 
-      {(coros10k != null || race?.vo2max != null) && (
+      {(coros10k != null || fitness?.vo2max != null) && (
         <div className="metric-grid">
           <MetricCard
             label="VO2max (COROS)"
-            value={race?.vo2max == null ? "-" : race.vo2max.toFixed(0)}
-            detail={race?.coros_running_level == null ? undefined : `Running level ${race.coros_running_level.toFixed(0)}`}
+            value={fitness?.vo2max == null ? "-" : fitness.vo2max.toFixed(0)}
+            detail={fitness?.coros_running_level == null ? undefined : `Running level ${fitness.coros_running_level.toFixed(0)}`}
             icon={Sparkles}
             tone="good"
           />
@@ -436,13 +450,13 @@ export function Race({ data }: { data: DashboardData }) {
           />
           <MetricCard
             label="Threshold pace"
-            value={race?.coros_threshold_pace_sec_per_km == null ? "-" : pace(race.coros_threshold_pace_sec_per_km)}
+            value={fitness?.coros_threshold_pace_sec_per_km == null ? "-" : pace(fitness.coros_threshold_pace_sec_per_km)}
             detail="จาก COROS fitness assessment"
             icon={Activity}
           />
           <MetricCard
             label="5K prediction"
-            value={raceTime(race?.coros_pred_5k_min ?? null)}
+            value={raceTime(fitness?.coros_pred_5k_min ?? null)}
             detail="วัดความเร็วระยะสั้น"
             icon={Clock3}
           />
@@ -542,13 +556,19 @@ export function Race({ data }: { data: DashboardData }) {
           </Panel>
         )}
 
-        <Panel title="Race-day decision guide" subtitle="แนวทางวันแข่ง" className="span-12">
-          <div className="coach-card race-decision">
-            <p>{thaiText(race?.race_decision)}</p>
-          </div>
-        </Panel>
-        <ListPanel title="Strengths" items={(race?.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
-        <ListPanel title="Risks" items={(race?.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+        {race?.race_decision && (
+          <Panel title="Race-day decision guide" subtitle="แนวทางวันแข่ง" className="span-12">
+            <div className="coach-card race-decision">
+              <p>{thaiText(race.race_decision)}</p>
+            </div>
+          </Panel>
+        )}
+        {race && (
+          <>
+            <ListPanel title="Strengths" items={(race.strengths ?? []).map((item) => thaiText(item))} className="span-6 good-list" />
+            <ListPanel title="Risks" items={(race.risks ?? []).map((item) => thaiText(item))} className="span-6 warn-list" />
+          </>
+        )}
 
         {currentGoal?.pacing_splits && currentGoal.pacing_splits.length > 0 && (
           <Panel

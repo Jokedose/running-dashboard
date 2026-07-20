@@ -18,17 +18,23 @@ import type {
   NavItem,
   RaceGoal,
   RaceReadiness,
+  ReadinessGateRule,
   RunLog,
+  RunnerProfile,
+  SessionCriteria,
+  TrainingPhase,
   TrainingPlan,
   WeeklySummary,
 } from "./types";
-import { emptyData } from "./utils/data";
+import { emptyData, resolveCurrentRaceGoal, todayIso } from "./utils/data";
+import { raceShortLabel } from "./utils/context";
 import { useHashRoute } from "./hooks/useHashRoute";
 import { theme } from "./theme";
 import "./styles.css";
 
-const navItems: NavItem[] = [
-  { key: "plan", label: "10K Plan", icon: CalendarCheck },
+// label ของเมนู plan ถูกแทนด้วยชื่อแข่งถัดไปจาก race_goals ตอน runtime (ดู navItems ใน App)
+const baseNavItems: NavItem[] = [
+  { key: "plan", label: "Plan", icon: CalendarCheck },
   { key: "today", label: "Today", icon: CalendarDays },
   { key: "calendar", label: "Calendar", icon: CalendarRange },
   { key: "race", label: "Race", icon: Trophy },
@@ -83,17 +89,21 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals] = await Promise.all([
+    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
       supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
-      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(1),
+      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }),
       supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
       supabase.from("body_composition").select("*").order("measured_date", { ascending: true }),
       supabase.from("monthly_summaries").select("*").order("month", { ascending: true }),
       supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }),
       supabase.from("race_goals").select("*").order("race_date", { ascending: true }),
+      supabase.from("runner_profile").select("*").limit(1),
+      supabase.from("session_criteria").select("*").order("session_kind", { ascending: true }),
+      supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }),
+      supabase.from("training_phases").select("*").order("sort_order", { ascending: true }),
     ]);
     if (daily.error || runs.error || weekly.error || gear.error || race.error) {
       setLoadState("error");
@@ -105,12 +115,16 @@ function App() {
       runs: (runs.data ?? []) as RunLog[],
       weekly: (weekly.data ?? []) as WeeklySummary[],
       gear: (gear.data ?? []) as GearMileage[],
-      race: ((race.data ?? [])[0] as RaceReadiness | undefined) ?? null,
+      races: (race.data ?? []) as RaceReadiness[],
       plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
       body: body.error ? [] : ((body.data ?? []) as BodyComposition[]),
       monthly: monthly.error ? [] : ((monthly.data ?? []) as MonthlySummary[]),
       injuries: injuries.error ? [] : ((injuries.data ?? []) as InjuryStatus[]),
       raceGoals: raceGoals.error ? [] : ((raceGoals.data ?? []) as RaceGoal[]),
+      profile: profile.error ? null : (((profile.data ?? [])[0] as RunnerProfile | undefined) ?? null),
+      criteria: criteria.error ? [] : ((criteria.data ?? []) as SessionCriteria[]),
+      gateRules: gateRules.error ? [] : ((gateRules.data ?? []) as ReadinessGateRule[]),
+      phases: phases.error ? [] : ((phases.data ?? []) as TrainingPhase[]),
     });
     setLoadState("ready");
   }
@@ -185,7 +199,14 @@ function App() {
     fetchData();
   }, [session]);
 
-  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.race || data.plan.length || data.body.length);
+  const hasData = Boolean(data.daily.length || data.runs.length || data.weekly.length || data.gear.length || data.races.length || data.plan.length || data.body.length);
+
+  // เมนู plan ใช้ชื่อแข่งถัดไป (เช่น "Allianz 10K") — เปลี่ยนเองเมื่อ race goal เปลี่ยน
+  const navItems = useMemo(() => {
+    const label = raceShortLabel(resolveCurrentRaceGoal(data.raceGoals, todayIso()));
+    return baseNavItems.map((item) => (item.key === "plan" && label ? { ...item, label: `${label} Plan` } : item));
+  }, [data.raceGoals]);
+
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;
     if (route === "plan") return <Plan data={data} />;
@@ -198,7 +219,7 @@ function App() {
     if (route === "trends") return <Trends data={data} />;
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
-    if (route === "strength") return <Strength />;
+    if (route === "strength") return <Strength data={data} />;
     if (route === "gear") return <Gear data={data} />;
     if (route === "body") return <Body data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;

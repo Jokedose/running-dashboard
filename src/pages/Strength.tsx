@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { CalendarCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Panel } from "../components/Panel";
 import { KB_GROUP_LABEL, kbExercises, kbRoutine, type KbGroup } from "../data/kbExercises";
+import type { DashboardData } from "../types";
+import { buildTrainingContext } from "../utils/context";
 
 const GROUPS: KbGroup[] = ["power", "upper", "core", "stability"];
 const framesByName = new Map(kbExercises.map((e) => [e.name, e.frames]));
@@ -17,15 +19,29 @@ function FlipImage({ frames, alt, className, onClick }: { frames: [string, strin
   return <img src={frames[i]} alt={alt} loading="lazy" className={className} onClick={onClick} />;
 }
 
-export function Strength() {
+export function Strength({ data }: { data: DashboardData }) {
   const [safeOnly, setSafeOnly] = useState(true);
   const [zoom, setZoom] = useState<{ frames: [string, string]; name: string } | null>(null);
   const todayWeekday = new Date().getDay(); // 0=อา 1=จ ...
+  // กติกาแผน: ช่วง taper งดเวททั้งหมด — ตรวจจาก training_phases อัตโนมัติ
+  const ctx = buildTrainingContext(data);
+  const isTaper = /taper/i.test(ctx.phase?.phase_name ?? "");
 
   const list = safeOnly ? kbExercises.filter((e) => e.injurySafe) : kbExercises;
 
   return (
     <section className="page-stack">
+      {isTaper && (
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 10,
+            background: "#fef9ec", borderLeft: "4px solid #b08642", color: "#7a5300", fontWeight: 650,
+          }}
+        >
+          <TriangleAlert size={18} />
+          <span>ช่วง {ctx.phase?.phase_name} — งดเวททุก session ตามแผนจนถึงวันแข่ง</span>
+        </div>
+      )}
       {zoom && (
         <div className="kb-lightbox" role="dialog" aria-label={zoom.name} onClick={() => setZoom(null)}>
           <div className="kb-lightbox-inner" onClick={(e) => e.stopPropagation()}>

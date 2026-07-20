@@ -122,6 +122,14 @@ export type TrainingPlan = {
   created_at: string | null;
 };
 
+export type TrainingPhase = {
+  id: string;
+  phase_name: string;
+  start_date: string;
+  end_date: string;
+  sort_order: number;
+};
+
 export type MonthlySummary = {
   id: string;
   month: string;
@@ -191,17 +199,83 @@ export type RaceGoal = {
   updated_at: string | null;
 };
 
+export type HrZone = {
+  zone: string;
+  min: number | null;
+  max: number | null;
+  label: string | null;
+};
+
+export type RunnerProfile = {
+  user_id: string;
+  age: number | null;
+  weight_kg: number | null;
+  resting_hr_bpm: number | null;
+  hr_max_bpm: number | null;
+  hrr_bpm: number | null;
+  easy_hr_min: number | null;
+  easy_hr_max: number | null;
+  easy_hr_ceiling: number | null;
+  sweet_spot_min: number | null;
+  sweet_spot_max: number | null;
+  zones: HrZone[];
+  easy_pace_text: string | null;
+  updated_at: string | null;
+};
+
+export type SessionCriteria = {
+  id: string;
+  session_kind: string;
+  z2_min_percent: number | null;
+  drift_max_bpm: number | null;
+  decoupling_max_percent: number | null;
+  hr_avg_max_bpm: number | null;
+  z4z5_max_percent: number | null;
+  notes_good: string[] | null;
+  notes_fix: string[] | null;
+  notes_avoid: string[] | null;
+};
+
+// เงื่อนไข machine จาก rules/readiness-gate.md — ทุก key เป็น optional
+// clause ที่ประเมินไม่ได้ (ไม่มีข้อมูล) ทำให้ rule นั้นไม่ match (ดู evaluateGate)
+export type GateCondition = {
+  recovery_min?: number;
+  hrv_status?: string[];
+  sleep_min_h?: number;
+  sleep_max_h?: number;
+  load_ratio_min?: number;
+  load_ratio_max?: number;
+  load_ratio_over?: number;
+  prev_run_pain?: boolean;
+  rain?: boolean;
+};
+
+export type GateSeverity = "ok" | "caution" | "stop";
+
+export type ReadinessGateRule = {
+  id: string;
+  rule_order: number;
+  signal: string;
+  condition: GateCondition;
+  decision: string;
+  severity: GateSeverity;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
   weekly: WeeklySummary[];
   gear: GearMileage[];
-  race: RaceReadiness | null;
+  races: RaceReadiness[];
   plan: TrainingPlan[];
   body: BodyComposition[];
   monthly: MonthlySummary[];
   injuries: InjuryStatus[];
   raceGoals: RaceGoal[];
+  profile: RunnerProfile | null;
+  criteria: SessionCriteria[];
+  gateRules: ReadinessGateRule[];
+  phases: TrainingPhase[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
