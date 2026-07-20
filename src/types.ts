@@ -266,7 +266,7 @@ export type DashboardData = {
   runs: RunLog[];
   weekly: WeeklySummary[];
   gear: GearMileage[];
-  race: RaceReadiness | null;
+  races: RaceReadiness[];
   plan: TrainingPlan[];
   body: BodyComposition[];
   monthly: MonthlySummary[];

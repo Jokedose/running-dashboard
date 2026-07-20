@@ -5,7 +5,7 @@ export const emptyData: DashboardData = {
   runs: [],
   weekly: [],
   gear: [],
-  race: null,
+  races: [],
   plan: [],
   body: [],
   monthly: [],

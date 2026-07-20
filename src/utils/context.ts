@@ -52,6 +52,21 @@ export function diffDays(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
+/** ป้ายชื่อแข่งแบบสั้นจาก slug (goals/<slug>.md) — race_name เต็มยาวเกิน nav
+    "2026-11-22-10k-allianz" -> "Allianz 10K", "2026-07-19-10k" -> "10K" */
+export function raceShortLabel(goal: RaceGoal | null | undefined): string | null {
+  if (!goal) return null;
+  const rest = goal.race_slug.replace(/^\d{4}-\d{2}-\d{2}-?/, "");
+  const parts = rest.split("-").filter(Boolean);
+  const dist = parts.find((part) => /^\d+(\.\d+)?k$|^half$|^full$|^marathon$/i.test(part));
+  const name = parts
+    .filter((part) => part !== dist)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const label = [name, dist?.toUpperCase()].filter(Boolean).join(" ");
+  return label || goal.race_name;
+}
+
 /** เป้า long run ปัจจุบันจาก training_plan (ระยะไกลสุดของ long run
     ที่ยังไม่ถึงวัน — ถ้าไม่มีก็ใช้ไกลสุดทั้งแผน) แทนค่าคงที่ 9.5 เดิม
     ซึ่งเป็นเป้าช่วง pre-race ที่จบไปแล้ว */
@@ -78,7 +93,7 @@ export function buildTrainingContext(data: DashboardData, today: string = todayI
   const lastGoal = pastGoals.at(-1) ?? null;
   let lastRace: LastRaceContext | null = null;
   if (lastGoal) {
-    const result = data.race && data.race.race_date === lastGoal.race_date ? data.race : null;
+    const result = data.races.find((row) => row.race_date === lastGoal.race_date) ?? null;
     const runLog =
       data.runs.find((run) => run.run_date === lastGoal.race_date && classifySession(run.session_type) === "race") ?? null;
     lastRace = { goal: lastGoal, result, runLog, daysSince: diffDays(lastGoal.race_date, today) };

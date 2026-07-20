@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildTrainingContext, diffDays, longRunTargetKm } from "../src/utils/context";
+import { buildTrainingContext, diffDays, longRunTargetKm, raceShortLabel } from "../src/utils/context";
 import { emptyData } from "../src/utils/data";
 import type { DashboardData, RaceGoal, RaceReadiness, RunLog, TrainingPhase, TrainingPlan } from "../src/types";
 
@@ -122,7 +122,7 @@ describe("buildTrainingContext — races", () => {
     expect(withRunLog.lastRace?.runLog?.id).toBe("run-race");
 
     const result = { race_date: "2026-07-19", race_name: "10K", result_time_min: 105 } as RaceReadiness;
-    const withResult = buildTrainingContext(data({ raceGoals: goals, race: result }), TODAY);
+    const withResult = buildTrainingContext(data({ raceGoals: goals, races: [result] }), TODAY);
     expect(withResult.justRaced).toBe(true);
     expect(withResult.lastRace?.result?.result_time_min).toBe(105);
   });
@@ -196,5 +196,14 @@ describe("longRunTargetKm", () => {
     expect(longRunTargetKm(plan.slice(0, 1), TODAY)).toBe(11);
     // ไม่มี long เลย -> fallback 9.5
     expect(longRunTargetKm([], TODAY)).toBe(9.5);
+  });
+});
+
+describe("raceShortLabel", () => {
+  test("builds a short label from the goal slug", () => {
+    expect(raceShortLabel(goal({}))).toBe("10K");
+    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz" }))).toBe("Allianz 10K");
+    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram" }))).toBe("Buriram HALF");
+    expect(raceShortLabel(null)).toBeNull();
   });
 });
