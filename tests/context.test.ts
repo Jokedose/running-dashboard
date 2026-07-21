@@ -201,9 +201,16 @@ describe("longRunTargetKm", () => {
 
 describe("raceShortLabel", () => {
   test("builds a short label from the goal slug", () => {
-    expect(raceShortLabel(goal({}))).toBe("10K");
-    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz" }))).toBe("10K - Allianz");
-    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram" }))).toBe("HALF - Buriram");
+    expect(raceShortLabel(goal({ race_name: null }))).toBe("10K");
+    expect(raceShortLabel(goal({}))).toBe("10K - Disney Run 10K");
+    expect(
+      raceShortLabel(
+        goal({ race_slug: "2026-11-22-10k-allianz", race_name: "Allianz Ayudhya World Run Thailand Series 2026" }),
+      ),
+    ).toBe("10K - Allianz Ayudhya World Run Thailand Series 2026");
+    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram", race_name: "Buriram Marathon" }))).toBe(
+      "HALF - Buriram Marathon",
+    );
     expect(raceShortLabel(null)).toBeNull();
   });
 });

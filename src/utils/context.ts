@@ -52,19 +52,16 @@ export function diffDays(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
-/** ป้ายชื่อแข่งแบบสั้นจาก slug (goals/<slug>.md) — race_name เต็มยาวเกิน nav
-    ขึ้นต้นด้วยระยะเสมอ: "2026-11-22-10k-allianz" -> "10K - Allianz", "2026-07-19-10k" -> "10K" */
+/** ป้ายชื่อแข่งขึ้นต้นด้วยระยะ (parse จาก slug) ตามด้วยชื่องานจริงจาก race_name
+    "2026-11-22-10k-allianz" + race_name "Allianz..." -> "10K - Allianz..." */
 export function raceShortLabel(goal: RaceGoal | null | undefined): string | null {
   if (!goal) return null;
   const rest = goal.race_slug.replace(/^\d{4}-\d{2}-\d{2}-?/, "");
   const parts = rest.split("-").filter(Boolean);
   const dist = parts.find((part) => /^\d+(\.\d+)?k$|^half$|^full$|^marathon$/i.test(part));
-  const name = parts
-    .filter((part) => part !== dist)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-  const label = [dist?.toUpperCase(), name].filter(Boolean).join(" - ");
-  return label || goal.race_name;
+  const name = goal.race_name;
+  if (!dist) return name;
+  return name ? `${dist.toUpperCase()} - ${name}` : dist.toUpperCase();
 }
 
 /** เป้า long run ปัจจุบันจาก training_plan (ระยะไกลสุดของ long run
