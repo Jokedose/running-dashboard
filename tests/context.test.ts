@@ -202,8 +202,8 @@ describe("longRunTargetKm", () => {
 describe("raceShortLabel", () => {
   test("builds a short label from the goal slug", () => {
     expect(raceShortLabel(goal({}))).toBe("10K");
-    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz" }))).toBe("Allianz 10K");
-    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram" }))).toBe("Buriram HALF");
+    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz" }))).toBe("10K - Allianz");
+    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram" }))).toBe("HALF - Buriram");
     expect(raceShortLabel(null)).toBeNull();
   });
 });
