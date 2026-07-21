@@ -16,10 +16,30 @@ export type DailyReadiness = {
   tags: string[] | null;
 };
 
+// ราย lap จาก .fit (run_logs.laps jsonb) — ปุ่ม lap/auto-lap ของนาฬิกา
+// สอดคล้องกับโครงแผน: WU/main/CD, ต่อ rep, หรือ auto-lap ต่อ กม.
+export type RunLap = {
+  i: number;
+  start_s: number;
+  elapsed_s: number;
+  distance_km: number | null;
+  avg_hr: number | null;
+  max_hr: number | null;
+  pace_s: number | null;
+  z1: number;
+  z2: number;
+  z3: number;
+  z4: number;
+  z5: number;
+  cadence_spm: number | null;
+  kind: "work" | "steady";
+};
+
 export type RunLog = {
   id: string;
   run_date: string;
   session_type: string | null;
+  laps: RunLap[] | null;
   distance_km: number | null;
   duration_min: number | null;
   pace_sec_per_km: number | null;

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../types";
 import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
+import { RunLaps } from "../components/RunLaps";
 import { thaiText } from "../utils/thaiText";
 
 const WEEKDAYS_SHORT = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
@@ -457,6 +458,8 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
             {run.note && <div className="cal-note-line" style={{ marginTop: 8, borderTop: "1px solid var(--color-line-soft)", paddingTop: 6 }}>{run.note}</div>}
           </div>
         )}
+
+        {run && <RunLaps laps={run.laps} />}
 
         {plan?.skip_reason && (
           <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>

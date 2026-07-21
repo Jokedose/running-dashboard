@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis }
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
+import { RunLaps } from "../components/RunLaps";
 import type { DashboardData, RunLog, SessionCriteria } from "../types";
 import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
@@ -141,6 +142,8 @@ function RunDetailModal({ run, criteria, onClose }: { run: RunLog; criteria: Ses
             <DataRow label="Power" value={`${run.power_w?.toFixed(0) ?? "-"} w`} />
           </div>
         </div>
+
+        <RunLaps laps={run.laps} />
 
         {(run.weather || run.temperature_c != null || run.humidity_percent != null) && (
           <div className="cal-block" style={{ borderLeftColor: "#5aa9e6" }}>
