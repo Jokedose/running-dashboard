@@ -74,3 +74,15 @@ export function sessionLabel(value: string | null | undefined, fallback = "-"): 
   }
   return stripMarkdown(trimmed);
 }
+
+/** แตกข้อความ "รายการซ้อม" เป็นราย segment (WU / main reps / CD ฯลฯ) — ไฟล์ schedule
+    ต้นทางเขียนแต่ละ segment คั่นด้วย " + " เสมอ (เช่น "WU 12 นาที (Z1-Z2, HR <153) +
+    6 x 400 m @ Z5 (...) + CD 10 นาที (...)") การแตกเป็น list ทำให้ปฏิทินโชว์ HR/pace
+    ต่อรอบชัดแทนที่จะอัดรวมเป็นประโยคเดียวยาว ๆ */
+export function workoutSegments(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(/\s*\+\s*/)
+    .map((part) => stripMarkdown(part.trim()))
+    .filter(Boolean);
+}
