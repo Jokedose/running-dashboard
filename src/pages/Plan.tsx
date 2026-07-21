@@ -5,7 +5,7 @@ import type { DashboardData, TrainingPhase, TrainingPlan } from "../types";
 import { latest, todayIso } from "../utils/data";
 import { buildTrainingContext } from "../utils/context";
 import { PhaseStrip } from "../components/PhaseStrip";
-import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
+import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate, workoutSegments } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 function groupByPhase(rows: TrainingPlan[], phases: TrainingPhase[]) {
@@ -171,7 +171,19 @@ export function Plan({ data }: { data: DashboardData }) {
           <div>
             <span>รายการถัดไป</span>
             <strong>{sessionLabel(todayPlan?.title, "ยังไม่มีแผน")}</strong>
-            <p>{todayPlan ? workoutDetail(todayPlan) : "เพิ่มรายการซ้อมเพื่อเริ่มติดตาม"}</p>
+            {(() => {
+              const segments = todayPlan ? workoutSegments(workoutDetail(todayPlan)) : [];
+              if (!todayPlan) return <p>เพิ่มรายการซ้อมเพื่อเริ่มติดตาม</p>;
+              // หลาย segment (WU/main/CD) -> แยกรายรอบให้เห็น HR/pace ชัด แทนอัดบรรทัดเดียว
+              if (segments.length > 1) {
+                return (
+                  <ol className="clean-list" style={{ marginTop: 4 }}>
+                    {segments.map((segment, i) => <li key={i}>{segment}</li>)}
+                  </ol>
+                );
+              }
+              return <p>{workoutDetail(todayPlan)}</p>;
+            })()}
           </div>
           <div className="session-pills">
             <span>

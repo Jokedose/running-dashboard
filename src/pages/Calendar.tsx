@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../types";
-import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
+import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
 import { thaiText } from "../utils/thaiText";
 
 const WEEKDAYS_SHORT = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
@@ -399,7 +399,24 @@ function DayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
               {plan.planned_shoe && <DataRow label="รองเท้า" value={thaiText(plan.planned_shoe)} />}
               {plan.priority && <DataRow label="ความสำคัญ" value={priorityLabel(plan.priority)} />}
             </div>
-            {noteField(plan.notes, "รายการซ้อม") && <div className="cal-note-line"><b>รายการ:</b> {noteField(plan.notes, "รายการซ้อม")}</div>}
+            {(() => {
+              const segments = workoutSegments(noteField(plan.notes, "รายการซ้อม"));
+              // session เดียว ไม่มี "+" คั่น (เช่น "Easy 45 นาที") -> โชว์บรรทัดเดียวแบบเดิม
+              // session หลาย segment (WU/main/CD) -> แยกเป็น list ให้เห็น HR/pace ต่อรอบชัด
+              if (segments.length <= 1) {
+                return segments.length === 1 && (
+                  <div className="cal-note-line"><b>รายการ:</b> {segments[0]}</div>
+                );
+              }
+              return (
+                <div className="cal-note-line">
+                  <b>รายการซ้อม:</b>
+                  <ol className="clean-list" style={{ marginTop: 4 }}>
+                    {segments.map((segment, i) => <li key={i}>{segment}</li>)}
+                  </ol>
+                </div>
+              );
+            })()}
             {noteField(plan.notes, "เป้าหมายหลัก") && <div className="cal-note-line"><b>เป้าหมาย:</b> {noteField(plan.notes, "เป้าหมายหลัก")}</div>}
             {noteField(plan.notes, "เกณฑ์ผ่าน") && <div className="cal-note-line"><b>เกณฑ์ผ่าน:</b> {noteField(plan.notes, "เกณฑ์ผ่าน")}</div>}
           </div>
