@@ -53,7 +53,7 @@ export function diffDays(from: string, to: string): number {
 }
 
 /** ป้ายชื่อแข่งแบบสั้นจาก slug (goals/<slug>.md) — race_name เต็มยาวเกิน nav
-    "2026-11-22-10k-allianz" -> "Allianz 10K", "2026-07-19-10k" -> "10K" */
+    ขึ้นต้นด้วยระยะเสมอ: "2026-11-22-10k-allianz" -> "10K - Allianz", "2026-07-19-10k" -> "10K" */
 export function raceShortLabel(goal: RaceGoal | null | undefined): string | null {
   if (!goal) return null;
   const rest = goal.race_slug.replace(/^\d{4}-\d{2}-\d{2}-?/, "");
@@ -63,7 +63,7 @@ export function raceShortLabel(goal: RaceGoal | null | undefined): string | null
     .filter((part) => part !== dist)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  const label = [name, dist?.toUpperCase()].filter(Boolean).join(" ");
+  const label = [dist?.toUpperCase(), name].filter(Boolean).join(" - ");
   return label || goal.race_name;
 }
 
