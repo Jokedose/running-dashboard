@@ -52,19 +52,30 @@ export function diffDays(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000);
 }
 
-/** ป้ายชื่อแข่งแบบสั้นจาก slug (goals/<slug>.md) — race_name เต็มยาวเกิน nav
-    ขึ้นต้นด้วยระยะเสมอ: "2026-11-22-10k-allianz" -> "10K - Allianz", "2026-07-19-10k" -> "10K" */
+/** ป้ายชื่อแข่งสั้นสำหรับ selector: "<ระยะ> - <ชื่องานเต็ม>" เช่น
+    "10K - Disney Run Thailand 2026", "10K - Allianz Ayudhya World Run Thailand Series 2026".
+    ระยะมาจาก slug (goals/<slug>.md ตั้งชื่อไฟล์ตามระยะเสมอ) ส่วนชื่องานใช้ race_name เต็ม
+    จากตาราง "ข้อมูลรายการแข่ง" ในไฟล์ goal โดยตรง — เดิม parse ชื่อจากคำใน slug เอง ทำให้
+    งานที่ตั้งชื่อไฟล์ต่างรูปแบบ (เช่นมี/ไม่มีระยะในชื่อไฟล์) ได้ label ไม่ตรงกันหรือดูซ้ำกัน
+    (เจอกับ Pokémon Run ที่มีไฟล์ตั้งชื่อสองแบบก่อนรวมเหลือไฟล์เดียว) */
 export function raceShortLabel(goal: RaceGoal | null | undefined): string | null {
   if (!goal) return null;
   const rest = goal.race_slug.replace(/^\d{4}-\d{2}-\d{2}-?/, "");
   const parts = rest.split("-").filter(Boolean);
   const dist = parts.find((part) => /^\d+(\.\d+)?k$|^half$|^full$|^marathon$/i.test(part));
-  const name = parts
+  const distLabel = dist?.toUpperCase() ?? null;
+
+  // ตัดวลีระยะทางท้ายชื่อที่บางไฟล์ goal แนบมาเอง (เช่น "... — 10 km") ออกก่อน
+  // เพราะ distLabel นำหน้าซ้ำความหมายอยู่แล้ว
+  const cleanedName = goal.race_name?.replace(/\s*[—-]\s*\d+(\.\d+)?\s*k(m)?\.?\s*$/i, "").trim() || null;
+  if (cleanedName) return [distLabel, cleanedName].filter(Boolean).join(" - ");
+
+  // fallback: ไม่มี race_name เลย -> ประกอบชื่อจากคำใน slug แทน
+  const nameFromSlug = parts
     .filter((part) => part !== dist)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-  const label = [dist?.toUpperCase(), name].filter(Boolean).join(" - ");
-  return label || goal.race_name;
+  return [distLabel, nameFromSlug].filter(Boolean).join(" - ") || null;
 }
 
 /** เป้า long run ปัจจุบันจาก training_plan (ระยะไกลสุดของ long run
