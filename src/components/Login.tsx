@@ -42,15 +42,19 @@ export function Login() {
           <Stack component="form" onSubmit={loginWithPassword} spacing={1.25}>
             <TextField
               type="email"
+              id="login-email"
+              name="username"
               label="อีเมล Supabase"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
+              autoComplete="username"
               required
               fullWidth
             />
             <TextField
               type="password"
+              id="login-password"
+              name="current-password"
               label="รหัสผ่าน"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
