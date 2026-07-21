@@ -200,10 +200,37 @@ describe("longRunTargetKm", () => {
 });
 
 describe("raceShortLabel", () => {
-  test("builds a short label from the goal slug", () => {
-    expect(raceShortLabel(goal({}))).toBe("10K");
-    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz" }))).toBe("10K - Allianz");
-    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram" }))).toBe("HALF - Buriram");
+  test("prefixes the full race_name with the distance from the slug", () => {
+    expect(raceShortLabel(goal({ race_name: "Disney Run Thailand 2026" }))).toBe("10K - Disney Run Thailand 2026");
+    expect(
+      raceShortLabel(
+        goal({ race_slug: "2026-11-22-10k-allianz", race_name: "Allianz Ayudhya World Run Thailand Series 2026" }),
+      ),
+    ).toBe("10K - Allianz Ayudhya World Run Thailand Series 2026");
+    expect(raceShortLabel(goal({ race_slug: "2027-01-10-half-buriram", race_name: "Buriram Marathon" }))).toBe(
+      "HALF - Buriram Marathon",
+    );
     expect(raceShortLabel(null)).toBeNull();
+  });
+
+  test("strips a trailing distance clause already baked into race_name", () => {
+    // เจอจริงกับไฟล์ Disney Run — race_name เก็บ "... — 10 km" ต่อท้าย ซึ่งซ้ำกับ distLabel
+    expect(raceShortLabel(goal({ race_name: "Disney Run Thailand 2026 — 10 km" }))).toBe(
+      "10K - Disney Run Thailand 2026",
+    );
+    expect(raceShortLabel(goal({ race_name: "Some Race - 10k" }))).toBe("10K - Some Race");
+  });
+
+  test("two differently-slugged goals for the same event now render the same label", () => {
+    // บั๊กที่เจอจริง: ไฟล์ goal สองไฟล์ของ Pokémon Run ตั้งชื่อไฟล์ต่างรูปแบบกัน
+    // (มี/ไม่มี "10k" ในชื่อไฟล์) ทำให้ label เดิมที่ parse จาก slug ไม่ตรงกัน/ดูซ้ำ
+    const a = goal({ race_slug: "2027-01-09-pokemon-run-30-thailand", race_name: "Pokémon RUN 30: Thailand Edition" });
+    const b = goal({ race_slug: "2027-01-10-10k-pokemon-run", race_name: "Pokémon RUN 30: Thailand Edition" });
+    expect(raceShortLabel(a)).toBe("Pokémon RUN 30: Thailand Edition");
+    expect(raceShortLabel(b)).toBe("10K - Pokémon RUN 30: Thailand Edition");
+  });
+
+  test("falls back to slug-derived words when race_name is missing", () => {
+    expect(raceShortLabel(goal({ race_slug: "2026-11-22-10k-allianz", race_name: null }))).toBe("10K - Allianz");
   });
 });

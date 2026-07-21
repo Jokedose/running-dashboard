@@ -396,8 +396,8 @@ export function Race({ data }: { data: DashboardData }) {
                 type="button"
                 onClick={() => setSelectedSlug(g.race_slug)}
                 style={{
-                  display: "grid", gap: 2, textAlign: "left", minWidth: 148, padding: "10px 14px",
-                  borderRadius: 10, cursor: "pointer", font: "inherit", color: "var(--color-ink)",
+                  display: "grid", gap: 2, textAlign: "left", minWidth: 148, maxWidth: 220, flexShrink: 0,
+                  padding: "10px 14px", borderRadius: 10, cursor: "pointer", font: "inherit", color: "var(--color-ink)",
                   border: isSelected ? "2px solid var(--color-primary)" : "1px solid var(--color-line)",
                   background: isSelected ? "rgba(79,138,120,0.10)" : "#fff",
                 }}
