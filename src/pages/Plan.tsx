@@ -278,8 +278,8 @@ export function Plan({ data }: { data: DashboardData }) {
             style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}
           >
             <div className="mobile-schedule-list">
-              {phaseGroups.map(({ label, sub, items }) => (
-                <div key={label}>
+              {phaseGroups.map(({ label, sub, items }, groupIdx) => (
+                <div key={`${label}-${groupIdx}`}>
                   <div
                     style={{
                       padding: "6px 12px",

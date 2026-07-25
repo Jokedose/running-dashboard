@@ -13,17 +13,80 @@ import { BrandLogo } from "../components/BrandLogo";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
-import type { DashboardData, PacingSplit, RunLog } from "../types";
+import { MilestoneRoadmap } from "../components/MilestoneRoadmap";
+import { RaceEngine } from "../components/RaceEngine";
+import type { DashboardData, PacingSplit, RunLap, RunLog } from "../types";
 import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { diffDays, raceShortLabel } from "../utils/context";
 import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { classifySession, isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
-function RoutePacingPlan({ splits, rules }: { splits: PacingSplit[]; rules: string[] | null }) {
+// แปลง "M:SS" (แผน pacing_splits) เป็นวินาที เพื่อเทียบกับ lap.pace_s / lap จริง
+function parsePlanClock(text: string): number | null {
+  const parts = text.split(":").map(Number);
+  if (parts.length !== 2 || parts.some((n) => Number.isNaN(n))) return null;
+  return parts[0] * 60 + parts[1];
+}
+
+function clockLabel(totalSeconds: number): string {
+  const s = Math.round(totalSeconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// ผล lap จริงต่อ กม. — ใช้เฉพาะ auto-lap ที่ยาว ~1km (ตัด lap สุดท้าย/บางส่วนทิ้ง)
+// key = ลำดับ กม. (lap.i) ให้ตรงกับ r.km ใน pacing_splits
+function actualByKm(laps: RunLap[] | null | undefined): Map<number, { paceS: number; cumS: number }> {
+  const map = new Map<number, { paceS: number; cumS: number }>();
+  if (!laps) return map;
+  for (const lap of laps) {
+    if (lap.pace_s == null || lap.distance_km == null || lap.distance_km < 0.9) continue;
+    map.set(lap.i, { paceS: lap.pace_s, cumS: lap.start_s + lap.elapsed_s });
+  }
+  return map;
+}
+
+function DiffBadge({ diffSec }: { diffSec: number }) {
+  if (!Number.isFinite(diffSec) || Math.round(diffSec) === 0) return null;
+  const faster = diffSec < 0;
+  return (
+    <span
+      style={{
+        fontSize: "0.68rem",
+        fontWeight: 700,
+        padding: "1px 6px",
+        borderRadius: 8,
+        marginLeft: 6,
+        background: faster ? "#d8eee5" : "#fde2e2",
+        color: faster ? "#1a6847" : "#b3261e",
+      }}
+    >
+      {faster ? "-" : "+"}
+      {Math.abs(Math.round(diffSec))}s
+    </span>
+  );
+}
+
+function RoutePacingPlan({
+  splits,
+  rules,
+  actualLaps,
+}: {
+  splits: PacingSplit[];
+  rules: string[] | null;
+  actualLaps?: RunLap[] | null;
+}) {
   const phaseBg: Record<string, string> = { climb: "#fef3c7", flat: "#dff7f2", descent: "#dbeafe", finish: "#fee2e8" };
+  const actual = actualByKm(actualLaps);
+  const hasActual = actual.size > 0;
   return (
     <div style={{ overflowX: "auto" }}>
+      {hasActual && (
+        <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginBottom: 8 }}>
+          เทียบแผน (บน) กับผลจริงจากนาฬิกา (ล่าง) ต่อกม. · <span style={{ color: "#1a6847", fontWeight: 700 }}>เขียว</span> = เร็ว/นำหน้าแผน,{" "}
+          <span style={{ color: "#b3261e", fontWeight: 700 }}>แดง</span> = ช้า/ตามหลังแผน
+        </div>
+      )}
       <table style={{ width: "100%", fontSize: "0.85rem" }}>
         <thead>
           <tr style={{ borderBottom: "2px solid var(--color-line)" }}>
@@ -34,16 +97,49 @@ function RoutePacingPlan({ splits, rules }: { splits: PacingSplit[]; rules: stri
           </tr>
         </thead>
         <tbody>
-          {splits.map((r) => (
-            <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
-              <td style={{ padding: "8px 6px", fontWeight: 650 }}>
-                <span style={{ background: phaseBg[r.phase], padding: "2px 8px", borderRadius: 4 }}>{r.km}</span>
-              </td>
-              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.pace}</td>
-              <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>{r.cum}</td>
-              <td style={{ padding: "8px 6px", fontSize: "0.8rem" }}>{r.note}</td>
-            </tr>
-          ))}
+          {splits.map((r) => {
+            const planPaceS = parsePlanClock(r.pace);
+            const planCumS = parsePlanClock(r.cum);
+            const row = actual.get(r.km);
+            return (
+              <tr key={r.km} style={{ borderBottom: "1px solid var(--color-line-soft)" }}>
+                <td style={{ padding: "8px 6px", fontWeight: 650, verticalAlign: "top" }}>
+                  <span style={{ background: phaseBg[r.phase], padding: "2px 8px", borderRadius: 4 }}>{r.km}</span>
+                </td>
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>
+                  <div style={{ color: row ? "var(--color-muted)" : undefined }}>
+                    {row && <span style={{ fontFamily: "Inter, sans-serif", fontSize: "0.68rem", marginRight: 4 }}>แผน</span>}
+                    {r.pace}
+                  </div>
+                  {row && (
+                    <div style={{ fontWeight: 700 }}>
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "0.68rem", fontWeight: 600, marginRight: 4, color: "var(--color-muted)" }}>
+                        จริง
+                      </span>
+                      {clockLabel(row.paceS)}
+                      {planPaceS != null && <DiffBadge diffSec={row.paceS - planPaceS} />}
+                    </div>
+                  )}
+                </td>
+                <td style={{ padding: "8px 6px", textAlign: "right", fontFamily: "ui-monospace, monospace" }}>
+                  <div style={{ color: row ? "var(--color-muted)" : undefined }}>
+                    {row && <span style={{ fontFamily: "Inter, sans-serif", fontSize: "0.68rem", marginRight: 4 }}>แผน</span>}
+                    {r.cum}
+                  </div>
+                  {row && (
+                    <div style={{ fontWeight: 700 }}>
+                      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "0.68rem", fontWeight: 600, marginRight: 4, color: "var(--color-muted)" }}>
+                        จริง
+                      </span>
+                      {clockLabel(row.cumS)}
+                      {planCumS != null && <DiffBadge diffSec={row.cumS - planCumS} />}
+                    </div>
+                  )}
+                </td>
+                <td style={{ padding: "8px 6px", fontSize: "0.8rem" }}>{r.note}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       {rules && rules.length > 0 && (
@@ -324,6 +420,8 @@ export function Race({ data }: { data: DashboardData }) {
   const cutoffMinutes = currentGoal?.cutoff_min ?? null;
   const raceDate = currentGoal?.race_date ?? race?.race_date ?? null;
   const raceCompleted = race?.result_time_min != null;
+  // run log จริงของวันแข่ง (ถ้า sync แล้ว) ใช้ laps เทียบกับแผน pacing
+  const raceActualRun = raceDate != null ? data.runs.find((r) => r.run_date === raceDate) ?? null : null;
 
   const daysLeft = raceDate == null ? null : Math.round((Date.parse(raceDate) - Date.parse(today)) / 86400000);
 
@@ -640,12 +738,18 @@ export function Race({ data }: { data: DashboardData }) {
             title={`🌉 Race-day plan · ${currentGoal.race_name ?? ""}`}
             subtitle={
               raceCompleted
-                ? "แผนก่อนวันแข่ง — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง"
+                ? raceActualRun?.laps?.length
+                  ? "แผนก่อนวันแข่ง เทียบกับผลจริงจากนาฬิกา"
+                  : "แผนก่อนวันแข่ง — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง"
                 : "แผน pacing ตามเส้นทางจริง"
             }
             className="span-12"
           >
-            <RoutePacingPlan splits={currentGoal.pacing_splits} rules={currentGoal.route_rules} />
+            <RoutePacingPlan
+              splits={currentGoal.pacing_splits}
+              rules={currentGoal.route_rules}
+              actualLaps={raceCompleted ? raceActualRun?.laps : null}
+            />
           </Panel>
         )}
 
@@ -672,42 +776,15 @@ export function Race({ data }: { data: DashboardData }) {
           </div>
         </Panel>
 
-        {targetMinutes != null && (
-          <Panel
-            title="🧮 Race pace calculator"
-            subtitle={
-              raceCompleted
-                ? `แผน split เดิมก่อนแข่ง สำหรับ ${raceTime(targetMinutes)} — race จบแล้ว เก็บไว้เป็นข้อมูลอ้างอิง`
-                : `แผน split สำหรับ ${raceTime(targetMinutes)} · กลยุทธ์ออกตัวแบบระมัดระวัง`
-            }
-            className="span-12"
-          >
-            <RacePaceCalculator targetMin={targetMinutes} />
-          </Panel>
-        )}
+        {/* ── Feature 2: Interactive Race Pacing & Weather Drift Engine ── */}
+        <RaceEngine
+          targetAMinutes={targetMinutes ?? 80}
+          cutoffMinutes={cutoffMinutes ?? 110}
+          gate82Minutes={currentGoal?.race_slug.includes("disney") ? 90 : 95}
+        />
 
-        {race?.milestones && race.milestones.length > 0 && (
-          <Panel title="🎯 Milestones before race day" subtitle={`${race.milestones.filter((m) => m.status === "done").length}/${race.milestones.length} เสร็จแล้ว`} className="span-12">
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {race.milestones.map((m, i) => {
-                const color = m.status === "done" ? "#1a6847" : m.status === "skipped" ? "#9d1c37" : "#7a5300";
-                const bg = m.status === "done" ? "#d8eee5" : m.status === "skipped" ? "#fee2e8" : "#fef9ec";
-                const icon = m.status === "done" ? "✓" : m.status === "skipped" ? "✗" : "○";
-                return (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "10px 14px", borderRadius: 8,
-                    background: bg, borderLeft: `4px solid ${color}`,
-                  }}>
-                    <span style={{ fontSize: 18, fontWeight: 750, color, minWidth: 18 }}>{icon}</span>
-                    <span style={{ flex: 1, color: "var(--color-ink)", fontWeight: 600 }}>{m.name}</span>
-                    <span style={{ fontSize: "0.82rem", color: "var(--color-muted)" }}>{m.due}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </Panel>
-        )}
+        {/* ── Feature 5: Interactive Milestone Roadmap to Race Day ── */}
+        <MilestoneRoadmap data={data} today={today} />
       </div>
     </section>
   );

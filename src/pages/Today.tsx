@@ -5,6 +5,7 @@ import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import { PhaseStrip } from "../components/PhaseStrip";
+import { TodayQuickCard } from "../components/TodayQuickCard";
 import type { DashboardData, RunLog, SessionCriteria } from "../types";
 import { average, latest } from "../utils/data";
 import { buildTrainingContext, type TrainingContext } from "../utils/context";
@@ -365,6 +366,15 @@ export function Today({ data }: { data: DashboardData }) {
 
   return (
     <section className="page-stack">
+
+      {/* ── PWA Quick View Card for Today ── */}
+      <TodayQuickCard
+        todayPlan={ctx.nextSession}
+        todayReadiness={ctx.todayReadiness}
+        gate={ctx.gate}
+        profile={data.profile}
+        criteria={data.criteria}
+      />
 
       {/* ── Context banners: race recap / race week / injury ── */}
       <ContextBanners ctx={ctx} />

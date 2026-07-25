@@ -52,3 +52,41 @@ export function painLevel(pain: string | null | undefined): PainLevel {
   if (p.includes("ตึง") || p.includes("เจ็บ") || p.includes("ปวด")) return "mild";
   return "none";
 }
+
+export type RecommendedShoeInfo = {
+  slug: string;
+  name: string;
+  role: string;
+  isQuality: boolean;
+};
+
+/** Single source of truth for shoe recommendation by session type.
+ *  Interval / VO2max / Tempo / Threshold / Test / Race -> Xtep 2000km 5.0 Pro
+ *  Recovery -> Xtep 2000km 3
+ *  Easy / Long / Default -> Novablast 5 */
+export function getRecommendedShoe(sessionType: string | null | undefined): RecommendedShoeInfo {
+  const kind = classifySession(sessionType);
+  if (kind === "tempo" || kind === "vo2" || kind === "test" || kind === "race") {
+    return {
+      slug: "xtep-2000km-5-pro",
+      name: "Xtep 2000km 5.0 Pro",
+      role: "ซ้อมคุณภาพ / Interval / Tempo / แข่ง",
+      isQuality: true,
+    };
+  }
+  if (kind === "recovery") {
+    return {
+      slug: "xtep-2000-km-3",
+      name: "Xtep 2000km 3",
+      role: "ฟื้นตัว / Easy เบาๆ",
+      isQuality: false,
+    };
+  }
+  return {
+    slug: "novablast-5",
+    name: "Novablast 5",
+    role: "Easy / Long run ประจำวัน",
+    isQuality: false,
+  };
+}
+
