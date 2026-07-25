@@ -13,10 +13,15 @@ import { shortDate } from "../utils/format";
 export function PhaseStrip({ ctx, data }: { ctx: TrainingContext; data: DashboardData }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   // มือถือ: strip เลื่อนแนวนอนได้ — เลื่อนให้ phase ปัจจุบันอยู่ในวิวเองตอนโหลด
+  // ใช้ scrollLeft ของ container เองเท่านั้น ห้ามใช้ scrollIntoView ตรงๆ เพราะมันไล่ scroll
+  // ทุก ancestor ที่ scroll ได้รวมถึง window ด้วย — ทำให้หน้าเด้งลงมาทับ scroll-to-top
+  // ตอนเปลี่ยน route (useHashRoute รีเซ็ต scrollTop=0 แล้ว effect นี้มาไล่ทับทีหลัง)
   useEffect(() => {
-    listRef.current
-      ?.querySelector<HTMLElement>('[data-current="true"]')
-      ?.scrollIntoView({ inline: "center", block: "nearest" });
+    const container = listRef.current;
+    const current = container?.querySelector<HTMLElement>('[data-current="true"]');
+    if (!container || !current) return;
+    const targetLeft = current.offsetLeft - container.clientWidth / 2 + current.clientWidth / 2;
+    container.scrollTo({ left: Math.max(0, targetLeft), behavior: "auto" });
   }, [ctx.phase?.id]);
   if (!data.phases.length) return null;
   const phases = [...data.phases].sort((a, b) => a.sort_order - b.sort_order);

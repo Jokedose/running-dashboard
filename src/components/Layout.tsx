@@ -71,25 +71,25 @@ export function Layout({
         <div className="tab-group left">
           <a className={route === "zone2" ? "active" : ""} href="#/zone2" onClick={closePanel}>
             <Gauge size={20} />
-            <span>โซน 2</span>
+            <span>Zone 2</span>
           </a>
           <a className={route === "race" ? "active" : ""} href="#/race" onClick={closePanel}>
             <Trophy size={20} />
-            <span>แข่ง</span>
+            <span>Race</span>
           </a>
         </div>
         <a className={route === "plan" ? "active primary" : "primary"} href="#/plan" onClick={closePanel}>
           <Home size={24} />
-          <span>หน้าหลัก</span>
+          <span>Home</span>
         </a>
         <div className="tab-group right">
           <a className={route === "calendar" ? "active" : ""} href="#/calendar" onClick={closePanel}>
             <CalendarRange size={20} />
-            <span>ปฏิทิน</span>
+            <span>Calendar</span>
           </a>
           <button className={isMoreActive || panel === "more" ? "active" : ""} onClick={() => setPanel(panel === "more" ? null : "more")} type="button">
             <Ellipsis size={22} />
-            <span>เพิ่มเติม</span>
+            <span>More</span>
           </button>
         </div>
       </Box>
