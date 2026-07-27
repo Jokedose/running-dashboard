@@ -86,6 +86,25 @@ export function Trends({ data }: { data: DashboardData }) {
     score: d.sleep_score ?? null,
   }));
 
+  // นอนคืนก่อน (sleep_score) เทียบ drift ของ run วันถัดไป — คนละมุมกับ HRV vs Quality
+  // ด้านบน: นี่ตอบตรง ๆ ว่า "นอนไม่พอ กระทบ HR drift วันซ้อมแค่ไหน"
+  const sleepDriftRows = data.runs
+    .filter((r) => r.drift_bpm != null)
+    .map((r) => {
+      const prevDate = new Date(r.run_date);
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevKey = prevDate.toISOString().slice(0, 10);
+      const prev = dailyByDate.get(prevKey);
+      if (!prev || prev.sleep_score == null) return null;
+      return { sleepScore: prev.sleep_score, drift: r.drift_bpm, date: r.run_date };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  // อุณหภูมิ ณ วันวิ่ง เทียบ drift — ตอบว่า "อากาศร้อนแค่ไหนเริ่มกระทบ HR"
+  const weatherDriftRows = data.runs
+    .filter((r) => r.temperature_c != null && r.drift_bpm != null)
+    .map((r) => ({ temp: r.temperature_c, drift: r.drift_bpm, date: r.run_date }));
+
   return (
     <section className="page-stack">
       <div className="metric-grid">
@@ -221,6 +240,44 @@ export function Trends({ data }: { data: DashboardData }) {
           <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
             HRV สูง → quality มักดีขึ้น · ใช้ HRV เป็น early signal ก่อนซ้อมหนัก
           </div>
+        </Panel>
+
+        <Panel title="😴 นอนคืนก่อน vs Drift วันซ้อม" subtitle={`คะแนนการนอนคืนก่อน เทียบ HR drift ของ run วันถัดไป (${sleepDriftRows.length} ครั้ง)`} className="span-6">
+          <ResponsiveContainer width="100%" height={260}>
+            <ScatterChart margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis type="number" dataKey="sleepScore" name="คะแนนการนอน" domain={["dataMin - 5", "dataMax + 5"]} {...chartAxis} />
+              <YAxis type="number" dataKey="drift" name="Drift bpm" {...chartAxis} />
+              <ZAxis range={[60, 60]} />
+              <ChartTooltip cursor={{ strokeDasharray: "3 3" }} />
+              <Scatter data={sleepDriftRows} fill={chartColors.blue} />
+            </ScatterChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
+            คะแนนนอนต่ำ → drift มักสูงขึ้น (จุดขวาบน = นอนน้อยแต่ drift เยอะ) — สัญญาณเตือนก่อนซ้อมหนัก
+          </div>
+        </Panel>
+
+        <Panel title="🌡️ อุณหภูมิ vs Drift" subtitle={`อุณหภูมิ ณ วันวิ่ง เทียบ HR drift (${weatherDriftRows.length} ครั้งที่มีข้อมูลอากาศ)`} className="span-6">
+          <ResponsiveContainer width="100%" height={260}>
+            <ScatterChart margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis type="number" dataKey="temp" name="อุณหภูมิ °C" domain={["dataMin - 1", "dataMax + 1"]} {...chartAxis} />
+              <YAxis type="number" dataKey="drift" name="Drift bpm" {...chartAxis} />
+              <ZAxis range={[60, 60]} />
+              <ChartTooltip cursor={{ strokeDasharray: "3 3" }} />
+              <Scatter data={weatherDriftRows} fill={chartColors.accent} />
+            </ScatterChart>
+          </ResponsiveContainer>
+          {weatherDriftRows.length === 0 ? (
+            <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
+              ยังไม่มี run log ที่บันทึกอุณหภูมิ — เพิ่มช่อง "อุณหภูมิ" ใน run log เพื่อดู correlation นี้
+            </div>
+          ) : (
+            <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
+              อากาศร้อนขึ้น → drift มักสูงขึ้น — ใช้ประเมินว่าควรลด pace ล่วงหน้าตอนอากาศร้อนแค่ไหน
+            </div>
+          )}
         </Panel>
 
         <Panel title="Sleep quality" subtitle="21 วันล่าสุด — ชั่วโมงนอน (แท่ง) · คะแนนการนอน (เส้น)" className="span-12">
