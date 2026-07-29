@@ -99,11 +99,11 @@ describe("criteriaFor", () => {
     expect(criteriaFor("recovery", [])?.hr_avg_max_bpm).toBe(145);
   });
 
-  test("prefers db rows and aliases vo2 -> tempo", () => {
+  test("prefers db rows and aliases vo2 -> interval", () => {
     const dbRows: SessionCriteria[] = [
       {
         id: "c1",
-        session_kind: "tempo",
+        session_kind: "interval",
         z2_min_percent: null,
         drift_max_bpm: null,
         decoupling_max_percent: null,

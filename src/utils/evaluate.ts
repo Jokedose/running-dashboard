@@ -60,6 +60,9 @@ export const DEFAULT_CRITERIA: SessionCriteria[] = [
   defaultCriteria("recovery", { z2_min_percent: 85, drift_max_bpm: 5, decoupling_max_percent: 5, hr_avg_max_bpm: 145 }),
   defaultCriteria("long", { z2_min_percent: 75, decoupling_max_percent: 5 }),
   defaultCriteria("tempo", { hr_avg_max_bpm: 173, z4z5_max_percent: 25 }),
+  // interval/VO2max ตั้งใจให้เข้า Z4/Z5 — ไม่มีเพดานตัวเลข (ดู rules/session-criteria.md
+  // ฝั่ง running-results: เกณฑ์ผ่านเป็นเชิงโครงสร้าง เช่น HR ≤150 ก่อน rep ถัดไป, ไม่ใช่เพดานโซน)
+  defaultCriteria("interval", {}),
   defaultCriteria("strides", { z2_min_percent: 85 }),
   defaultCriteria("test", {}),
 ];
@@ -125,9 +128,10 @@ export function resolveProfile(profile: RunnerProfile | null | undefined): Runne
   return profile;
 }
 
-// vo2/interval ยังไม่มีเกณฑ์ของตัวเองใน rules/session-criteria.md —
-// ใช้เกณฑ์ tempo (quality bucket เดียวกัน: HR cap + Z4/Z5 cap) ไปก่อน
-const CRITERIA_KIND_ALIAS: Partial<Record<SessionKind, string>> = { vo2: "tempo" };
+// dashboard's internal SessionKind enum ยังใช้ "vo2" แต่ session_kind ที่ sync มาจาก
+// rules/session-criteria.md เปลี่ยน slug เป็น "interval" แล้ว (2026-07-29, เดิมคือ "vo2max")
+// -- alias นี้แปลง "vo2" (enum) -> "interval" (session_kind จริงใน db) ให้ตรงกัน
+const CRITERIA_KIND_ALIAS: Partial<Record<SessionKind, string>> = { vo2: "interval" };
 
 export function criteriaFor(kind: SessionKind, criteria: SessionCriteria[]): SessionCriteria | null {
   const lookup = CRITERIA_KIND_ALIAS[kind] ?? kind;
