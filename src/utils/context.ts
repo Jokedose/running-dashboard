@@ -41,7 +41,11 @@ export type TrainingContext = {
   /** currentRace อยู่ภายใน 7 วันข้างหน้า */
   raceWeek: boolean;
   openInjury: InjuryStatus | null;
-  /** planned session แรกตั้งแต่วันนี้เป็นต้นไป */
+  /** แผนของ "วันนี้" เป๊ะๆ (plan_date === today) — null เมื่อวันนี้ไม่มีแถวในตาราง
+   *  (เช่น rest day ที่ไม่ได้ระบุไว้) ห้ามเอา nextSession มาแทน เพราะนั่นคือ session
+   *  ถัดไปที่ *อาจ* เป็นวันอื่น ไม่ใช่ของวันนี้ */
+  todayPlan: TrainingPlan | null;
+  /** planned session แรกตั้งแต่วันนี้เป็นต้นไป (อาจเป็นวันนี้หรือวันหลังจากนี้) */
   nextSession: TrainingPlan | null;
   todayReadiness: DailyReadiness | null;
   lastRun: RunLog | null;
@@ -115,6 +119,8 @@ export function buildTrainingContext(data: DashboardData, today: string = todayI
 
   const openInjury = data.injuries.find((injury) => injury.is_open) ?? null;
 
+  const todayPlan = data.plan.find((row) => row.plan_date === today) ?? null;
+
   const nextSession =
     data.plan
       .filter((row) => row.plan_date >= today && (row.status === "planned" || row.status == null))
@@ -135,6 +141,7 @@ export function buildTrainingContext(data: DashboardData, today: string = todayI
     justRaced,
     raceWeek,
     openInjury,
+    todayPlan,
     nextSession,
     todayReadiness,
     lastRun,
