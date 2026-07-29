@@ -144,6 +144,23 @@ export function Zone2({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
+        <Panel title="🦵 GCT · Stride length" subtitle="Ground contact time (ยิ่งต่ำยิ่งดี) และ stride length — ตัวชี้วัด running economy ข้ามเวลา" className="span-12">
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={cadenceRows} margin={chartMargin}>
+              <CartesianGrid {...chartGrid} />
+              <XAxis dataKey="date" {...chartAxis} />
+              <YAxis yAxisId="left" domain={["dataMin - 10", "dataMax + 10"]} {...chartAxis} label={{ value: "GCT ms", angle: -90, position: "insideLeft", fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" domain={["dataMin - 5", "dataMax + 5"]} {...chartAxis} label={{ value: "stride cm", angle: 90, position: "insideRight", fontSize: 11 }} />
+              <ChartTooltip />
+              <Line yAxisId="left" dataKey="gct" stroke={chartColors.accent} strokeWidth={3} dot={{ r: 3, fill: chartColors.accent, strokeWidth: 0 }} name="GCT ms" connectNulls={false} />
+              <Line yAxisId="right" dataKey="stride" stroke={chartColors.blue} strokeWidth={2.5} strokeDasharray="6 6" dot={false} name="Stride length cm" connectNulls={false} />
+            </LineChart>
+          </ResponsiveContainer>
+          <div style={{ fontSize: "0.75rem", color: "var(--color-muted)", marginTop: 4 }}>
+            GCT ลดลงเรื่อย ๆ = พื้นสัมผัสสั้นลง ประสิทธิภาพวิ่งดีขึ้น · stride length ควรเพิ่มพร้อม cadence ที่คงที่ ไม่ใช่ยาวขึ้นจาก overstride
+          </div>
+        </Panel>
+
         <Panel title="Pace trend" subtitle="ค่าเพซยิ่งต่ำยิ่งเร็ว · เป้า 7:00/km" className="span-12">
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={rows} margin={chartMargin}>

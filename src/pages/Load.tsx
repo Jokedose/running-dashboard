@@ -99,8 +99,31 @@ export function Load({ data }: { data: DashboardData }) {
   const recentNiggles = [...niggleRows].sort((a, b) => b.run_date.localeCompare(a.run_date)).slice(0, 6);
   const hasHighPain = recentNiggles.some((r) => painLevel(r.pain) === "high");
 
+  // เชื่อม ACWR กับ injury_status — โหลดสูง + มีเคสเปิดพร้อมกัน คือความเสี่ยงจริง
+  // ไม่ใช่แค่สองสัญญาณแยกกันที่ต้องเปิดดูคนละหน้า
+  const openInjuries = data.injuries.filter((inj) => inj.is_open);
+  const acwrElevated = hasEnoughHistory && (zone.tone === "warn" || zone.tone === "hot");
+  const showRiskBanner = acwrElevated && openInjuries.length > 0;
+
   return (
     <section className="page-stack">
+      {showRiskBanner && (
+        <Panel title="⚠️ ความเสี่ยงซ้อนกัน — โหลดสูง + มีอาการเปิดอยู่" className="hot">
+          <p style={{ margin: 0, lineHeight: 1.7 }}>
+            ACWR ตอนนี้ {zone.label.toLowerCase()} ({currentAcwr?.toFixed(2)}) พร้อมกับมี
+            {" "}
+            {openInjuries.map((inj, i) => (
+              <span key={inj.injury_slug}>
+                {i > 0 ? ", " : ""}
+                <strong>{inj.title ?? inj.injury_slug}</strong> ({inj.status})
+              </span>
+            ))}
+            {" "}ที่ยังไม่ปิดเคส — สองสัญญาณนี้รวมกันคือความเสี่ยงบาดเจ็บซ้ำ/แย่ลงสูงกว่าดูแยกกัน
+            ควรลดโหลดหรือขยับกลับไป easy/recovery จนกว่า ACWR จะกลับสู่ sweet spot
+          </p>
+        </Panel>
+      )}
+
       <div className="metric-grid">
         <MetricCard
           label="ACWR วันนี้"

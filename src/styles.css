@@ -768,6 +768,11 @@ button.mobile-sheet-backdrop {
   min-width: 0;
 }
 
+.panel.hot {
+  border-color: #efb4c3;
+  background: #fee2e8;
+}
+
 .panel-head {
   display: flex;
   justify-content: space-between;
