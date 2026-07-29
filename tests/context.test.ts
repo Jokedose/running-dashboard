@@ -145,6 +145,23 @@ describe("buildTrainingContext — plan, injury, gate", () => {
     expect(ctx.nextSession?.id).toBe("next");
   });
 
+  test("todayPlan requires an exact plan_date match -- does not fall back to nextSession", () => {
+    // บั๊กเดิม: PWA Quick View ใช้ nextSession (session ถัดไป *อาจ* เป็นวันอื่น) แทน
+    // แผนของวันนี้เป๊ะๆ ทำให้วันที่ไม่มีแถวในตาราง (เช่น rest day ที่ไม่ระบุไว้)
+    // ไปโชว์ session ของวันอื่นแทนที่จะบอกว่า "ไม่มีแผนวันนี้"
+    const plan = [
+      planRow({ id: "later", plan_date: "2026-07-29" }),
+      planRow({ id: "next", plan_date: "2026-07-27" }),
+    ];
+    const ctx = buildTrainingContext(data({ plan }), TODAY);
+    expect(ctx.nextSession?.id).toBe("next"); // ยังใช้ได้ปกติสำหรับ "next session" widget
+    expect(ctx.todayPlan).toBeNull(); // แต่ไม่มีแถวของวันนี้เป๊ะๆ
+
+    const withToday = [...plan, planRow({ id: "today", plan_date: TODAY })];
+    const ctxWithToday = buildTrainingContext(data({ plan: withToday }), TODAY);
+    expect(ctxWithToday.todayPlan?.id).toBe("today");
+  });
+
   test("open injury surfaces, closed does not", () => {
     const injuries = [
       { injury_slug: "right-shin", title: "หน้าแข้งขวา", status: "HEALING", is_open: true } as DashboardData["injuries"][number],

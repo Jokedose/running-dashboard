@@ -369,7 +369,7 @@ export function Today({ data }: { data: DashboardData }) {
 
       {/* ── PWA Quick View Card for Today ── */}
       <TodayQuickCard
-        todayPlan={ctx.nextSession}
+        todayPlan={ctx.todayPlan}
         todayReadiness={ctx.todayReadiness}
         gate={ctx.gate}
         profile={data.profile}
