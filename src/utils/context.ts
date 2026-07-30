@@ -121,10 +121,15 @@ export function buildTrainingContext(data: DashboardData, today: string = todayI
 
   const todayPlan = data.plan.find((row) => row.plan_date === today) ?? null;
 
+  // ถ้าวันนี้มีแผนอยู่แล้ว (ไม่ว่า status จะเป็นอะไร — planned/skipped/adjusted) ให้แสดง
+  // ของวันนี้ก่อนเสมอ ห้าม fallback ไปวันถัดไปแค่เพราะ status ไม่ใช่ "planned"
+  // (เคย skip ไปโชว์ของพรุ่งนี้แทน ทั้งที่ผู้ใช้ยังอยู่ในวันนี้)
   const nextSession =
+    todayPlan ??
     data.plan
-      .filter((row) => row.plan_date >= today && (row.status === "planned" || row.status == null))
-      .sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
+      .filter((row) => row.plan_date > today && (row.status === "planned" || row.status == null))
+      .sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ??
+    null;
 
   const todayReadiness = data.daily.find((row) => row.log_date === today) ?? null;
   const lastRun = (latest(data.runs, "run_date") as RunLog | undefined) ?? null;
