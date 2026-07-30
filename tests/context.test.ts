@@ -162,6 +162,18 @@ describe("buildTrainingContext — plan, injury, gate", () => {
     expect(ctxWithToday.todayPlan?.id).toBe("today");
   });
 
+  test("nextSession prefers today's row even when its status isn't 'planned'", () => {
+    // บั๊กเดิม: filter เดิมกรอง status === "planned" || null เท่านั้น ทำให้แถวของวันนี้ที่
+    // status เป็น "skipped"/"adjusted" ถูกข้ามไป แล้ว nextSession ไปโชว์ของวันถัดไปแทน
+    // ทั้งที่ผู้ใช้ยังอยู่ในวันนี้
+    const plan = [
+      planRow({ id: "today-skipped", plan_date: TODAY, status: "skipped" }),
+      planRow({ id: "later", plan_date: "2026-07-29" }),
+    ];
+    const ctx = buildTrainingContext(data({ plan }), TODAY);
+    expect(ctx.nextSession?.id).toBe("today-skipped");
+  });
+
   test("open injury surfaces, closed does not", () => {
     const injuries = [
       { injury_slug: "right-shin", title: "หน้าแข้งขวา", status: "HEALING", is_open: true } as DashboardData["injuries"][number],

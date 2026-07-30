@@ -101,8 +101,10 @@ export function Load({ data }: { data: DashboardData }) {
 
   // เชื่อม ACWR กับ injury_status — โหลดสูง + มีเคสเปิดพร้อมกัน คือความเสี่ยงจริง
   // ไม่ใช่แค่สองสัญญาณแยกกันที่ต้องเปิดดูคนละหน้า
+  // ใช้ค่า ACWR ตรงๆ แทน zone.tone เพราะ tone "warn" ใช้ร่วมกันทั้งฝั่งโหลดสูงและ
+  // detraining (ต่ำเกิน) — แบนเนอร์นี้ข้อความบอกให้ "ลดโหลด" ซึ่งใช้ไม่ได้กับเคส detraining
   const openInjuries = data.injuries.filter((inj) => inj.is_open);
-  const acwrElevated = hasEnoughHistory && (zone.tone === "warn" || zone.tone === "hot");
+  const acwrElevated = hasEnoughHistory && currentAcwr != null && currentAcwr > bands.cautionOver;
   const showRiskBanner = acwrElevated && openInjuries.length > 0;
 
   return (
