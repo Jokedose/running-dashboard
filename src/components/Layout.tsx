@@ -22,7 +22,7 @@ export function Layout({
   const [panel, setPanel] = useState<"more" | "profile" | null>(null);
   const email = session.user.email ?? "ผู้ใช้ Supabase";
   const profileInitial = email.trim().slice(0, 1).toUpperCase();
-  const tabbarKeys = ["zone2", "race", "plan", "calendar"];
+  const tabbarKeys = ["zone2", "race", "home", "calendar"];
   const moreItems = navItems.filter((item) => !tabbarKeys.includes(item.key));
   const isMoreActive = !tabbarKeys.includes(route);
   const closePanel = () => setPanel(null);
@@ -78,7 +78,7 @@ export function Layout({
             <span>Race</span>
           </a>
         </div>
-        <a className={route === "plan" ? "active primary" : "primary"} href="#/plan" onClick={closePanel}>
+        <a className={route === "home" ? "active primary" : "primary"} href="#/home" onClick={closePanel}>
           <Home size={24} />
           <span>Home</span>
         </a>

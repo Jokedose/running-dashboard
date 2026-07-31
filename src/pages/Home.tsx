@@ -1,16 +1,15 @@
-import { Activity, AlertTriangle, Brain, CalendarClock, Cross, Flame, HeartPulse, Moon, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
+import { Activity, AlertTriangle, Brain, CalendarCheck, Clock3, Cross, Flag, Flame, Footprints, Gauge, HeartPulse, Moon, ShieldCheck, Timer, Trophy, Zap } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
-import { CoreFeatures } from "../components/CoreFeatures";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import { PhaseStrip } from "../components/PhaseStrip";
 import { TodayQuickCard } from "../components/TodayQuickCard";
-import type { DashboardData, RunLog, SessionCriteria } from "../types";
-import { average, latest } from "../utils/data";
+import type { DashboardData, RunLog, TrainingPhase, TrainingPlan } from "../types";
+import { average, latest, todayIso } from "../utils/data";
 import { buildTrainingContext, type TrainingContext } from "../utils/context";
-import { criteriaFor, evaluateRun, type RunEvaluation } from "../utils/evaluate";
-import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
+import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
+import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate, workoutSegments } from "../utils/format";
 import { classifySession, isSteadyAerobic, painLevel } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
@@ -211,56 +210,6 @@ function GateVerdict({ ctx }: { ctx: TrainingContext }) {
 }
 
 /* ─────────────────────────────────────────────
-   Next session — จาก training_plan + เกณฑ์ผ่านของ session นั้น
-   ───────────────────────────────────────────── */
-
-function criteriaChips(criteria: SessionCriteria | null): string[] {
-  if (!criteria) return [];
-  const chips: string[] = [];
-  if (criteria.z2_min_percent != null) chips.push(`Z2 ≥ ${criteria.z2_min_percent}%`);
-  if (criteria.drift_max_bpm != null) chips.push(`Drift ≤ ${criteria.drift_max_bpm} bpm`);
-  if (criteria.decoupling_max_percent != null) chips.push(`Decoupling ≤ ${criteria.decoupling_max_percent}%`);
-  if (criteria.hr_avg_max_bpm != null) chips.push(`HR ≤ ${criteria.hr_avg_max_bpm} bpm`);
-  if (criteria.z4z5_max_percent != null) chips.push(`Z4+Z5 ≤ ${criteria.z4z5_max_percent}%`);
-  return chips;
-}
-
-function NextSessionCard({ ctx, criteria }: { ctx: TrainingContext; criteria: SessionCriteria[] }) {
-  const session = ctx.nextSession;
-  if (!session) return null;
-  const days = Math.round((Date.parse(session.plan_date) - Date.parse(ctx.today)) / 86_400_000);
-  const kind = classifySession(session.session_type ?? session.title);
-  const chips = criteriaChips(criteriaFor(kind, criteria));
-  return (
-    <Panel
-      title="Session ถัดไปตามแผน"
-      subtitle={days === 0 ? "วันนี้" : `อีก ${days} วัน · ${session.plan_date}`}
-      className="span-12"
-      action={<CalendarClock size={18} />}
-    >
-      <div style={{ display: "grid", gap: 8 }}>
-        <strong>{sessionLabel(session.session_type ?? session.title)}</strong>
-        <span style={{ fontSize: "0.86rem", color: "var(--color-muted)" }}>{thaiText(session.title)}</span>
-        <div className="chip-row">
-          {session.target_distance_km != null && <span>{km(session.target_distance_km)}</span>}
-          {session.target_duration_min != null && <span>{minutes(session.target_duration_min)}</span>}
-          {session.target_pace_sec_per_km != null && <span>{pace(session.target_pace_sec_per_km)}</span>}
-          {session.planned_shoe && <span>รองเท้า: {session.planned_shoe}</span>}
-        </div>
-        {chips.length > 0 && (
-          <div className="chip-row">
-            <span style={{ fontWeight: 650 }}>เกณฑ์ผ่าน:</span>
-            {chips.map((chip) => (
-              <span key={chip}>{chip}</span>
-            ))}
-          </div>
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-/* ─────────────────────────────────────────────
    Coach verdict — จาก evaluateRun (เกณฑ์ session_criteria ใน db)
    ───────────────────────────────────────────── */
 
@@ -312,18 +261,118 @@ function runVerdict(run: RunLog | undefined, evaluation: RunEvaluation | null) {
 }
 
 /* ─────────────────────────────────────────────
-   Today page — widget stack เรียงตาม TrainingContext
+   Plan schedule helpers — จัดกลุ่มแผนซ้อมตาม phase
    ───────────────────────────────────────────── */
-export function Today({ data }: { data: DashboardData }) {
-  const ctx = buildTrainingContext(data);
-  const today = ctx.todayReadiness ?? latest(data.daily, "log_date");
+
+function groupByPhase(rows: TrainingPlan[], phases: TrainingPhase[]) {
+  const phaseFor = (date: string) => phases.find((p) => p.start_date <= date && date <= p.end_date) ?? null;
+  const groups: { label: string; sub: string; items: TrainingPlan[] }[] = [];
+  for (const row of rows) {
+    const phase = phaseFor(row.plan_date);
+    const label = phase?.phase_name ?? "อื่น ๆ";
+    const sub = phase ? `${shortDate(phase.start_date)} – ${shortDate(phase.end_date)}` : "";
+    const last = groups.at(-1);
+    if (last?.label === label) {
+      last.items.push(row);
+    } else {
+      groups.push({ label, sub, items: [row] });
+    }
+  }
+  return groups;
+}
+
+function statusTone(status: TrainingPlan["status"]): "neutral" | "good" | "warn" | "hot" {
+  if (status === "done") return "good";
+  if (status === "adjusted") return "warn";
+  if (status === "skipped") return "hot";
+  return "neutral";
+}
+
+function priorityLabel(priority: TrainingPlan["priority"]) {
+  if (priority === "race") return "วันแข่ง";
+  if (priority === "high") return "สำคัญ";
+  if (priority === "low") return "เบา";
+  return "ปกติ";
+}
+
+function statusLabel(status: TrainingPlan["status"]) {
+  if (status === "done") return "ทำแล้ว";
+  if (status === "skipped") return "ข้าม";
+  if (status === "adjusted") return "ปรับแผน";
+  return "ตามแผน";
+}
+
+function plannedDistance(rows: TrainingPlan[]) {
+  const total = rows.reduce((sum, item) => sum + (item.target_distance_km ?? 0), 0);
+  return total ? total : null;
+}
+
+function completionLabel(rows: TrainingPlan[]) {
+  if (!rows.length) return "0/0";
+  const completed = rows.filter((item) => item.status === "done").length;
+  return `${completed}/${rows.length}`;
+}
+
+function weekProgress(rows: TrainingPlan[]) {
+  if (!rows.length) return 0;
+  return Math.round((rows.filter((item) => item.status === "done").length / rows.length) * 100);
+}
+
+function noteField(item: TrainingPlan | null | undefined, label: string) {
+  if (!item?.notes) return null;
+  const line = item.notes.split("\n").find((part) => part.trim().startsWith(`${label}:`));
+  return line?.split(":").slice(1).join(":").trim() || null;
+}
+
+function workoutDetail(item: TrainingPlan | null | undefined) {
+  return noteField(item, "รายการซ้อม") ?? item?.intensity ?? item?.session_type ?? null;
+}
+
+function passCriteria(item: TrainingPlan | null | undefined) {
+  return noteField(item, "เกณฑ์ผ่าน");
+}
+
+function sessionMeta(item: TrainingPlan) {
+  const values = [
+    item.target_distance_km ? km(item.target_distance_km) : null,
+    item.target_duration_min ? minutes(item.target_duration_min) : null,
+    item.target_pace_sec_per_km ? pace(item.target_pace_sec_per_km) : null,
+    item.planned_shoe,
+  ].filter(Boolean);
+  return values.join(" · ");
+}
+
+/* ─────────────────────────────────────────────
+   Home page — หน้าแรกของแดชบอร์ด รวม readiness วันนี้ +
+   แผนซ้อม + เทรนด์ระยะสั้นไว้ที่เดียว (เดิมแยกเป็น Plan/Today)
+   ───────────────────────────────────────────── */
+export function Home({ data }: { data: DashboardData }) {
+  const today = todayIso();
+  const ctx = buildTrainingContext(data, today);
+  const todayReadiness = ctx.todayReadiness ?? latest(data.daily, "log_date");
   const lastRun = ctx.lastRun ?? undefined;
+  const tone = readinessTone(todayReadiness?.readiness_status ?? null);
+  const evaluation = lastRun ? evaluateRun(lastRun, data.criteria) : null;
+  const verdict = runVerdict(lastRun, evaluation);
+
+  // ── Plan schedule ──
+  const sortedPlan = [...data.plan].sort((a, b) => a.plan_date.localeCompare(b.plan_date));
+  const upcoming = sortedPlan.filter((item) => item.plan_date >= today);
+  const scheduleRows = upcoming.length ? upcoming : sortedPlan;
+  const todayPlan = ctx.todayPlan ?? upcoming[0] ?? latest(sortedPlan, "plan_date");
+  const activeWeek = todayPlan?.week_id ?? upcoming[0]?.week_id ?? null;
+  const weekPlan = activeWeek ? sortedPlan.filter((item) => item.week_id === activeWeek) : upcoming.slice(0, 7);
+  const currentGoal = ctx.currentRace;
+  const nextRaceDate = currentGoal?.race_date ?? null;
+  const raceCountdown = ctx.daysToRace;
+  const plannedKm = plannedDistance(weekPlan);
+  const progress = weekProgress(weekPlan);
+  const phaseGroups = groupByPhase(scheduleRows, data.phases);
+
+  // ── Today signals ──
   const recentRuns = data.runs.slice(-8);
   const totalDistance = data.runs.reduce((sum, run) => sum + (run.distance_km ?? 0), 0);
   const avgZ2 = average(data.runs.map((run) => run.z2_percent));
-  const tone = readinessTone(today?.readiness_status ?? null);
-  const evaluation = lastRun ? evaluateRun(lastRun, data.criteria) : null;
-  const verdict = runVerdict(lastRun, evaluation);
 
   const easyRuns = data.runs
     .filter((r) => isSteadyAerobic(r.session_type) && r.pace_sec_per_km != null)
@@ -338,22 +387,22 @@ export function Today({ data }: { data: DashboardData }) {
     paceConsistencyCoV == null ? "neutral" : paceConsistencyCoV < 3 ? "good" : paceConsistencyCoV < 6 ? "warn" : "hot";
 
   const isQualityType = (v: string | null | undefined) => { const k = classifySession(v); return k === "tempo" || k === "vo2" || k === "test" || k === "race"; };
-  const nextQuality = data.plan.filter((p) => p.plan_date >= ctx.today && isQualityType(p.session_type ?? p.title)).sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
-  const nextQualityDays = nextQuality == null ? null : Math.max(0, Math.round((Date.parse(nextQuality.plan_date) - Date.parse(ctx.today)) / 86400000));
+  const nextQuality = data.plan.filter((p) => p.plan_date >= today && isQualityType(p.session_type ?? p.title)).sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
+  const nextQualityDays = nextQuality == null ? null : Math.max(0, Math.round((Date.parse(nextQuality.plan_date) - Date.parse(today)) / 86400000));
 
-  const loadRatio = today?.load_ratio ?? null;
+  const loadRatio = todayReadiness?.load_ratio ?? null;
   const acwrTone: "neutral" | "good" | "warn" | "hot" = loadRatio == null ? "neutral" : loadRatio >= 0.8 && loadRatio <= 1.3 ? "good" : loadRatio < 0.8 ? "warn" : loadRatio <= 1.5 ? "warn" : "hot";
   const acwrLabel = loadRatio == null ? "ไม่มีข้อมูล" : loadRatio < 0.8 ? "Detraining · เริ่มถดถอย" : loadRatio <= 1.3 ? "Optimized · zone ปลอดภัย" : loadRatio <= 1.5 ? "Functional overreach" : "Injury risk สูง — ลดโหลด";
 
-  const latestHrv = today?.hrv_avg_ms;
+  const latestHrv = todayReadiness?.hrv_avg_ms;
   const avgHrv7 = average(data.daily.slice(-8, -1).map((d) => d.hrv_avg_ms));
   const hrvTone: "neutral" | "good" | "warn" = latestHrv == null ? "neutral" : latestHrv >= (avgHrv7 ?? latestHrv) * 0.95 ? "good" : "warn";
 
   const coachAdvice = (() => {
     const advice: { tone: "good" | "warn" | "hot"; text: string }[] = [];
-    if (today?.recovery_percent != null && today.recovery_percent < 60) advice.push({ tone: "hot", text: `Recovery ${today.recovery_percent}% ต่ำ — ทำได้แค่ recovery easy` });
+    if (todayReadiness?.recovery_percent != null && todayReadiness.recovery_percent < 60) advice.push({ tone: "hot", text: `Recovery ${todayReadiness.recovery_percent}% ต่ำ — ทำได้แค่ recovery easy` });
     if (latestHrv != null && avgHrv7 != null && latestHrv < avgHrv7 * 0.9) advice.push({ tone: "warn", text: `HRV ต่ำกว่า baseline 7 วัน — ลดความหนักลง` });
-    if (today?.sleep_minutes != null && today.sleep_minutes < 330) advice.push({ tone: "warn", text: `นอนน้อย ${Math.round(today.sleep_minutes / 60)}h — ห้ามทำ quality วันนี้` });
+    if (todayReadiness?.sleep_minutes != null && todayReadiness.sleep_minutes < 330) advice.push({ tone: "warn", text: `นอนน้อย ${Math.round(todayReadiness.sleep_minutes / 60)}h — ห้ามทำ quality วันนี้` });
     if (loadRatio != null && loadRatio > 1.5) advice.push({ tone: "hot", text: `Load ratio ${loadRatio.toFixed(2)} สูงเสี่ยงบาดเจ็บ — พัก/easy 2-3 วัน` });
     if (painLevel(lastRun?.pain) !== "none") advice.push({ tone: "warn", text: `Run ล่าสุดมี pain note — เช็คก่อน quality ครั้งถัดไป` });
     if (lastRun?.cadence_spm != null && lastRun.cadence_spm < 165) advice.push({ tone: "warn", text: `Cadence ${lastRun.cadence_spm.toFixed(0)} spm ต่ำ — ฝึก cuing 170 ใน easy run` });
@@ -365,7 +414,7 @@ export function Today({ data }: { data: DashboardData }) {
   const chartRows = recentRuns.map((run) => ({ date: shortDate(run.run_date), distance: run.distance_km ?? 0, z2: run.z2_percent ?? null }));
 
   return (
-    <section className="page-stack">
+    <section className="page-stack home-dashboard">
 
       {/* ── PWA Quick View Card for Today ── */}
       <TodayQuickCard
@@ -374,44 +423,67 @@ export function Today({ data }: { data: DashboardData }) {
         gate={ctx.gate}
         profile={data.profile}
         criteria={data.criteria}
+        gear={data.gear}
       />
 
       {/* ── Context banners: race recap / race week / injury ── */}
       <ContextBanners ctx={ctx} />
 
-      {/* ── Readiness hero ── */}
-      <div className={`readiness-hero ${tone}`}>
-        <div className="readiness-hero-copy">
-          <span className="readiness-status-badge">{thaiText(today?.readiness_status, "ไม่มีข้อมูล")}</span>
-          <p className="readiness-session">{thaiText(today?.planned_session, "ยังไม่มีแผนวันนี้")}</p>
-          <p className="readiness-rec">{thaiText(today?.recommendation)}</p>
-          <div className="chip-row">
-            <span>รองเท้า: {thaiText(today?.recommended_shoe)}</span>
-            <span>โหลด: {today?.load_ratio?.toFixed(2) ?? "-"}</span>
-            <span>ชีพจรพัก: {today?.resting_hr_bpm ?? "-"} bpm</span>
-            {today?.tags?.map((tag) => <span key={tag}>{thaiText(tag)}</span>)}
+      {/* ── Plan hero: session วันนี้ + นับถอยหลังวันแข่ง ── */}
+      <div className={`home-hero ${tone}`}>
+        <div className="home-hero-copy">
+          <span className="readiness-status-badge">{currentGoal?.race_name ? `แผน ${currentGoal.race_name}` : "แผนซ้อม"}</span>
+          <h2>{todayPlan ? sessionLabel(todayPlan.title) : "แผนพร้อมเริ่ม"}</h2>
+          <p>
+            {todayPlan
+              ? `${todayPlan.plan_date} · ${sessionLabel(todayPlan.session_type, "ซ้อม")} · ${priorityLabel(todayPlan.priority)}`
+              : "เพิ่มแผนลง Supabase แล้วหน้านี้จะสรุปสิ่งที่ต้องทำถัดไปให้อัตโนมัติ"}
+          </p>
+          <div className="hero-action-row">
+            <a href="#/race">ดูกราฟวันแข่ง</a>
           </div>
         </div>
-        <div className="readiness-hero-ring">
-          <ReadinessRing score={today?.recovery_percent} tone={tone} />
+
+        <div className="race-countdown">
+          <span>เหลือ</span>
+          <strong>{raceCountdown != null && raceCountdown >= 0 ? raceCountdown : 0}</strong>
+          <small>{currentGoal?.race_name ? `วัน ${currentGoal.race_name}` : "วันแข่ง"}</small>
+          <i>{nextRaceDate ?? "-"}</i>
         </div>
       </div>
 
-      {/* ── Gate verdict + next session + phase strip ── */}
+      {/* ── Readiness hero ── */}
+      <div className={`readiness-hero ${tone}`}>
+        <div className="readiness-hero-copy">
+          <span className="readiness-status-badge">{thaiText(todayReadiness?.readiness_status, "ไม่มีข้อมูล")}</span>
+          <p className="readiness-session">{thaiText(todayReadiness?.planned_session, "ยังไม่มีแผนวันนี้")}</p>
+          <p className="readiness-rec">{thaiText(todayReadiness?.recommendation)}</p>
+          <div className="chip-row">
+            <span>รองเท้า: {thaiText(todayReadiness?.recommended_shoe)}</span>
+            <span>โหลด: {todayReadiness?.load_ratio?.toFixed(2) ?? "-"}</span>
+            <span>ชีพจรพัก: {todayReadiness?.resting_hr_bpm ?? "-"} bpm</span>
+            {todayReadiness?.tags?.map((tag) => <span key={tag}>{thaiText(tag)}</span>)}
+          </div>
+        </div>
+        <div className="readiness-hero-ring">
+          <ReadinessRing score={todayReadiness?.recovery_percent} tone={tone} />
+        </div>
+      </div>
+
+      {/* ── Gate verdict + phase strip ── */}
       <div className="content-grid">
         <GateVerdict ctx={ctx} />
-        <NextSessionCard ctx={ctx} criteria={data.criteria} />
         <PhaseStrip ctx={ctx} data={data} />
       </div>
 
       {/* ── Metric grid ── */}
       <div className="metric-grid">
-        <MetricCard label="การฟื้นตัว" value={today?.recovery_percent == null ? "-" : `${today.recovery_percent}%`} detail="ค่าฟื้นตัวจาก COROS" icon={HeartPulse}
-          trend={today?.recovery_percent == null ? undefined : `${today.recovery_percent >= 70 ? "↑" : "↓"} ${today.recovery_percent}%`}
-          trendTone={today?.recovery_percent == null ? "neutral" : today.recovery_percent >= 70 ? "good" : today.recovery_percent >= 50 ? "warn" : "hot"} />
-        <MetricCard label="การนอน" value={today?.sleep_minutes == null ? "-" : minutes(today.sleep_minutes)} detail={today?.sleep_score == null ? undefined : `คะแนน ${today.sleep_score}`} icon={Moon}
-          trend={today?.sleep_score == null ? undefined : today.sleep_score >= 75 ? "↑ ดี" : "↓ น้อย"}
-          trendTone={today?.sleep_score == null ? "neutral" : today.sleep_score >= 75 ? "good" : "warn"} />
+        <MetricCard label="การฟื้นตัว" value={todayReadiness?.recovery_percent == null ? "-" : `${todayReadiness.recovery_percent}%`} detail="ค่าฟื้นตัวจาก COROS" icon={HeartPulse}
+          trend={todayReadiness?.recovery_percent == null ? undefined : `${todayReadiness.recovery_percent >= 70 ? "↑" : "↓"} ${todayReadiness.recovery_percent}%`}
+          trendTone={todayReadiness?.recovery_percent == null ? "neutral" : todayReadiness.recovery_percent >= 70 ? "good" : todayReadiness.recovery_percent >= 50 ? "warn" : "hot"} />
+        <MetricCard label="การนอน" value={todayReadiness?.sleep_minutes == null ? "-" : minutes(todayReadiness.sleep_minutes)} detail={todayReadiness?.sleep_score == null ? undefined : `คะแนน ${todayReadiness.sleep_score}`} icon={Moon}
+          trend={todayReadiness?.sleep_score == null ? undefined : todayReadiness.sleep_score >= 75 ? "↑ ดี" : "↓ น้อย"}
+          trendTone={todayReadiness?.sleep_score == null ? "neutral" : todayReadiness.sleep_score >= 75 ? "good" : "warn"} />
         <MetricCard label="HRV" value={latestHrv == null ? "-" : `${latestHrv} ms`} detail={avgHrv7 == null ? undefined : `เฉลี่ย 7 วัน: ${avgHrv7.toFixed(0)} ms`} icon={Brain} tone={hrvTone}
           trend={latestHrv == null || avgHrv7 == null ? undefined : `${latestHrv >= avgHrv7 ? "↑" : "↓"} ${Math.abs(Math.round(latestHrv - avgHrv7))} ms`}
           trendTone={hrvTone === "good" ? "good" : "warn"} />
@@ -419,6 +491,8 @@ export function Today({ data }: { data: DashboardData }) {
           trend={loadRatio == null ? undefined : loadRatio <= 1.3 ? "คงที่" : `↑ ${loadRatio.toFixed(2)}`}
           trendTone={acwrTone === "good" ? "neutral" : acwrTone} />
         <MetricCard label="ระยะรวม" value={km(totalDistance)} detail={`เฉลี่ย Z2 ${percent(avgZ2)}`} icon={Activity} />
+        <MetricCard label="ระยะตามแผน" value={km(plannedKm)} detail="รวมในสัปดาห์นี้" icon={CalendarCheck} />
+        <MetricCard label="ความคืบหน้าสัปดาห์" value={`${progress}%`} detail="รายการซ้อมที่ทำแล้ว" icon={Flag} tone={progress >= 60 ? "good" : "neutral"} />
         <MetricCard label="Quality session ถัดไป"
           value={nextQualityDays == null ? "-" : nextQualityDays === 0 ? "วันนี้" : `อีก ${nextQualityDays} วัน`}
           detail={nextQuality == null ? "ไม่มีในแผน" : `${nextQuality.plan_date} · ${nextQuality.session_type ?? nextQuality.title}`}
@@ -426,11 +500,88 @@ export function Today({ data }: { data: DashboardData }) {
         <MetricCard label="Pace consistency"
           value={paceConsistencyCoV == null ? "-" : `${paceConsistencyCoV.toFixed(1)}%`}
           detail={paceConsistencyCoV == null ? "ต้องมี easy runs ≥3 ครั้ง" : paceConsistencyCoV < 3 ? "นิ่งมาก · pacing skill ดี" : paceConsistencyCoV < 6 ? "ปกติ · ปรับได้อีก" : "เพซแกว่ง · เน้น cuing pace"}
-          icon={Activity} tone={consistencyTone} />
+          icon={Gauge} tone={consistencyTone} />
+      </div>
+
+      {/* ── Next session card (mobile-friendly detail) ── */}
+      <div className="mobile-plan-stack">
+        <article className={`next-session-card ${statusTone(todayPlan?.status ?? null)}`}>
+          <div>
+            <span>รายการถัดไป</span>
+            <strong>{sessionLabel(todayPlan?.title, "ยังไม่มีแผน")}</strong>
+            {(() => {
+              const segments = todayPlan ? workoutSegments(workoutDetail(todayPlan)) : [];
+              if (!todayPlan) return <p>เพิ่มรายการซ้อมเพื่อเริ่มติดตาม</p>;
+              // หลาย segment (WU/main/CD) -> แยกรายรอบให้เห็น HR/pace ชัด แทนอัดบรรทัดเดียว
+              if (segments.length > 1) {
+                return (
+                  <ol className="clean-list" style={{ marginTop: 4 }}>
+                    {segments.map((segment, i) => <li key={i}>{segment}</li>)}
+                  </ol>
+                );
+              }
+              return <p>{workoutDetail(todayPlan)}</p>;
+            })()}
+          </div>
+          <div className="session-pills">
+            <span>
+              <Activity size={14} />
+              {km(todayPlan?.target_distance_km)}
+            </span>
+            <span>
+              <Clock3 size={14} />
+              {minutes(todayPlan?.target_duration_min)}
+            </span>
+            <span>
+              <Gauge size={14} />
+              {pace(todayPlan?.target_pace_sec_per_km)}
+            </span>
+            {todayPlan?.planned_shoe && (
+              <span>
+                <Footprints size={14} />
+                {thaiText(todayPlan.planned_shoe)}
+              </span>
+            )}
+          </div>
+          {todayPlan && (
+            <div className="plan-detail-block">
+              {noteField(todayPlan, "เป้าหมายหลัก") && (
+                <p>
+                  <b>เป้าหมาย:</b> {noteField(todayPlan, "เป้าหมายหลัก")}
+                </p>
+              )}
+              {passCriteria(todayPlan) && (
+                <p>
+                  <b>เกณฑ์ผ่าน:</b> {passCriteria(todayPlan)}
+                </p>
+              )}
+              {todayPlan.skip_reason && (
+                <p style={{ color: todayPlan.status === "skipped" ? "#9d1c37" : "#7a5300" }}>
+                  <b>{todayPlan.status === "skipped" ? "ข้ามเพราะ:" : "ปรับเพราะ:"}</b> {todayPlan.skip_reason}
+                </p>
+              )}
+              <small>{statusLabel(todayPlan.status)} · {priorityLabel(todayPlan.priority)}</small>
+            </div>
+          )}
+        </article>
       </div>
 
       {/* ── Content grid ── */}
       <div className="content-grid">
+        <Panel title="This week's focus" subtitle={activeWeek ?? "แสดงจากแผนที่กำลังจะมาถึง"} className="span-12">
+          <div className="plan-focus-grid smart-plan-grid">
+            {weekPlan.slice(0, 4).map((item) => (
+              <article className={`plan-focus-card ${item.priority ?? "normal"}`} key={item.id}>
+                <span>{item.plan_date}</span>
+                <strong>{sessionLabel(item.title)}</strong>
+                <p>{workoutDetail(item)}</p>
+                {passCriteria(item) && <small>{passCriteria(item)}</small>}
+              </article>
+            ))}
+            {!weekPlan.length && <p className="run-note">ยังไม่มีแผนในฐานข้อมูล</p>}
+          </div>
+        </Panel>
+
         <Panel title="Latest run" subtitle={lastRun?.run_date ?? "ยังไม่มีบันทึกวิ่ง"} className="span-5">
           <div className="latest-run">
             <strong>{sessionLabel(lastRun?.session_type)}</strong>
@@ -494,7 +645,7 @@ export function Today({ data }: { data: DashboardData }) {
         </Panel>
 
         <Panel title="Progress overview" subtitle="ระยะและ Z2 จากบันทึกวิ่งล่าสุด" className="span-6">
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={chartRows} margin={chartMargin}>
               <ChartGradientDefs /><CartesianGrid {...chartGrid} />
               <XAxis dataKey="date" {...chartAxis} /><YAxis yAxisId="left" {...chartAxis} />
@@ -506,7 +657,54 @@ export function Today({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
         </Panel>
 
-        <CoreFeatures />
+        <Panel title="Upcoming sessions" subtitle="จัดกลุ่มตาม Phase · sync จาก repo schedule" className="span-12">
+          <div
+            className="upcoming-training-scroll"
+            style={{ maxHeight: "min(65vh, 480px)", overflowX: "auto", overflowY: "auto" }}
+          >
+            <div className="mobile-schedule-list">
+              {phaseGroups.map(({ label, sub, items }, groupIdx) => (
+                <div key={`${label}-${groupIdx}`}>
+                  <div
+                    style={{
+                      padding: "6px 12px",
+                      marginTop: "8px",
+                      background: "var(--surface-raised, rgba(255,255,255,0.06))",
+                      borderRadius: "6px",
+                      display: "flex",
+                      alignItems: "baseline",
+                      gap: "8px",
+                    }}
+                  >
+                    <strong style={{ fontSize: "0.8rem", letterSpacing: "0.04em" }}>{label}</strong>
+                    {sub && <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>{sub}</span>}
+                  </div>
+                  {items.map((item) => (
+                    <article key={item.id}>
+                      <time>{item.plan_date.slice(5)}</time>
+                      <div>
+                        <strong>{sessionLabel(item.title)}</strong>
+                        <span>{workoutDetail(item)}</span>
+                        <em>{sessionMeta(item) || "ไม่มี metric เพิ่มเติม"}</em>
+                        {item.skip_reason && (
+                          <em style={{
+                            color: item.status === "skipped" ? "#9d1c37" : "#7a5300",
+                            fontStyle: "italic",
+                            fontSize: "0.72rem",
+                          }}>
+                            {item.status === "skipped" ? "ข้ามเพราะ: " : "ปรับเพราะ: "}{item.skip_reason}
+                          </em>
+                        )}
+                      </div>
+                      <small className={`table-status ${item.status ?? "planned"}`}>{statusLabel(item.status ?? null)}</small>
+                    </article>
+                  ))}
+                </div>
+              ))}
+              {!sortedPlan.length && <p className="run-note">ยังไม่มีข้อมูลแผนซ้อม</p>}
+            </div>
+          </div>
+        </Panel>
       </div>
     </section>
   );

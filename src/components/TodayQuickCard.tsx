@@ -1,5 +1,5 @@
 import { Activity, Footprints, Heart, Moon, ShieldCheck, ShieldAlert, Sparkles } from "lucide-react";
-import type { DailyReadiness, RunnerProfile, SessionCriteria, TrainingPlan } from "../types";
+import type { DailyReadiness, GearMileage, RunnerProfile, SessionCriteria, TrainingPlan } from "../types";
 import type { GateResult } from "../utils/evaluate";
 import { criteriaFor } from "../utils/evaluate";
 import { classifySession, getRecommendedShoe, type SessionKind } from "../utils/session";
@@ -29,18 +29,20 @@ export function TodayQuickCard({
   gate,
   profile,
   criteria,
+  gear,
 }: {
   todayPlan: TrainingPlan | null;
   todayReadiness: DailyReadiness | null;
   gate: GateResult | null;
   profile: RunnerProfile | null;
   criteria: SessionCriteria[];
+  gear: GearMileage[];
 }) {
   const sessionTitle = todayPlan?.session_type ?? todayPlan?.title ?? "Rest / พักซ้อม";
   const kind = classifySession(sessionTitle);
-  // รองเท้าจากแผนจริง (training_plan.planned_shoe) ก่อนเสมอ — ใช้ heuristic
-  // เดาจาก session title เฉพาะตอนแผนวันนี้ยังไม่ระบุรองเท้า
-  const fallbackShoe = getRecommendedShoe(sessionTitle);
+  // รองเท้าจากแผนจริง (training_plan.planned_shoe) ก่อนเสมอ — ถ้าแผนไม่ระบุ
+  // ให้เลือกจากคู่ที่มีจริงใน gear_mileage ตาม role/ประเภท session
+  const fallbackShoe = getRecommendedShoe(sessionTitle, gear);
   const isQualitySession = kind === "tempo" || kind === "vo2" || kind === "test" || kind === "race";
   const shoeInfo = todayPlan?.planned_shoe
     ? { name: todayPlan.planned_shoe, role: fallbackShoe.role, isQuality: isQualitySession }

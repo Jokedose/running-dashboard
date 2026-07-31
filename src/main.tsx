@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarCheck, CalendarDays, CalendarRange, Cross, Dumbbell, Footprints, Gauge, HeartPulse, Scale, ShieldCheck, Trophy, TrendingUp } from "lucide-react";
+import { Activity, CalendarRange, Cross, Dumbbell, Gauge, HeartPulse, Home as HomeIcon, ShieldCheck, Trophy, TrendingUp, User } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -32,33 +32,27 @@ import { theme } from "./theme";
 import "./styles.css";
 
 const navItems: NavItem[] = [
-  { key: "plan", label: "Plan", icon: CalendarCheck },
-  { key: "today", label: "Today", icon: CalendarDays },
+  { key: "home", label: "Home", icon: HomeIcon },
   { key: "calendar", label: "Calendar", icon: CalendarRange },
   { key: "race", label: "Race", icon: Trophy },
   { key: "zone2", label: "Zone 2", icon: Gauge },
-  { key: "weekly", label: "Weekly", icon: Activity },
-  // { key: "monthly", label: "Monthly", icon: CalendarRange }, // ซ่อนชั่วคราว
+  { key: "reports", label: "Reports", icon: Activity },
   { key: "trends", label: "Trends", icon: TrendingUp },
   { key: "load", label: "Load", icon: HeartPulse },
   { key: "injury", label: "Injury", icon: Cross },
   { key: "strength", label: "Strength", icon: Dumbbell },
-  { key: "gear", label: "Gear", icon: Footprints },
-  { key: "body", label: "Body", icon: Scale },
+  { key: "profile", label: "Profile", icon: User },
   { key: "activities", label: "Activities", icon: ShieldCheck },
 ];
 
 const Activities = lazy(() => import("./pages/Activities").then((module) => ({ default: module.Activities })));
 const Calendar = lazy(() => import("./pages/Calendar").then((module) => ({ default: module.Calendar })));
-const Gear = lazy(() => import("./pages/Gear").then((module) => ({ default: module.Gear })));
-const Plan = lazy(() => import("./pages/Plan").then((module) => ({ default: module.Plan })));
+const Home = lazy(() => import("./pages/Home").then((module) => ({ default: module.Home })));
 const Race = lazy(() => import("./pages/Race").then((module) => ({ default: module.Race })));
-const Today = lazy(() => import("./pages/Today").then((module) => ({ default: module.Today })));
+const Reports = lazy(() => import("./pages/Reports").then((module) => ({ default: module.Reports })));
 const Trends = lazy(() => import("./pages/Trends").then((module) => ({ default: module.Trends })));
-const Weekly = lazy(() => import("./pages/Weekly").then((module) => ({ default: module.Weekly })));
 const Zone2 = lazy(() => import("./pages/Zone2").then((module) => ({ default: module.Zone2 })));
-const Body = lazy(() => import("./pages/Body").then((module) => ({ default: module.Body })));
-const Monthly = lazy(() => import("./pages/Monthly").then((module) => ({ default: module.Monthly })));
+const Profile = lazy(() => import("./pages/Profile").then((module) => ({ default: module.Profile })));
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
 const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
@@ -202,21 +196,18 @@ function App() {
 
   const page = useMemo(() => {
     if (!hasData && loadState === "ready") return <EmptyState />;
-    if (route === "plan") return <Plan data={data} />;
-    if (route === "today") return <Today data={data} />;
+    if (route === "home") return <Home data={data} />;
     if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
-    if (route === "weekly") return <Weekly data={data} />;
-    if (route === "monthly") return <Monthly data={data} />;
+    if (route === "reports") return <Reports data={data} />;
     if (route === "trends") return <Trends data={data} />;
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
     if (route === "strength") return <Strength data={data} />;
-    if (route === "gear") return <Gear data={data} />;
-    if (route === "body") return <Body data={data} onSaved={fetchData} />;
+    if (route === "profile") return <Profile data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
-    return <Plan data={data} />;
+    return <Home data={data} />;
   }, [data, hasData, loadState, route]);
 
   if (loading) return <LoadingScreen label="กำลังโหลด..." />;

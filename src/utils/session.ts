@@ -1,3 +1,5 @@
+import type { GearMileage } from "../types";
+
 export type SessionKind =
   | "easy"
   | "long"
@@ -60,33 +62,59 @@ export type RecommendedShoeInfo = {
   isQuality: boolean;
 };
 
-/** Single source of truth for shoe recommendation by session type.
- *  Interval / VO2max / Tempo / Threshold / Test / Race -> Xtep 2000km 5.0 Pro
- *  Recovery -> Xtep 2000km 3
- *  Easy / Long / Default -> Novablast 5 */
-export function getRecommendedShoe(sessionType: string | null | undefined): RecommendedShoeInfo {
+type ShoeCategory = "quality" | "recovery" | "daily";
+
+function categoryFor(kind: SessionKind): ShoeCategory {
+  if (kind === "tempo" || kind === "vo2" || kind === "test" || kind === "race") return "quality";
+  if (kind === "recovery") return "recovery";
+  return "daily";
+}
+
+// จับคำใน role/ชื่อรองเท้าเพื่อหาคู่ที่เหมาะกับ category ของ session — role เป็น
+// free text จาก gear_mileage เลยแมตช์แบบ keyword แทนค่าคงที่
+const CATEGORY_KEYWORDS: Record<ShoeCategory, RegExp> = {
+  quality: /race|tempo|speed|quality|interval|vo2|carbon|แข่ง|คุณภาพ|เทมโป/i,
+  recovery: /recovery|ฟื้น/i,
+  daily: /daily|trainer|easy|long|ประจำวัน|เบา|ยาว/i,
+};
+
+const RETIRED_STATUS = /ปลดระวาง|retired|เกษียณ/i;
+
+function isAvailable(shoe: GearMileage): boolean {
+  if (shoe.status && RETIRED_STATUS.test(shoe.status)) return false;
+  if (shoe.used_percent != null && shoe.used_percent >= 100) return false;
+  return true;
+}
+
+// fallback ตายตัว ใช้เฉพาะตอนยังไม่มีข้อมูลรองเท้าใน gear_mileage เลย (ไม่งั้นการ์ด
+// รองเท้าแนะนำจะว่างเปล่าตอนยังไม่ได้ sync ตาราง gear)
+const FALLBACK_BY_CATEGORY: Record<ShoeCategory, RecommendedShoeInfo> = {
+  quality: { slug: "xtep-2000km-5-pro", name: "Xtep 2000km 5.0 Pro", role: "ซ้อมคุณภาพ / Interval / Tempo / แข่ง", isQuality: true },
+  recovery: { slug: "xtep-2000-km-3", name: "Xtep 2000km 3", role: "ฟื้นตัว / Easy เบาๆ", isQuality: false },
+  daily: { slug: "novablast-5", name: "Novablast 5", role: "Easy / Long run ประจำวัน", isQuality: false },
+};
+
+/** แนะนำรองเท้าจากคู่ที่มีจริงใน gear_mileage ก่อนเสมอ — เลือกคู่ที่ role/ชื่อ
+ *  ตรงกับประเภท session (quality/recovery/daily) แล้วเลือกคู่ที่สึกน้อยสุด
+ *  (used_percent ต่ำสุด) ในกลุ่มนั้น ตัดคู่ที่ปลดระวางหรือหมดอายุใช้งานแล้วออก
+ *  ใช้ FALLBACK_BY_CATEGORY เฉพาะตอนยังไม่มีรองเท้าที่ match/ใช้งานได้เลย */
+export function getRecommendedShoe(sessionType: string | null | undefined, gear: GearMileage[] = []): RecommendedShoeInfo {
   const kind = classifySession(sessionType);
-  if (kind === "tempo" || kind === "vo2" || kind === "test" || kind === "race") {
-    return {
-      slug: "xtep-2000km-5-pro",
-      name: "Xtep 2000km 5.0 Pro",
-      role: "ซ้อมคุณภาพ / Interval / Tempo / แข่ง",
-      isQuality: true,
-    };
-  }
-  if (kind === "recovery") {
-    return {
-      slug: "xtep-2000-km-3",
-      name: "Xtep 2000km 3",
-      role: "ฟื้นตัว / Easy เบาๆ",
-      isQuality: false,
-    };
-  }
+  const category = categoryFor(kind);
+  const isQuality = category === "quality";
+
+  const available = gear.filter(isAvailable);
+  const keyword = CATEGORY_KEYWORDS[category];
+  const matched = available.filter((s) => keyword.test(s.role ?? "") || keyword.test(s.shoe_name ?? ""));
+  const pool = matched.length ? matched : available;
+  const pick = [...pool].sort((a, b) => (a.used_percent ?? 0) - (b.used_percent ?? 0))[0];
+
+  if (!pick) return FALLBACK_BY_CATEGORY[category];
   return {
-    slug: "novablast-5",
-    name: "Novablast 5",
-    role: "Easy / Long run ประจำวัน",
-    isQuality: false,
+    slug: pick.shoe_slug,
+    name: pick.shoe_name ?? pick.shoe_slug,
+    role: pick.role ?? FALLBACK_BY_CATEGORY[category].role,
+    isQuality,
   };
 }
 

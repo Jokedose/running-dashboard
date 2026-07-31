@@ -4,9 +4,15 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAx
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
+import { ProgressBar } from "../components/ProgressBar";
 import { supabase } from "../supabase";
 import type { BodyComposition, DashboardData } from "../types";
-import { shortDate } from "../utils/format";
+import { km, percent, shortDate } from "../utils/format";
+
+/* ─────────────────────────────────────────────
+   Profile — ร่างกายและอุปกรณ์ส่วนตัว (รวมจากหน้า
+   Body + Gear เดิม เพราะเป็นข้อมูลอัปเดตไม่บ่อยเท่าหน้าซ้อม)
+   ───────────────────────────────────────────── */
 
 const TARGET_WEIGHT = 63;
 const TARGET_BODY_FAT = 18;
@@ -82,7 +88,7 @@ function weightProjection(rows: BodyComposition[]) {
   return { perWeek, raceWeight, reachDate };
 }
 
-export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => void }) {
+export function Profile({ data, onSaved }: { data: DashboardData; onSaved: () => void }) {
   const rows = data.body;
   const latest = rows[rows.length - 1] ?? null;
   const [showForm, setShowForm] = useState(false);
@@ -403,6 +409,23 @@ export function Body({ data, onSaved }: { data: DashboardData; onSaved: () => vo
             </div>
           </Panel>
         )}
+
+        <Panel title="Gear · รองเท้า" subtitle="ระยะสะสมและรอบใช้งานของแต่ละคู่" className="span-12">
+          <div className="shoe-grid">
+            {data.gear.map((shoe) => (
+              <div className="shoe-card" key={shoe.shoe_slug}>
+                <div>
+                  <h2>{shoe.shoe_name ?? shoe.shoe_slug}</h2>
+                  <p>{shoe.shoe_slug}</p>
+                </div>
+                <strong>{km(shoe.total_km)}</strong>
+                <ProgressBar value={shoe.used_percent} label={`ใช้ไป ${percent(shoe.used_percent)} · เหลือ ${km(shoe.remaining_km)}`} />
+                <span className="shoe-status">{shoe.status ?? "ใช้งาน"}</span>
+              </div>
+            ))}
+            {!data.gear.length && <p className="run-note">ยังไม่มีข้อมูลรองเท้า</p>}
+          </div>
+        </Panel>
       </div>
     </section>
   );
