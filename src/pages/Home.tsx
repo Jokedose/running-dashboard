@@ -423,6 +423,7 @@ export function Home({ data }: { data: DashboardData }) {
         gate={ctx.gate}
         profile={data.profile}
         criteria={data.criteria}
+        gear={data.gear}
       />
 
       {/* ── Context banners: race recap / race week / injury ── */}
