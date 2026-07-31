@@ -1699,8 +1699,12 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
-tbody tr:hover {
-  background: var(--color-nav);
+/* @media (hover: hover) กัน mobile/touch โดน :hover ค้างหลังแตะแถว (tap ไม่มี
+   mouseleave ให้เคลียร์ state) ซึ่งทำให้แถวนั้นเป็นสีเน้นค้างดูแปลกไปทั้งตาราง */
+@media (hover: hover) {
+  tbody tr:hover {
+    background: var(--color-nav);
+  }
 }
 
 .empty-state {
@@ -2047,6 +2051,8 @@ button.cal-today-btn {
   max-width: 580px;
   max-height: 88vh;
   overflow-y: auto;
+  /* กัน scroll chaining — เลื่อนถึงขอบใน modal แล้วไม่ให้ไหลต่อไปเลื่อนหน้าหลักที่อยู่ข้างหลัง */
+  overscroll-behavior: contain;
   box-shadow: 0 8px 48px rgba(34, 84, 88, 0.22);
   border: 1px solid var(--color-line);
 }
@@ -2371,6 +2377,7 @@ button.cal-modal-close {
     align-content: start;
     gap: var(--space-3);
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: var(--space-4);
     border: 1px solid var(--color-line);
     border-radius: 18px;
