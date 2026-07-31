@@ -1699,8 +1699,12 @@ td {
   font-variant-numeric: tabular-nums;
 }
 
-tbody tr:hover {
-  background: var(--color-nav);
+/* @media (hover: hover) กัน mobile/touch โดน :hover ค้างหลังแตะแถว (tap ไม่มี
+   mouseleave ให้เคลียร์ state) ซึ่งทำให้แถวนั้นเป็นสีเน้นค้างดูแปลกไปทั้งตาราง */
+@media (hover: hover) {
+  tbody tr:hover {
+    background: var(--color-nav);
+  }
 }
 
 .empty-state {
