@@ -431,7 +431,9 @@ button.mobile-sheet-backdrop {
   overflow-wrap: anywhere;
 }
 
-.sheet-logout {
+/* qualified ด้วย "button." เพื่อให้ specificity ชนะ button:not(.MuiButtonBase-root)
+   ตัว global (มิเช่นนั้นพื้นชมพูอ่อน/ตัวหนังสือแดงจะโดนทับด้วยพื้นน้ำตาล/ขาว) */
+button.sheet-logout {
   min-height: 48px;
   display: flex;
   align-items: center;
@@ -664,7 +666,7 @@ button.mobile-sheet-backdrop {
   font-weight: 750;
 }
 
-.kb-lightbox-close {
+button.kb-lightbox-close {
   position: absolute;
   top: -10px;
   right: -10px;
@@ -2860,7 +2862,10 @@ nav a:focus-visible {
   display: none;
 }
 
-.activity-card {
+/* selector ต้อง specific กว่า "button:not(.MuiButtonBase-root)" (มี specificity
+   เท่ากับ button + class) ไม่งั้น background/color เริ่มต้นของปุ่มสีน้ำตาล
+   จะทับ card ให้กลายเป็นพื้นสีน้ำตาลตัวหนังสือขาวจางแทบมองไม่เห็น */
+.activities-cards .activity-card {
   display: grid;
   gap: 6px;
   text-align: left;
@@ -2869,6 +2874,7 @@ nav a:focus-visible {
   border: 1px solid var(--color-line);
   border-radius: 10px;
   background: #fff;
+  color: var(--color-ink);
   cursor: pointer;
 }
 
