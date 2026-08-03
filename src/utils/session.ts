@@ -12,12 +12,9 @@ export type SessionKind =
   | "rest"
   | "other";
 
-// Single source of truth for classifying a session_type / title string.
 // Order matters: more specific buckets (strides, tests) are checked before
 // the broad "easy" bucket so "Easy + strides" is not mislabelled as easy.
-export function classifySession(value: string | null | undefined): SessionKind {
-  const t = (value ?? "").toLowerCase();
-  if (!t) return "other";
+function classifyFromText(t: string): SessionKind {
   if (t.includes("strides") || t.includes("stride") || t.includes("สไตรด์")) return "strides";
   if (t.includes("race-sim") || t.includes("race simulation") || t.includes("calibration") || t.includes("test")) return "test";
   if (t.includes("vo2") || t.includes("interval")) return "vo2";
@@ -28,6 +25,26 @@ export function classifySession(value: string | null | undefined): SessionKind {
   if (t.includes("race") || t.includes("แข่ง")) return "race";
   if (t.includes("rest") || t.includes("off") || t.includes("พัก") || t.includes("shakeout")) return "rest";
   return "other";
+}
+
+// Text before the first " — " separator or opening "(" — where a free-text
+// session_type states its actual type before explaining/qualifying it.
+const PREFIX_BOUNDARY = /\s+—\s+|\(/;
+
+// Single source of truth for classifying a session_type / title string.
+// Supabase's session_type is free text (e.g. "Long run — ... แม้ readiness
+// แนะนำให้ลดเป็น Recovery/Easy ...") that can mention multiple session
+// keywords while explaining a decision. Classify the text before the first
+// " — " / "(" first, since that's where the actual type is stated, and only
+// fall back to scanning the full string if the prefix carries no signal.
+export function classifySession(value: string | null | undefined): SessionKind {
+  const t = (value ?? "").toLowerCase();
+  if (!t) return "other";
+  const boundary = t.search(PREFIX_BOUNDARY);
+  const prefix = boundary === -1 ? t : t.slice(0, boundary);
+  const prefixKind = classifyFromText(prefix);
+  if (prefixKind !== "other") return prefixKind;
+  return classifyFromText(t);
 }
 
 // Pure aerobic steady-state runs — used for pace consistency & efficiency.
