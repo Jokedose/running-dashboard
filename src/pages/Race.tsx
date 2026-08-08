@@ -404,7 +404,7 @@ function RaceResultCard({ race, heading }: { race: DashboardData["races"][number
 
 export function Race({ data }: { data: DashboardData }) {
   const today = todayIso();
-  const goals = [...data.raceGoals].sort((a, b) => a.race_date.localeCompare(b.race_date));
+  const goals = data.raceGoals.filter((goal) => !goal.tags?.some((tag) => tag.toLowerCase() === "#cancelled")).sort((a, b) => a.race_date.localeCompare(b.race_date));
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   // แข่งที่เลือกจาก list (default = แข่งถัดไปที่กำลังจะถึง)
   const currentGoal = goals.find((g) => g.race_slug === selectedSlug) ?? resolveCurrentRaceGoal(data.raceGoals, today);

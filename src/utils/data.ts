@@ -33,8 +33,9 @@ export function todayIso(): string {
 // เลือก race goal ที่ "กำลังจะถึง" ก่อน (วันที่ใกล้สุดที่ >= วันนี้)
 // ถ้าไม่มีเลย (ทุกแข่งผ่านไปแล้ว) ใช้แข่งล่าสุดที่ผ่านมา — generalize IS_B_RACE เดิมให้รองรับ N แข่ง
 export function resolveCurrentRaceGoal(goals: RaceGoal[], today: string): RaceGoal | null {
-  if (!goals.length) return null;
-  const sorted = [...goals].sort((a, b) => a.race_date.localeCompare(b.race_date));
+  const active = goals.filter((goal) => !goal.tags?.some((tag) => tag.toLowerCase() === "#cancelled"));
+  if (!active.length) return null;
+  const sorted = [...active].sort((a, b) => a.race_date.localeCompare(b.race_date));
   return sorted.find((g) => g.race_date >= today) ?? sorted.at(-1) ?? null;
 }
 

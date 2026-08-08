@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { buildTrainingContext, diffDays, longRunTargetKm, raceShortLabel } from "../src/utils/context";
-import { emptyData } from "../src/utils/data";
+import { emptyData, resolveCurrentRaceGoal } from "../src/utils/data";
 import type { DashboardData, RaceGoal, RaceReadiness, RunLog, TrainingPhase, TrainingPlan } from "../src/types";
 
 const phase = (overrides: Partial<TrainingPhase>): TrainingPhase => ({
@@ -132,6 +132,12 @@ describe("buildTrainingContext — races", () => {
     expect(ctx.lastRace?.daysSince).toBe(8);
     expect(ctx.justRaced).toBe(false);
   });
+});
+
+test("resolveCurrentRaceGoal ignores cancelled goals", () => {
+  const cancelled = goal({ id: "cancelled", race_slug: "2026-11-29-atm-half", race_date: "2026-11-29", tags: ["#cancelled"] });
+  const active = goal({ id: "active", race_slug: "2027-01-10-10k-pokemon-run", race_date: "2027-01-10" });
+  expect(resolveCurrentRaceGoal([cancelled, active], "2026-12-01")?.race_slug).toBe("2027-01-10-10k-pokemon-run");
 });
 
 describe("buildTrainingContext — plan, injury, gate", () => {

@@ -28,24 +28,34 @@ type MatchResult = {
 };
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+}
+
+function parseLocalDate(value: string): Date {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatLocalDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 
 function addDays(date: string, n: number) {
-  const d = new Date(date);
+  const d = parseLocalDate(date);
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return formatLocalDate(d);
 }
 
 function weekDates(refDate: string): string[] {
-  const d = new Date(refDate);
+  const d = parseLocalDate(refDate);
   const dow = (d.getDay() + 6) % 7;
   const monday = new Date(d);
   monday.setDate(d.getDate() - dow);
   return Array.from({ length: 7 }, (_, i) => {
     const dd = new Date(monday);
     dd.setDate(monday.getDate() + i);
-    return dd.toISOString().slice(0, 10);
+    return formatLocalDate(dd);
   });
 }
 
