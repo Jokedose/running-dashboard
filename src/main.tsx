@@ -69,6 +69,7 @@ function LoadingScreen({ label }: { label: string }) {
 }
 
 const DATA_STALE_MS = 30 * 60 * 1000; // re-fetch หลัง 30 นาที
+const DATA_QUERY_LIMIT = 2000; // personal dashboard guardrail; increase with pagination when history exceeds this
 
 function App() {
   const route = useHashRoute();
@@ -81,29 +82,45 @@ function App() {
 
   async function fetchData() {
     setLoadState("loading");
-    const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
-      supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }),
-      supabase.from("run_logs").select("*").order("run_date", { ascending: true }),
-      supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }),
-      supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }),
-      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }),
-      supabase.from("training_plan").select("*").order("plan_date", { ascending: true }),
-      supabase.from("body_composition").select("*").order("measured_date", { ascending: true }),
-      supabase.from("monthly_summaries").select("*").order("month", { ascending: true }),
-      supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }),
-      supabase.from("race_goals").select("*").order("race_date", { ascending: true }),
+    try {
+      const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
+      supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("run_logs").select("*").order("run_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(DATA_QUERY_LIMIT),
+      supabase.from("training_plan").select("*").order("plan_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("body_composition").select("*").order("measured_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("monthly_summaries").select("*").order("month", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }).limit(DATA_QUERY_LIMIT),
+      supabase.from("race_goals").select("*").order("race_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("runner_profile").select("*").limit(1),
-      supabase.from("session_criteria").select("*").order("session_kind", { ascending: true }),
-      supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }),
-      supabase.from("training_phases").select("*").order("sort_order", { ascending: true }),
-    ]);
+      supabase.from("session_criteria").select("*").order("session_kind", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("training_phases").select("*").order("sort_order", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      ]);
     // hard-fail เฉพาะข้อมูลแกนหลัก — ตารางอื่น error ให้ degrade เป็นค่าว่างแทนที่จะบล็อกทั้งแอป
-    if (daily.error || runs.error) {
-      setLoadState("error");
-      return;
-    }
-    lastFetchRef.current = Date.now();
-    setData({
+      if (daily.error || runs.error) {
+        setLoadState("error");
+        return;
+      }
+      const softErrors = [
+        ["weekly_summaries", weekly.error],
+        ["gear_mileage", gear.error],
+        ["race_readiness", race.error],
+        ["training_plan", plan.error],
+        ["body_composition", body.error],
+        ["monthly_summaries", monthly.error],
+        ["injury_status", injuries.error],
+        ["race_goals", raceGoals.error],
+        ["runner_profile", profile.error],
+        ["session_criteria", criteria.error],
+        ["readiness_gate_rules", gateRules.error],
+        ["training_phases", phases.error],
+      ].filter((entry) => Boolean(entry[1]));
+      if (softErrors.length) console.warn("Optional dashboard data failed to load", softErrors.map(([table, error]) => ({ table, error })));
+      lastFetchRef.current = Date.now();
+      setData({
       daily: (daily.data ?? []) as DailyReadiness[],
       runs: (runs.data ?? []) as RunLog[],
       weekly: (weekly.data ?? []) as WeeklySummary[],
@@ -118,8 +135,11 @@ function App() {
       criteria: criteria.error ? [] : ((criteria.data ?? []) as SessionCriteria[]),
       gateRules: gateRules.error ? [] : ((gateRules.data ?? []) as ReadinessGateRule[]),
       phases: phases.error ? [] : ((phases.data ?? []) as TrainingPhase[]),
-    });
-    setLoadState("ready");
+      });
+      setLoadState("ready");
+    } catch {
+      setLoadState("error");
+    }
   }
 
   useEffect(() => {

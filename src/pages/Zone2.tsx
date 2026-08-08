@@ -17,7 +17,7 @@ import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
 import { criteriaFor, resolveProfile } from "../utils/evaluate";
 import { pace, paceMinutes, percent, sessionLabel, shortDate } from "../utils/format";
-import { isSteadyAerobic } from "../utils/session";
+import { classifySession } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
@@ -30,7 +30,14 @@ export function Zone2({ data }: { data: DashboardData }) {
   const z2Min = easy?.z2_min_percent ?? 85;
   const driftMax = easy?.drift_max_bpm ?? 5;
   const profile = resolveProfile(data.profile);
-  const rows = data.runs
+  // Zone 2 dashboard intentionally uses only the sessions where aerobic work
+  // is the primary objective. Recovery/strides/quality runs can contain Z2
+  // minutes, but mixing them here makes the trend answer a different question.
+  const zone2Runs = data.runs.filter((run) => {
+    const kind = classifySession(run.session_type);
+    return kind === "easy" || kind === "long";
+  });
+  const rows = zone2Runs
     .filter((run) => run.z2_percent != null || run.pace_sec_per_km != null || run.drift_bpm != null)
     .slice(-20)
     .map((run) => ({
@@ -40,9 +47,9 @@ export function Zone2({ data }: { data: DashboardData }) {
       drift: run.drift_bpm ?? null,
       decoupling: run.decoupling_percent ?? null,
     }));
-  const latestRun = latest(data.runs, "run_date");
-  const avgDrift = average(data.runs.map((run) => run.drift_bpm));
-  const avgZ2 = average(data.runs.map((run) => run.z2_percent));
+  const latestRun = latest(zone2Runs, "run_date");
+  const avgDrift = average(zone2Runs.map((run) => run.drift_bpm));
+  const avgZ2 = average(zone2Runs.map((run) => run.z2_percent));
   const paceValues = rows.map((row) => row.pace).filter((value): value is number => value != null);
   const paceDomainValues = [...paceValues, TARGET_ZONE2_PACE_MIN];
   const paceDomain =
@@ -52,8 +59,8 @@ export function Zone2({ data }: { data: DashboardData }) {
   const driftTone: "neutral" | "good" | "warn" | "hot" =
     avgDrift == null ? "neutral" : avgDrift <= driftMax ? "good" : avgDrift <= driftMax + 3 ? "warn" : "hot";
 
-  const efficiencyRows = data.runs
-    .filter((r) => isSteadyAerobic(r.session_type) && r.avg_hr_bpm != null && r.pace_sec_per_km != null)
+  const efficiencyRows = zone2Runs
+    .filter((r) => r.avg_hr_bpm != null && r.pace_sec_per_km != null)
     .slice(-20)
     .map((r) => ({
       date: shortDate(r.run_date),
@@ -62,7 +69,7 @@ export function Zone2({ data }: { data: DashboardData }) {
         : null,
     }));
 
-  const cadenceRows = data.runs
+  const cadenceRows = zone2Runs
     .filter((run) => run.cadence_spm != null)
     .slice(-20)
     .map((run) => ({
@@ -71,7 +78,7 @@ export function Zone2({ data }: { data: DashboardData }) {
       gct: run.gct_ms,
       stride: run.stride_cm,
     }));
-  const avgCadence = average(data.runs.map((run) => run.cadence_spm));
+  const avgCadence = average(zone2Runs.map((run) => run.cadence_spm));
   const latestCadence = latestRun?.cadence_spm ?? null;
   const cadenceTone: "neutral" | "good" | "warn" | "hot" =
     latestCadence == null ? "neutral" :
@@ -101,7 +108,7 @@ export function Zone2({ data }: { data: DashboardData }) {
       </div>
 
       <div className="content-grid">
-        <Panel title="Z2 stability" subtitle="Z2 %, การไหลของหัวใจ และการหลุดแอโรบิก — เส้นประคือเป้าหมาย" className="span-12">
+        <Panel title="Z2 stability" subtitle="เฉพาะ Easy + Long run · Z2 %, การไหลของหัวใจ และการหลุดแอโรบิก — เส้นประคือเป้าหมาย" className="span-12">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={rows} margin={chartMargin}>
               <CartesianGrid {...chartGrid} />
