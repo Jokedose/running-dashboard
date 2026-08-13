@@ -1795,6 +1795,7 @@ button.cal-today-btn {
   flex-wrap: wrap;
   font-size: 0.73rem;
   color: var(--color-muted);
+  margin-top: auto;
 }
 
 .cal-legend-dot {
@@ -2253,7 +2254,7 @@ button.cal-modal-close {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-6);
-  align-items: start;
+  align-items: stretch;
 }
 
 .cal-column {
@@ -2274,6 +2275,7 @@ button.cal-modal-close {
   flex-direction: column;
   gap: 14px;
   min-width: 0;
+  height: 100%;
 }
 
 .cal-adherence {
