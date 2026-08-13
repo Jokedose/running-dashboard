@@ -3,13 +3,9 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../types";
 import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
 import { RunLaps } from "../components/RunLaps";
+import { StrengthCalendar } from "../components/StrengthCalendar";
 import { thaiText } from "../utils/thaiText";
-
-const WEEKDAYS_SHORT = ["จ", "อ", "พ", "พฤ", "ศ", "ส", "อา"];
-const MONTHS_TH = [
-  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
-  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
-];
+import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
 
 type ViewMode = "month" | "week";
 
@@ -26,50 +22,6 @@ type MatchResult = {
   textColor: string;
   checks: { label: string; planned: string; actual: string; ok: boolean }[];
 };
-
-function todayIso() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
-function parseLocalDate(value: string): Date {
-  const [year, month, day] = value.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function formatLocalDate(value: Date): string {
-  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
-}
-
-function addDays(date: string, n: number) {
-  const d = parseLocalDate(date);
-  d.setDate(d.getDate() + n);
-  return formatLocalDate(d);
-}
-
-function weekDates(refDate: string): string[] {
-  const d = parseLocalDate(refDate);
-  const dow = (d.getDay() + 6) % 7;
-  const monday = new Date(d);
-  monday.setDate(d.getDate() - dow);
-  return Array.from({ length: 7 }, (_, i) => {
-    const dd = new Date(monday);
-    dd.setDate(monday.getDate() + i);
-    return formatLocalDate(dd);
-  });
-}
-
-function monthGrid(year: number, month: number): (string | null)[] {
-  const first = new Date(year, month - 1, 1);
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const leadingDow = (first.getDay() + 6) % 7;
-  const cells: (string | null)[] = Array(leadingDow).fill(null);
-  for (let d = 1; d <= daysInMonth; d++) {
-    cells.push(`${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
-  }
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
 
 function sessionTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
   const t = type?.toLowerCase() ?? "";
@@ -200,37 +152,46 @@ export function Calendar({ data }: { data: DashboardData }) {
 
   return (
     <section className="page-stack">
-      <div className="cal-controls">
-        <div className="cal-view-toggle">
-          <button className={`cal-btn${viewMode === "month" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("month")} type="button">เดือน</button>
-          <button className={`cal-btn${viewMode === "week" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("week")} type="button">สัปดาห์</button>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
-          <button className="cal-nav-btn" onClick={prevPeriod} type="button"><ChevronLeft size={16} /></button>
-          <strong className="cal-period-label">{periodLabel}</strong>
-          <button className="cal-nav-btn" onClick={nextPeriod} type="button"><ChevronRight size={16} /></button>
-          <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
-        </div>
-      </div>
+      <div className="cal-dual-grid">
+        <div className="cal-column">
+          <strong className="cal-column-title">🏃 วิ่ง</strong>
+          <div className="cal-controls">
+            <div className="cal-view-toggle">
+              <button className={`cal-btn${viewMode === "month" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("month")} type="button">เดือน</button>
+              <button className={`cal-btn${viewMode === "week" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("week")} type="button">สัปดาห์</button>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+              <button className="cal-nav-btn" onClick={prevPeriod} type="button"><ChevronLeft size={16} /></button>
+              <strong className="cal-period-label">{periodLabel}</strong>
+              <button className="cal-nav-btn" onClick={nextPeriod} type="button"><ChevronRight size={16} /></button>
+              <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
+            </div>
+          </div>
 
-      {viewMode === "month"
-        ? <MonthView grid={grid} dayData={dayData} today={today} onSelect={setSelected} />
-        : <WeekView dates={weekDays} dayData={dayData} today={today} onSelect={setSelected} />}
+          {viewMode === "month"
+            ? <MonthView grid={grid} dayData={dayData} today={today} onSelect={setSelected} />
+            : <WeekView dates={weekDays} dayData={dayData} today={today} onSelect={setSelected} />}
 
-      <div className="cal-legend">
-        {[
-          { color: "#1a6847", label: "ตามแผน" },
-          { color: "#7a5300", label: "ปรับ/เกิน" },
-          { color: "#9d1c37", label: "ข้าม/ต่ำ" },
-          { color: "#2563eb", label: "วิ่งเบา" },
-          { color: "#7c3aed", label: "วิ่งยาว" },
-          { color: "#c2410c", label: "คุณภาพ" },
-          { color: "#b45309", label: "วันแข่ง" },
-        ].map(({ color, label }) => (
-          <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span className="cal-legend-dot" style={{ background: color }} />{label}
-          </span>
-        ))}
+          <div className="cal-legend">
+            {[
+              { color: "#1a6847", label: "ตามแผน" },
+              { color: "#7a5300", label: "ปรับ/เกิน" },
+              { color: "#9d1c37", label: "ข้าม/ต่ำ" },
+              { color: "#2563eb", label: "วิ่งเบา" },
+              { color: "#7c3aed", label: "วิ่งยาว" },
+              { color: "#c2410c", label: "คุณภาพ" },
+              { color: "#b45309", label: "วันแข่ง" },
+            ].map(({ color, label }) => (
+              <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span className="cal-legend-dot" style={{ background: color }} />{label}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="cal-column">
+          <StrengthCalendar plans={data.strengthPlan} />
+        </div>
       </div>
 
       {selected && selectedDay && <DayModal day={selectedDay} onClose={() => setSelected(null)} />}

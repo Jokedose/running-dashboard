@@ -22,6 +22,7 @@ import type {
   RunLog,
   RunnerProfile,
   SessionCriteria,
+  StrengthPlan,
   TrainingPhase,
   TrainingPlan,
   WeeklySummary,
@@ -83,13 +84,14 @@ function App() {
   async function fetchData() {
     setLoadState("loading");
     try {
-      const [daily, runs, weekly, gear, race, plan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
+      const [daily, runs, weekly, gear, race, plan, strengthPlan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("gear_mileage").select("*").order("shoe_slug", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("race_readiness").select("*").order("race_date", { ascending: false }).limit(DATA_QUERY_LIMIT),
       supabase.from("training_plan").select("*").order("plan_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("strength_plan").select("*").order("plan_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("body_composition").select("*").order("measured_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("monthly_summaries").select("*").order("month", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("injury_status").select("*").order("last_updated_date", { ascending: false }).limit(DATA_QUERY_LIMIT),
@@ -109,6 +111,7 @@ function App() {
         ["gear_mileage", gear.error],
         ["race_readiness", race.error],
         ["training_plan", plan.error],
+        ["strength_plan", strengthPlan.error],
         ["body_composition", body.error],
         ["monthly_summaries", monthly.error],
         ["injury_status", injuries.error],
@@ -127,6 +130,7 @@ function App() {
       gear: (gear.data ?? []) as GearMileage[],
       races: (race.data ?? []) as RaceReadiness[],
       plan: plan.error ? [] : ((plan.data ?? []) as TrainingPlan[]),
+      strengthPlan: strengthPlan.error ? [] : ((strengthPlan.data ?? []) as StrengthPlan[]),
       body: body.error ? [] : ((body.data ?? []) as BodyComposition[]),
       monthly: monthly.error ? [] : ((monthly.data ?? []) as MonthlySummary[]),
       injuries: injuries.error ? [] : ((injuries.data ?? []) as InjuryStatus[]),
