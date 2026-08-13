@@ -142,6 +142,17 @@ export type TrainingPlan = {
   created_at: string | null;
 };
 
+export type StrengthPlan = {
+  id: string;
+  plan_date: string;
+  session_type: string | null;
+  planned_moves: string | null;
+  status: "planned" | "done" | "skipped" | null;
+  actual_moves: string | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
 export type TrainingPhase = {
   id: string;
   phase_name: string;
@@ -288,6 +299,7 @@ export type DashboardData = {
   gear: GearMileage[];
   races: RaceReadiness[];
   plan: TrainingPlan[];
+  strengthPlan: StrengthPlan[];
   body: BodyComposition[];
   monthly: MonthlySummary[];
   injuries: InjuryStatus[];

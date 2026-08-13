@@ -1,0 +1,209 @@
+import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import type { StrengthPlan } from "../types";
+import { thaiText } from "../utils/thaiText";
+import { MONTHS_TH, WEEKDAYS_SHORT, monthGrid, todayIso } from "../utils/calendarDates";
+
+type DayData = { date: string; plans: StrengthPlan[] };
+
+function strengthTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
+  const t = type?.toLowerCase() ?? "";
+  if (t.includes("kb") || t.includes("kettlebell")) return { bg: "#ede9fe", border: "#7c3aed", text: "#5b21b6" };
+  if (t.includes("core")) return { bg: "#e0f2fe", border: "#0369a1", text: "#075985" };
+  return { bg: "#f3f4f6", border: "#6b7280", text: "#374151" };
+}
+
+// สีตาม status เดียวกับปฏิทินวิ่ง (Calendar.tsx: statusDot/statusLabel)
+function statusDot(status: StrengthPlan["status"]): { char: string; color: string } {
+  if (status === "done") return { char: "✓", color: "#1a6847" };
+  if (status === "skipped") return { char: "✗", color: "#9d1c37" };
+  return { char: "·", color: "#668086" };
+}
+
+function statusLabel(status: StrengthPlan["status"]) {
+  if (status === "done") return "ทำแล้ว";
+  if (status === "skipped") return "ข้าม";
+  return "ตามแผน";
+}
+
+// planned_moves / actual_moves เขียนเป็นข้อความเดียว คั่นแต่ละท่าด้วย " · "
+function splitMoves(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value.split(/\s*·\s*/).map((part) => part.trim()).filter(Boolean);
+}
+
+export function StrengthCalendar({ plans }: { plans: StrengthPlan[] }) {
+  const today = todayIso();
+  const [navDate, setNavDate] = useState(today);
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const planByDate = useMemo(() => {
+    const map = new Map<string, StrengthPlan[]>();
+    for (const p of plans) {
+      const arr = map.get(p.plan_date) ?? [];
+      arr.push(p);
+      map.set(p.plan_date, arr);
+    }
+    return map;
+  }, [plans]);
+
+  function dayData(date: string): DayData {
+    return { date, plans: planByDate.get(date) ?? [] };
+  }
+
+  const navYear = parseInt(navDate.slice(0, 4));
+  const navMonth = parseInt(navDate.slice(5, 7));
+
+  function prevMonth() {
+    const d = new Date(navYear, navMonth - 2, 1);
+    setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  }
+  function nextMonth() {
+    const d = new Date(navYear, navMonth, 1);
+    setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  }
+
+  const grid = useMemo(() => monthGrid(navYear, navMonth), [navYear, navMonth]);
+  const selectedDay = selected ? dayData(selected) : null;
+  const periodLabel = `${MONTHS_TH[navMonth - 1]} ${navYear}`;
+
+  return (
+    <div className="cal-sub">
+      <strong className="cal-column-title">🏋️ Strength</strong>
+      <div className="cal-controls">
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
+          <button className="cal-nav-btn" onClick={prevMonth} type="button"><ChevronLeft size={16} /></button>
+          <strong className="cal-period-label">{periodLabel}</strong>
+          <button className="cal-nav-btn" onClick={nextMonth} type="button"><ChevronRight size={16} /></button>
+          <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
+        </div>
+      </div>
+
+      <div className="cal-month-grid">
+        <div className="cal-month-header">
+          {WEEKDAYS_SHORT.map((d) => <div key={d} className="cal-month-header-cell">{d}</div>)}
+        </div>
+        <div className="cal-month-body">
+          {grid.map((date, idx) =>
+            date
+              ? <StrengthDayCell key={date} dd={dayData(date)} isToday={date === today} isPast={date < today} onSelect={setSelected} />
+              : <div key={`e-${idx}`} className="cal-day-cell cal-day-empty" />
+          )}
+        </div>
+      </div>
+
+      <div className="cal-legend">
+        {[
+          { color: "#1a6847", label: "ทำแล้ว" },
+          { color: "#9d1c37", label: "ข้าม" },
+          { color: "#668086", label: "ตามแผน" },
+        ].map(({ color, label }) => (
+          <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span className="cal-legend-dot" style={{ background: color }} />{label}
+          </span>
+        ))}
+      </div>
+
+      {selected && selectedDay && <StrengthDayModal day={selectedDay} onClose={() => setSelected(null)} />}
+    </div>
+  );
+}
+
+function StrengthDayCell({ dd, isToday, isPast, onSelect }: {
+  dd: DayData; isToday: boolean; isPast: boolean; onSelect: (d: string) => void;
+}) {
+  const dayNum = parseInt(dd.date.slice(8));
+  const hasContent = dd.plans.length > 0;
+
+  return (
+    <div
+      className={`cal-day-cell${hasContent ? " cal-day-clickable" : ""}${isToday ? " cal-day-today" : ""}${isPast && !isToday ? " cal-day-past" : ""}`}
+      onClick={() => hasContent && onSelect(dd.date)}
+    >
+      <div className="cal-day-top">
+        <span className="cal-day-num">{dayNum}</span>
+      </div>
+      <div className="cal-chips">
+        {dd.plans.slice(0, 2).map((p) => {
+          const c = strengthTypeColor(p.session_type);
+          const dot = statusDot(p.status);
+          return (
+            <div key={p.id} className="cal-chip" style={{ background: c.bg, borderLeftColor: c.border }}>
+              <span className="cal-chip-dot" style={{ color: dot.color }}>{dot.char}</span>
+              <span className="cal-chip-text" style={{ color: c.text }}>{(p.session_type ?? "-").slice(0, 11)}</span>
+            </div>
+          );
+        })}
+        {dd.plans.length > 2 && <span className="cal-chip-more">+{dd.plans.length - 2}</span>}
+      </div>
+    </div>
+  );
+}
+
+function StrengthDayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
+  const { date, plans } = day;
+  const plan = plans[0] ?? null;
+  const plannedMoves = splitMoves(plan?.planned_moves);
+  const actualMoves = splitMoves(plan?.actual_moves);
+
+  return (
+    <div className="cal-modal-overlay" onClick={onClose}>
+      <div className="cal-modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className="cal-modal-header">
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+            <strong style={{ fontSize: "1rem", color: "var(--color-ink)" }}>{date}</strong>
+            {plan && (() => { const c = strengthTypeColor(plan.session_type); return (
+              <span style={{ fontSize: "0.78rem", padding: "2px 8px", borderRadius: 4, background: c.bg, color: c.text }}>{plan.session_type ?? "Strength"}</span>
+            ); })()}
+          </div>
+          <button className="cal-modal-close" onClick={onClose} type="button"><X size={18} /></button>
+        </div>
+
+        {plan && (
+          <div className="cal-block" style={{ borderLeftColor: strengthTypeColor(plan.session_type).border }}>
+            <div className="cal-block-head">
+              <strong>{plan.session_type ?? "Strength"}</strong>
+              <span className="cal-status-pill" data-status={plan.status ?? "planned"}>{statusLabel(plan.status)}</span>
+            </div>
+            {plannedMoves.length > 0 && (
+              <div className="cal-note-line">
+                <b>แผน:</b>
+                <ol className="clean-list" style={{ marginTop: 4 }}>
+                  {plannedMoves.map((move, i) => <li key={i}>{move}</li>)}
+                </ol>
+              </div>
+            )}
+          </div>
+        )}
+
+        {plan && actualMoves.length > 0 && (
+          <div className="cal-block" style={{ borderLeftColor: "#add9c9", background: "#f0faf5" }}>
+            <span className="cal-block-title">📊 ทำจริง</span>
+            <ol className="clean-list" style={{ marginTop: 4 }}>
+              {actualMoves.map((move, i) => <li key={i}>{move}</li>)}
+            </ol>
+          </div>
+        )}
+
+        {plan && plan.status !== "skipped" && plan.status !== "planned" && actualMoves.length === 0 && (
+          <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>
+            <span style={{ color: "#7a5300", fontSize: "0.82rem" }}>⚠️ ยังไม่มีบันทึกท่าที่ทำจริง</span>
+          </div>
+        )}
+
+        {plan?.notes && (
+          <div className="cal-block" style={{ background: "#fef9ec", borderLeftColor: "#eed28b" }}>
+            <span className="cal-block-title" style={{ color: "#7a5300" }}>📋 หมายเหตุ</span>
+            <div style={{ fontSize: "0.82rem", color: "var(--color-ink)", marginTop: 4, lineHeight: 1.5 }}>
+              {thaiText(plan.notes)}
+            </div>
+          </div>
+        )}
+
+        {!plan && (
+          <div style={{ textAlign: "center", padding: "28px 0", color: "var(--color-muted)" }}>ไม่มีข้อมูลสำหรับวันนี้</div>
+        )}
+      </div>
+    </div>
+  );
+}
