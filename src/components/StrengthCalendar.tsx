@@ -6,9 +6,10 @@ import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } fr
 
 type ViewMode = "month" | "week";
 
-type DayData = { date: string; plans: StrengthPlan[]; readiness: DailyReadiness | null };
+export type StrengthDayData = { date: string; plans: StrengthPlan[]; readiness: DailyReadiness | null };
+type DayData = StrengthDayData;
 
-function strengthTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
+export function strengthTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
   const t = type?.toLowerCase() ?? "";
   if (t.includes("kb") || t.includes("kettlebell")) return { bg: "#ede9fe", border: "#7c3aed", text: "#5b21b6" };
   if (t.includes("core")) return { bg: "#e0f2fe", border: "#0369a1", text: "#075985" };
@@ -16,7 +17,7 @@ function strengthTypeColor(type: string | null | undefined): { bg: string; borde
 }
 
 // สีตาม status เดียวกับปฏิทินวิ่ง (Calendar.tsx: statusDot/statusLabel)
-function statusDot(status: StrengthPlan["status"]): { char: string; color: string } {
+export function strengthStatusDot(status: StrengthPlan["status"]): { char: string; color: string } {
   if (status === "done") return { char: "✓", color: "#1a6847" };
   if (status === "skipped") return { char: "✗", color: "#9d1c37" };
   return { char: "·", color: "#668086" };
@@ -83,6 +84,13 @@ export function StrengthCalendar({ plans, daily }: { plans: StrengthPlan[]; dail
     ? `${MONTHS_TH[navMonth - 1]} ${navYear}`
     : `${weekDays[0].slice(5).replace("-", "/")} – ${weekDays[6].slice(5).replace("-", "/")}`;
 
+  const monthPrefix = `${navYear}-${String(navMonth).padStart(2, "0")}`;
+  const adherence = useMemo(() => {
+    const rows = plans.filter((p) => p.plan_date.startsWith(monthPrefix));
+    const done = rows.filter((p) => p.status === "done").length;
+    return { done, total: rows.length };
+  }, [plans, monthPrefix]);
+
   return (
     <div className="cal-sub">
       <strong className="cal-column-title">🏋️ Strength</strong>
@@ -98,6 +106,12 @@ export function StrengthCalendar({ plans, daily }: { plans: StrengthPlan[]; dail
           <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
         </div>
       </div>
+
+      <p className="cal-adherence">
+        {adherence.total > 0
+          ? <>ทำแล้ว <strong>{adherence.done}/{adherence.total}</strong> เดือนนี้ ({Math.round((adherence.done / adherence.total) * 100)}%)</>
+          : "ยังไม่มีแผนเดือนนี้"}
+      </p>
 
       {viewMode === "month"
         ? (
@@ -153,7 +167,7 @@ function StrengthDayCell({ dd, isToday, isPast, onSelect }: {
       <div className="cal-chips">
         {dd.plans.slice(0, 2).map((p) => {
           const c = strengthTypeColor(p.session_type);
-          const dot = statusDot(p.status);
+          const dot = strengthStatusDot(p.status);
           return (
             <div key={p.id} className="cal-chip" style={{ background: c.bg, borderLeftColor: c.border }}>
               <span className="cal-chip-dot" style={{ color: dot.color }}>{dot.char}</span>
@@ -192,7 +206,7 @@ function StrengthWeekView({ dates, dayData, today, onSelect }: {
             <div className="cal-week-body">
               {dd.plans.map((p) => {
                 const c = strengthTypeColor(p.session_type);
-                const dot = statusDot(p.status);
+                const dot = strengthStatusDot(p.status);
                 const firstMove = splitMoves(p.planned_moves)[0];
                 return (
                   <div key={p.id} className="cal-week-session" style={{
@@ -218,7 +232,7 @@ function StrengthWeekView({ dates, dayData, today, onSelect }: {
   );
 }
 
-function StrengthDayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
+export function StrengthDayModal({ day, onClose }: { day: DayData; onClose: () => void }) {
   const { date, plans } = day;
   const plan = plans[0] ?? null;
   const plannedMoves = splitMoves(plan?.planned_moves);
