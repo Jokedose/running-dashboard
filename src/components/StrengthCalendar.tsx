@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { StrengthPlan } from "../types";
 import { thaiText } from "../utils/thaiText";
-import { MONTHS_TH, WEEKDAYS_SHORT, monthGrid, todayIso } from "../utils/calendarDates";
+import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
+
+type ViewMode = "month" | "week";
 
 type DayData = { date: string; plans: StrengthPlan[] };
 
@@ -34,6 +36,7 @@ function splitMoves(value: string | null | undefined): string[] {
 
 export function StrengthCalendar({ plans }: { plans: StrengthPlan[] }) {
   const today = todayIso();
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [navDate, setNavDate] = useState(today);
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -54,43 +57,58 @@ export function StrengthCalendar({ plans }: { plans: StrengthPlan[] }) {
   const navYear = parseInt(navDate.slice(0, 4));
   const navMonth = parseInt(navDate.slice(5, 7));
 
-  function prevMonth() {
-    const d = new Date(navYear, navMonth - 2, 1);
-    setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  function prevPeriod() {
+    if (viewMode === "month") {
+      const d = new Date(navYear, navMonth - 2, 1);
+      setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+    } else setNavDate(addDays(navDate, -7));
   }
-  function nextMonth() {
-    const d = new Date(navYear, navMonth, 1);
-    setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+  function nextPeriod() {
+    if (viewMode === "month") {
+      const d = new Date(navYear, navMonth, 1);
+      setNavDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`);
+    } else setNavDate(addDays(navDate, 7));
   }
 
   const grid = useMemo(() => monthGrid(navYear, navMonth), [navYear, navMonth]);
+  const weekDays = useMemo(() => weekDates(navDate), [navDate]);
   const selectedDay = selected ? dayData(selected) : null;
-  const periodLabel = `${MONTHS_TH[navMonth - 1]} ${navYear}`;
+  const periodLabel = viewMode === "month"
+    ? `${MONTHS_TH[navMonth - 1]} ${navYear}`
+    : `${weekDays[0].slice(5).replace("-", "/")} – ${weekDays[6].slice(5).replace("-", "/")}`;
 
   return (
     <div className="cal-sub">
       <strong className="cal-column-title">🏋️ Strength</strong>
       <div className="cal-controls">
+        <div className="cal-view-toggle">
+          <button className={`cal-btn${viewMode === "month" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("month")} type="button">เดือน</button>
+          <button className={`cal-btn${viewMode === "week" ? " cal-btn-active" : ""}`} onClick={() => setViewMode("week")} type="button">สัปดาห์</button>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
-          <button className="cal-nav-btn" onClick={prevMonth} type="button"><ChevronLeft size={16} /></button>
+          <button className="cal-nav-btn" onClick={prevPeriod} type="button"><ChevronLeft size={16} /></button>
           <strong className="cal-period-label">{periodLabel}</strong>
-          <button className="cal-nav-btn" onClick={nextMonth} type="button"><ChevronRight size={16} /></button>
+          <button className="cal-nav-btn" onClick={nextPeriod} type="button"><ChevronRight size={16} /></button>
           <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
         </div>
       </div>
 
-      <div className="cal-month-grid">
-        <div className="cal-month-header">
-          {WEEKDAYS_SHORT.map((d) => <div key={d} className="cal-month-header-cell">{d}</div>)}
-        </div>
-        <div className="cal-month-body">
-          {grid.map((date, idx) =>
-            date
-              ? <StrengthDayCell key={date} dd={dayData(date)} isToday={date === today} isPast={date < today} onSelect={setSelected} />
-              : <div key={`e-${idx}`} className="cal-day-cell cal-day-empty" />
-          )}
-        </div>
-      </div>
+      {viewMode === "month"
+        ? (
+          <div className="cal-month-grid">
+            <div className="cal-month-header">
+              {WEEKDAYS_SHORT.map((d) => <div key={d} className="cal-month-header-cell">{d}</div>)}
+            </div>
+            <div className="cal-month-body">
+              {grid.map((date, idx) =>
+                date
+                  ? <StrengthDayCell key={date} dd={dayData(date)} isToday={date === today} isPast={date < today} onSelect={setSelected} />
+                  : <div key={`e-${idx}`} className="cal-day-cell cal-day-empty" />
+              )}
+            </div>
+          </div>
+        )
+        : <StrengthWeekView dates={weekDays} dayData={dayData} today={today} onSelect={setSelected} />}
 
       <div className="cal-legend">
         {[
@@ -136,6 +154,54 @@ function StrengthDayCell({ dd, isToday, isPast, onSelect }: {
         })}
         {dd.plans.length > 2 && <span className="cal-chip-more">+{dd.plans.length - 2}</span>}
       </div>
+    </div>
+  );
+}
+
+function StrengthWeekView({ dates, dayData, today, onSelect }: {
+  dates: string[]; dayData: (d: string) => DayData; today: string; onSelect: (d: string) => void;
+}) {
+  return (
+    <div className="cal-week-grid">
+      {dates.map((date) => {
+        const dd = dayData(date);
+        const isToday = date === today;
+        const isPast = date < today;
+        const hasContent = dd.plans.length > 0;
+        const dowIdx = (new Date(date).getDay() + 6) % 7;
+
+        return (
+          <div
+            key={date}
+            className={`cal-week-card${hasContent ? " cal-day-clickable" : ""}${isToday ? " cal-day-today" : ""}${isPast && !isToday ? " cal-day-past" : ""}`}
+            onClick={() => hasContent && onSelect(date)}
+          >
+            <div className="cal-week-hdr">
+              <span className="cal-week-dow">{WEEKDAYS_SHORT[dowIdx]}</span>
+              <span className={`cal-day-num${isToday ? " cal-day-num-today" : ""}`}>{parseInt(date.slice(8))}</span>
+            </div>
+            <div className="cal-week-body">
+              {dd.plans.map((p) => {
+                const c = strengthTypeColor(p.session_type);
+                const dot = statusDot(p.status);
+                const firstMove = splitMoves(p.planned_moves)[0];
+                return (
+                  <div key={p.id} className="cal-week-session" style={{
+                    background: p.status === "done" ? "#d8eee5" : p.status === "skipped" ? "#fee2e8" : c.bg,
+                    borderLeftColor: c.border,
+                  }}>
+                    <div className="cal-week-session-title">
+                      <span style={{ color: dot.color, fontWeight: 750 }}>{dot.char}</span>
+                      <span style={{ color: "var(--color-ink)" }}>{p.session_type ?? "Strength"}</span>
+                    </div>
+                    {firstMove && <div className="cal-week-session-meta">{firstMove}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
