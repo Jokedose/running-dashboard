@@ -2276,6 +2276,97 @@ button.cal-modal-close {
   min-width: 0;
 }
 
+.cal-adherence {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+.cal-adherence strong {
+  color: var(--color-ink);
+  font-weight: 750;
+}
+
+.cal-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cal-agenda-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+  background: var(--color-panel);
+}
+
+.cal-agenda-row.cal-agenda-row-today {
+  border-color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.cal-agenda-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  flex-shrink: 0;
+}
+
+.cal-agenda-dow {
+  font-size: 0.7rem;
+  color: var(--color-muted);
+}
+
+.cal-agenda-daynum {
+  font-size: 1.05rem;
+  font-weight: 750;
+  color: var(--color-ink);
+}
+
+.cal-agenda-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+button.cal-agenda-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 160px;
+  min-height: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-line-soft);
+  border-radius: 8px;
+  background: var(--color-nav);
+  color: var(--color-ink);
+  font-size: 0.82rem;
+  font-weight: 550;
+  cursor: pointer;
+  text-align: left;
+}
+
+button.cal-agenda-entry:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.cal-agenda-icon {
+  flex-shrink: 0;
+}
+
+.cal-agenda-empty-text {
+  color: var(--color-muted);
+}
+
 /* 7. Responsive */
 @media (max-width: 1180px) {
   .metric-grid,

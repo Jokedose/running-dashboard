@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../types";
+import type { DailyReadiness, DashboardData, RunLog, StrengthPlan, TrainingPlan } from "../types";
 import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
 import { RunLaps } from "../components/RunLaps";
-import { StrengthCalendar } from "../components/StrengthCalendar";
+import { StrengthCalendar, StrengthDayModal, strengthStatusDot, type StrengthDayData } from "../components/StrengthCalendar";
 import { TaperBanner } from "../components/TaperBanner";
 import { thaiText } from "../utils/thaiText";
 import { buildTrainingContext } from "../utils/context";
 import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
 
 type ViewMode = "month" | "week";
+type PageView = "calendar" | "agenda";
 
 type DayData = {
   date: string;
@@ -99,9 +100,11 @@ function analyzeMatch(plan: TrainingPlan, run: RunLog): MatchResult {
 
 export function Calendar({ data }: { data: DashboardData }) {
   const today = todayIso();
+  const [pageView, setPageView] = useState<PageView>("calendar");
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [navDate, setNavDate] = useState(today);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedStrengthDate, setSelectedStrengthDate] = useState<string | null>(null);
 
   const planByDate = useMemo(() => {
     const map = new Map<string, TrainingPlan[]>();
@@ -125,9 +128,23 @@ export function Calendar({ data }: { data: DashboardData }) {
     return map;
   }, [data.daily]);
 
+  const strengthPlanByDate = useMemo(() => {
+    const map = new Map<string, StrengthPlan[]>();
+    for (const p of data.strengthPlan) {
+      const arr = map.get(p.plan_date) ?? [];
+      arr.push(p);
+      map.set(p.plan_date, arr);
+    }
+    return map;
+  }, [data.strengthPlan]);
+
   function dayData(date: string): DayData {
     return { date, plans: planByDate.get(date) ?? [], run: runByDate.get(date) ?? null, readiness: readinessByDate.get(date) ?? null };
   }
+
+  const selectedStrengthDay: StrengthDayData | null = selectedStrengthDate
+    ? { date: selectedStrengthDate, plans: strengthPlanByDate.get(selectedStrengthDate) ?? [], readiness: readinessByDate.get(selectedStrengthDate) ?? null }
+    : null;
 
   const navYear = parseInt(navDate.slice(0, 4));
   const navMonth = parseInt(navDate.slice(5, 7));
@@ -165,8 +182,19 @@ export function Calendar({ data }: { data: DashboardData }) {
     return { done: rows.filter((r) => r.status === "done").length, total: rows.length };
   }, [data.strengthPlan, thisWeekDates]);
 
+  const runMonthPrefix = `${navYear}-${String(navMonth).padStart(2, "0")}`;
+  const runAdherence = useMemo(() => {
+    const rows = data.plan.filter((p) => p.plan_date.startsWith(runMonthPrefix));
+    return { done: rows.filter((r) => r.status === "done").length, total: rows.length };
+  }, [data.plan, runMonthPrefix]);
+
   return (
     <section className="page-stack">
+      <div className="cal-view-toggle">
+        <button className={`cal-btn${pageView === "calendar" ? " cal-btn-active" : ""}`} onClick={() => setPageView("calendar")} type="button">ปฏิทิน</button>
+        <button className={`cal-btn${pageView === "agenda" ? " cal-btn-active" : ""}`} onClick={() => setPageView("agenda")} type="button">รายการ</button>
+      </div>
+
       <div className="cal-week-summary">
         <span className="cal-week-summary-item running">
           🏃 วิ่งสัปดาห์นี้{" "}
@@ -178,6 +206,18 @@ export function Calendar({ data }: { data: DashboardData }) {
         </span>
       </div>
 
+      {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
+
+      {pageView === "agenda" ? (
+        <AgendaView
+          dates={thisWeekDates}
+          today={today}
+          dayData={dayData}
+          strengthByDate={strengthPlanByDate}
+          onSelectRun={setSelected}
+          onSelectStrength={setSelectedStrengthDate}
+        />
+      ) : (
       <div className="cal-dual-grid">
         <div className="cal-column">
           <strong className="cal-column-title">🏃 วิ่ง</strong>
@@ -193,6 +233,12 @@ export function Calendar({ data }: { data: DashboardData }) {
               <button className="cal-today-btn" onClick={() => setNavDate(today)} type="button">วันนี้</button>
             </div>
           </div>
+
+          <p className="cal-adherence">
+            {runAdherence.total > 0
+              ? <>ทำแล้ว <strong>{runAdherence.done}/{runAdherence.total}</strong> เดือนนี้ ({Math.round((runAdherence.done / runAdherence.total) * 100)}%)</>
+              : "ยังไม่มีแผนเดือนนี้"}
+          </p>
 
           {viewMode === "month"
             ? <MonthView grid={grid} dayData={dayData} today={today} onSelect={setSelected} />
@@ -216,13 +262,66 @@ export function Calendar({ data }: { data: DashboardData }) {
         </div>
 
         <div className="cal-column">
-          {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
           <StrengthCalendar plans={data.strengthPlan} daily={data.daily} />
         </div>
       </div>
+      )}
 
       {selected && selectedDay && <DayModal day={selectedDay} onClose={() => setSelected(null)} />}
+      {selectedStrengthDay && <StrengthDayModal day={selectedStrengthDay} onClose={() => setSelectedStrengthDate(null)} />}
     </section>
+  );
+}
+
+// รวมวิ่ง + strength ของสัปดาห์นี้เป็น list เดียว — จอเล็กเลื่อนดูสองปฏิทินแนวตั้งยาวเกินไป
+function AgendaView({ dates, today, dayData, strengthByDate, onSelectRun, onSelectStrength }: {
+  dates: string[];
+  today: string;
+  dayData: (d: string) => DayData;
+  strengthByDate: Map<string, StrengthPlan[]>;
+  onSelectRun: (d: string) => void;
+  onSelectStrength: (d: string) => void;
+}) {
+  return (
+    <div className="cal-agenda">
+      {dates.map((date) => {
+        const rd = dayData(date);
+        const sPlans = strengthByDate.get(date) ?? [];
+        const runPlan = rd.plans[0];
+        const strengthPlan = sPlans[0];
+        const isToday = date === today;
+        const dowIdx = (new Date(date).getDay() + 6) % 7;
+        const hasRun = rd.plans.length > 0 || rd.run !== null;
+        const hasStrength = sPlans.length > 0;
+        const runDot = runPlan ? statusDot(runPlan.status) : null;
+        const strengthDot = strengthPlan ? strengthStatusDot(strengthPlan.status) : null;
+
+        return (
+          <div key={date} className={`cal-agenda-row${isToday ? " cal-agenda-row-today" : ""}`}>
+            <div className="cal-agenda-date">
+              <span className="cal-agenda-dow">{WEEKDAYS_SHORT[dowIdx]}</span>
+              <span className="cal-agenda-daynum">{parseInt(date.slice(8))}</span>
+            </div>
+            <div className="cal-agenda-entries">
+              <button className="cal-agenda-entry" onClick={() => onSelectRun(date)} disabled={!hasRun} type="button">
+                <span className="cal-agenda-icon">🏃</span>
+                {runPlan && runDot
+                  ? <><span style={{ color: runDot.color, fontWeight: 750 }}>{runDot.char}</span><span>{sessionLabel(runPlan.title)}</span></>
+                  : rd.run
+                    ? <span>{rd.run.distance_km?.toFixed(1)}km นอกแผน</span>
+                    : <span className="cal-agenda-empty-text">–</span>}
+              </button>
+              <button className="cal-agenda-entry" onClick={() => onSelectStrength(date)} disabled={!hasStrength} type="button">
+                <span className="cal-agenda-icon">🏋️</span>
+                {strengthPlan && strengthDot
+                  ? <><span style={{ color: strengthDot.color, fontWeight: 750 }}>{strengthDot.char}</span><span>{strengthPlan.session_type ?? "Strength"}</span></>
+                  : <span className="cal-agenda-empty-text">–</span>}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
