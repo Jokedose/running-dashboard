@@ -4,7 +4,9 @@ import type { DailyReadiness, DashboardData, RunLog, TrainingPlan } from "../typ
 import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
 import { RunLaps } from "../components/RunLaps";
 import { StrengthCalendar } from "../components/StrengthCalendar";
+import { TaperBanner } from "../components/TaperBanner";
 import { thaiText } from "../utils/thaiText";
+import { buildTrainingContext } from "../utils/context";
 import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
 
 type ViewMode = "month" | "week";
@@ -150,8 +152,32 @@ export function Calendar({ data }: { data: DashboardData }) {
     ? `${MONTHS_TH[navMonth - 1]} ${navYear}`
     : `${weekDays[0].slice(5).replace("-", "/")} – ${weekDays[6].slice(5).replace("-", "/")}`;
 
+  const ctx = useMemo(() => buildTrainingContext(data, today), [data, today]);
+  const isTaper = /taper/i.test(ctx.phase?.phase_name ?? "");
+
+  const thisWeekDates = useMemo(() => weekDates(today), [today]);
+  const weekRunStats = useMemo(() => {
+    const rows = data.plan.filter((p) => thisWeekDates.includes(p.plan_date));
+    return { done: rows.filter((r) => r.status === "done").length, total: rows.length };
+  }, [data.plan, thisWeekDates]);
+  const weekStrengthStats = useMemo(() => {
+    const rows = data.strengthPlan.filter((p) => thisWeekDates.includes(p.plan_date));
+    return { done: rows.filter((r) => r.status === "done").length, total: rows.length };
+  }, [data.strengthPlan, thisWeekDates]);
+
   return (
     <section className="page-stack">
+      <div className="cal-week-summary">
+        <span className="cal-week-summary-item running">
+          🏃 วิ่งสัปดาห์นี้{" "}
+          {weekRunStats.total > 0 ? <><strong>{weekRunStats.done}/{weekRunStats.total}</strong> ทำแล้ว</> : "ยังไม่มีแผน"}
+        </span>
+        <span className="cal-week-summary-item strength">
+          🏋️ Strength สัปดาห์นี้{" "}
+          {weekStrengthStats.total > 0 ? <><strong>{weekStrengthStats.done}/{weekStrengthStats.total}</strong> ทำแล้ว</> : "ยังไม่มีแผน"}
+        </span>
+      </div>
+
       <div className="cal-dual-grid">
         <div className="cal-column">
           <strong className="cal-column-title">🏃 วิ่ง</strong>
@@ -190,7 +216,8 @@ export function Calendar({ data }: { data: DashboardData }) {
         </div>
 
         <div className="cal-column">
-          <StrengthCalendar plans={data.strengthPlan} />
+          {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
+          <StrengthCalendar plans={data.strengthPlan} daily={data.daily} />
         </div>
       </div>
 

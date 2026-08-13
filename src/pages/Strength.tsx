@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CalendarCheck, ShieldCheck, TriangleAlert } from "lucide-react";
 import { Panel } from "../components/Panel";
+import { TaperBanner } from "../components/TaperBanner";
 import { KB_GROUP_LABEL, kbExercises, kbRoutine, type KbGroup } from "../data/kbExercises";
 import type { DashboardData } from "../types";
 import { buildTrainingContext } from "../utils/context";
@@ -31,17 +32,7 @@ export function Strength({ data }: { data: DashboardData }) {
 
   return (
     <section className="page-stack">
-      {isTaper && (
-        <div
-          style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", borderRadius: 10,
-            background: "#fef9ec", borderLeft: "4px solid #b08642", color: "#7a5300", fontWeight: 650,
-          }}
-        >
-          <TriangleAlert size={18} />
-          <span>ช่วง {ctx.phase?.phase_name} — งดเวททุก session ตามแผนจนถึงวันแข่ง</span>
-        </div>
-      )}
+      {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
       {zoom && (
         <div className="kb-lightbox" role="dialog" aria-label={zoom.name} onClick={() => setZoom(null)}>
           <div className="kb-lightbox-inner" onClick={(e) => e.stopPropagation()}>
