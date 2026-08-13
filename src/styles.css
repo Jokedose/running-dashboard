@@ -2220,6 +2220,35 @@ button.cal-modal-close {
 }
 
 /* วิ่ง + strength ปฏิทินคู่กัน — 2 คอลัมน์บนจอกว้าง, ซ้อนแนวตั้งบน tablet ลงไป */
+.cal-week-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cal-week-summary-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--color-nav);
+  font-size: 0.85rem;
+  color: var(--color-ink);
+}
+
+.cal-week-summary-item strong {
+  font-weight: 750;
+}
+
+.cal-week-summary-item.running strong {
+  color: var(--color-primary);
+}
+
+.cal-week-summary-item.strength strong {
+  color: var(--color-accent);
+}
+
 .cal-dual-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

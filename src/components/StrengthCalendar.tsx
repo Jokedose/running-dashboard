@@ -1,12 +1,12 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import type { StrengthPlan } from "../types";
+import type { DailyReadiness, StrengthPlan } from "../types";
 import { thaiText } from "../utils/thaiText";
 import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
 
 type ViewMode = "month" | "week";
 
-type DayData = { date: string; plans: StrengthPlan[] };
+type DayData = { date: string; plans: StrengthPlan[]; readiness: DailyReadiness | null };
 
 function strengthTypeColor(type: string | null | undefined): { bg: string; border: string; text: string } {
   const t = type?.toLowerCase() ?? "";
@@ -34,7 +34,7 @@ function splitMoves(value: string | null | undefined): string[] {
   return value.split(/\s*·\s*/).map((part) => part.trim()).filter(Boolean);
 }
 
-export function StrengthCalendar({ plans }: { plans: StrengthPlan[] }) {
+export function StrengthCalendar({ plans, daily }: { plans: StrengthPlan[]; daily: DailyReadiness[] }) {
   const today = todayIso();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [navDate, setNavDate] = useState(today);
@@ -50,8 +50,14 @@ export function StrengthCalendar({ plans }: { plans: StrengthPlan[] }) {
     return map;
   }, [plans]);
 
+  const readinessByDate = useMemo(() => {
+    const map = new Map<string, DailyReadiness>();
+    for (const d of daily) map.set(d.log_date, d);
+    return map;
+  }, [daily]);
+
   function dayData(date: string): DayData {
-    return { date, plans: planByDate.get(date) ?? [] };
+    return { date, plans: planByDate.get(date) ?? [], readiness: readinessByDate.get(date) ?? null };
   }
 
   const navYear = parseInt(navDate.slice(0, 4));
@@ -140,6 +146,9 @@ function StrengthDayCell({ dd, isToday, isPast, onSelect }: {
     >
       <div className="cal-day-top">
         <span className="cal-day-num">{dayNum}</span>
+        {dd.readiness?.recovery_percent != null && (
+          <span className="cal-recov-tiny">{dd.readiness.recovery_percent}%</span>
+        )}
       </div>
       <div className="cal-chips">
         {dd.plans.slice(0, 2).map((p) => {
@@ -198,6 +207,9 @@ function StrengthWeekView({ dates, dayData, today, onSelect }: {
                   </div>
                 );
               })}
+              {dd.readiness?.recovery_percent != null && (
+                <div className="cal-week-readiness">💚 {dd.readiness.recovery_percent}%{dd.readiness.hrv_avg_ms != null ? ` · HRV ${dd.readiness.hrv_avg_ms}` : ""}</div>
+              )}
             </div>
           </div>
         );
