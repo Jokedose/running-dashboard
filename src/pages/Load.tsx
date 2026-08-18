@@ -14,7 +14,7 @@ import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, cha
 import { MetricCard } from "../components/MetricCard";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
-import { todayIso } from "../utils/data";
+import { pipelineMajors, todayIso, unversionedCount } from "../utils/data";
 import { loadRatioBands, type LoadRatioBands } from "../utils/evaluate";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
@@ -131,8 +131,26 @@ export function Load({ data }: { data: DashboardData }) {
   const acwrElevated = hasEnoughHistory && currentAcwr != null && currentAcwr > bands.cautionOver;
   const showRiskBanner = acwrElevated && openInjuries.length > 0;
 
+  // A chart is the one place a definition change does real damage: two meanings
+  // of the same metric drawn as one line reads as a trend. Say so instead.
+  const majors = pipelineMajors(runs);
+  const unversioned = unversionedCount(runs);
+  const mixedDefinitions = majors.length > 1 || (majors.length > 0 && unversioned > 0);
+
   return (
     <section className="page-stack">
+      {mixedDefinitions && (
+        <Panel title="⚠️ ข้อมูลชุดนี้มาจาก pipeline หลายเวอร์ชัน" className="warn">
+          <p style={{ margin: 0, lineHeight: 1.7 }}>
+            พบข้อมูลจาก pipeline major {majors.join(", ") || "-"}
+            {unversioned > 0 && ` และอีก ${unversioned} แถวที่ไม่มีเวอร์ชันกำกับ (sync ก่อนระบบ version)`}
+            {" "}— การขึ้น major หมายถึง <strong>metric เดิมเปลี่ยนความหมาย</strong> เช่นระยะ main
+            เลิกรวม warm-up หรือ pace เปลี่ยนนิยาม ค่าจากคนละเวอร์ชันจึงไม่ควรอ่านเป็นเทรนด์เดียวกัน
+            {" "}รัน <code>scripts/recompute_run_logs.py</code> แล้ว sync ใหม่เพื่อให้ทุกแถวใช้นิยามเดียวกัน
+          </p>
+        </Panel>
+      )}
+
       {showRiskBanner && (
         <Panel title="⚠️ ความเสี่ยงซ้อนกัน — โหลดสูง + มีอาการเปิดอยู่" className="hot">
           <p style={{ margin: 0, lineHeight: 1.7 }}>

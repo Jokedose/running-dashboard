@@ -52,7 +52,18 @@ export type RunLog = {
   z5_percent: number | null;
   sweet_spot_percent: number | null;
   drift_bpm: number | null;
+  /** Legacy: drift as a percent of average HR, despite the name. */
   decoupling_percent: number | null;
+  /** Aerobic decoupling (Pa:HR) — the metric the <5% criterion refers to. */
+  decoupling_pahr_percent: number | null;
+  /** Banister TRIMP for the session. */
+  trimp: number | null;
+  /**
+   * Pipeline version that computed this row (running-results scripts/version.py).
+   * A MAJOR difference between rows means a metric changed meaning and the
+   * values must not be drawn on one axis — see mixedPipelineVersions().
+   */
+  pipeline_version: string | null;
   cadence_spm: number | null;
   power_w: number | null;
   gct_ms: number | null;
