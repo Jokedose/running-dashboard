@@ -52,7 +52,18 @@ export type RunLog = {
   z5_percent: number | null;
   sweet_spot_percent: number | null;
   drift_bpm: number | null;
+  /** Legacy: drift as a percent of average HR, despite the name. */
   decoupling_percent: number | null;
+  /** Aerobic decoupling (Pa:HR) — the metric the <5% criterion refers to. */
+  decoupling_pahr_percent: number | null;
+  /** Banister TRIMP for the session. */
+  trimp: number | null;
+  /**
+   * Pipeline version that computed this row (running-results scripts/version.py).
+   * A MAJOR difference between rows means a metric changed meaning and the
+   * values must not be drawn on one axis — see mixedPipelineVersions().
+   */
+  pipeline_version: string | null;
   cadence_spm: number | null;
   power_w: number | null;
   gct_ms: number | null;
@@ -292,6 +303,34 @@ export type ReadinessGateRule = {
   severity: GateSeverity;
 };
 
+/* Daily training load. Computed in running-results (scripts/training_load.py)
+   and synced, not recomputed here — one implementation of the EWMA maths. */
+export type TrainingLoadDay = {
+  day: string;
+  /** Banister TRIMP: session time weighted by heart rate, not distance. */
+  trimp: number;
+  /** Fitness — EWMA of daily load over 42 days. */
+  ctl: number | null;
+  /** Fatigue — EWMA over 7 days. */
+  atl: number | null;
+  /** Form = CTL − ATL. */
+  tsb: number | null;
+  /** EWMA acute:chronic ratio (7:28d). Null until 28 days of history exist. */
+  acwr: number | null;
+};
+
+export type IntensityWeek = {
+  iso_week: string;
+  low_min: number;
+  moderate_min: number;
+  high_min: number;
+  low_pct: number | null;
+  moderate_pct: number | null;
+  high_pct: number | null;
+  /** "pyramidal" | "polarized" | threshold-heavy — the shape the week came out as. */
+  model: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -308,6 +347,8 @@ export type DashboardData = {
   criteria: SessionCriteria[];
   gateRules: ReadinessGateRule[];
   phases: TrainingPhase[];
+  trainingLoad: TrainingLoadDay[];
+  intensity: IntensityWeek[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";

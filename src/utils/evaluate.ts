@@ -16,12 +16,19 @@ import { classifySession, type SessionKind } from "./session";
    (sync ยังไม่รัน / offline) — ห้ามแก้ตัวเลขที่นี่โดยไม่แก้ฝั่ง .md
    ───────────────────────────────────────────── */
 
+/* Bounds are inclusive on both ends and partition the integers — no zone edge
+   is shared between two zones. Mirrors config/physiology.json in running-results
+   (generated from zones.md by scripts/physiology.py), which is what both the
+   .fit parser and the synced runner_profile row now use. Before 2026-08-18 these
+   were published as the raw overlapping ranges from zones.md (Z1 max 140, Z2
+   140-153, Z3 153-166) and zoneOf compensated with a special case; the edge is
+   resolved once, upstream, instead. */
 export const DEFAULT_ZONES: HrZone[] = [
-  { zone: "Z1", min: null, max: 140, label: "วอร์มอัป, คูลดาวน์, ฟื้นตัว" },
+  { zone: "Z1", min: null, max: 139, label: "วอร์มอัป, คูลดาวน์, ฟื้นตัว" },
   { zone: "Z2", min: 140, max: 153, label: "Easy run, long run, สร้าง aerobic base" },
-  { zone: "Z3", min: 153, max: 166, label: "Steady, tempo, race effort แบบคุมได้" },
-  { zone: "Z4", min: 166, max: 180, label: "Interval, ช่วงหนัก" },
-  { zone: "Z5", min: 180, max: null, label: "Sprint, หนักมาก" },
+  { zone: "Z3", min: 154, max: 166, label: "Steady, tempo, race effort แบบคุมได้" },
+  { zone: "Z4", min: 167, max: 180, label: "Interval, ช่วงหนัก" },
+  { zone: "Z5", min: 181, max: null, label: "Sprint, หนักมาก" },
 ];
 
 export const DEFAULT_PROFILE: RunnerProfile = {
@@ -147,10 +154,11 @@ export function zoneOf(hr: number | null | undefined, profile?: RunnerProfile | 
   if (hr == null || !Number.isFinite(hr)) return null;
   const zones = resolveProfile(profile).zones;
   for (const zone of zones) {
+    // ขอบล่างและขอบบน inclusive ทั้งคู่ ไม่มีเคสพิเศษ — ตาราง zone ที่ sync มา
+    // แบ่งช่วงจำนวนเต็มแบบไม่ทับกันแล้ว (ดู DEFAULT_ZONES) จึงไม่ต้องเดาว่าค่า
+    // ตรงรอยต่อควรเป็นโซนไหน
     const aboveMin = zone.min == null || hr >= zone.min;
-    // โซนเปิดล่าง (Z1 "<140") ขอบบนเป็น exclusive; โซนช่วง ("140-153")
-    // ขอบบนเป็น inclusive — ค่าตรงรอยต่อ (153) นับเป็นโซนล่างตาม zones.md
-    const belowMax = zone.max == null || (zone.min == null ? hr < zone.max : hr <= zone.max);
+    const belowMax = zone.max == null || hr <= zone.max;
     if (aboveMin && belowMax) return zone.zone;
   }
   return zones.at(-1)?.zone ?? null;

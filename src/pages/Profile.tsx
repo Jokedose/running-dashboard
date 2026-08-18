@@ -7,7 +7,7 @@ import { Panel } from "../components/Panel";
 import { ProgressBar } from "../components/ProgressBar";
 import { supabase } from "../supabase";
 import type { BodyComposition, DashboardData } from "../types";
-import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
+import { resolveCurrentRaceGoal, todayIso, unversionedCount } from "../utils/data";
 import { km, percent, shortDate } from "../utils/format";
 
 /* ─────────────────────────────────────────────
@@ -99,6 +99,10 @@ export function Profile({ data, onSaved }: { data: DashboardData; onSaved: () =>
   const rows = data.body;
   const latest = rows[rows.length - 1] ?? null;
   const raceDay = resolveCurrentRaceGoal(data.raceGoals, todayIso())?.race_date ?? null;
+  // Distinct pipeline versions present in the run data, not just the newest one:
+  // the useful question is whether the history is internally consistent.
+  const dataVersions = [...new Set(data.runs.map((run) => run.pipeline_version).filter(Boolean))] as string[];
+  const unversionedRuns = unversionedCount(data.runs);
   const milestones = guideMilestones(raceDay);
   const [showForm, setShowForm] = useState(false);
   // A review list — one entry per measurement. Manual entry seeds a single
@@ -434,6 +438,25 @@ export function Profile({ data, onSaved }: { data: DashboardData; onSaved: () =>
             ))}
             {!data.gear.length && <p className="run-note">ยังไม่มีข้อมูลรองเท้า</p>}
           </div>
+        </Panel>
+
+        <Panel
+          title="Data pipeline version"
+          subtitle="นิยามของ metric ที่ข้อมูลชุดนี้ใช้ — ดู CHANGELOG.md ใน running-results"
+          className="span-12"
+        >
+          <p className="run-note" style={{ margin: 0, lineHeight: 1.7 }}>
+            {dataVersions.length === 0 ? (
+              "ยังไม่มีเวอร์ชันกำกับ — ข้อมูลนี้ sync มาก่อนที่ระบบ version จะมี"
+            ) : (
+              <>
+                เวอร์ชันที่พบในข้อมูล: <strong>{dataVersions.join(", ")}</strong>
+                {unversionedRuns > 0 && ` · อีก ${unversionedRuns} แถวไม่มีเวอร์ชันกำกับ`}
+                <br />
+                การขึ้น major = metric เดิมเปลี่ยนความหมาย ค่าข้ามเวอร์ชันจึงเทียบกันไม่ได้จนกว่าจะ recompute
+              </>
+            )}
+          </p>
         </Panel>
       </div>
     </section>

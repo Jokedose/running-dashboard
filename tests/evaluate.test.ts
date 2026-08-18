@@ -63,25 +63,39 @@ const daily = (overrides: Partial<DailyReadiness>): DailyReadiness =>
 describe("zoneOf", () => {
   test("maps HR to zones from the default profile", () => {
     expect(zoneOf(120)).toBe("Z1");
+    expect(zoneOf(139)).toBe("Z1");
     expect(zoneOf(140)).toBe("Z2");
-    expect(zoneOf(153)).toBe("Z2"); // ขอบบน Z2 นับเป็น Z2 (first match)
+    expect(zoneOf(153)).toBe("Z2");
     expect(zoneOf(154)).toBe("Z3");
+    expect(zoneOf(166)).toBe("Z3");
+    expect(zoneOf(167)).toBe("Z4");
+    expect(zoneOf(180)).toBe("Z4");
     expect(zoneOf(181)).toBe("Z5");
     expect(zoneOf(null)).toBeNull();
+  });
+
+  test("every integer HR lands in exactly one zone", () => {
+    // The old overlapping table needed a special case for open-lower zones; the
+    // synced table now partitions the integers, so no HR may fall through.
+    for (let hr = 80; hr <= 220; hr += 1) {
+      expect(zoneOf(hr)).not.toBeNull();
+    }
   });
 
   test("uses db profile zones when provided", () => {
     const profile: RunnerProfile = {
       ...DEFAULT_PROFILE,
       zones: [
-        { zone: "Z1", min: null, max: 139, label: null },
+        { zone: "Z1", min: null, max: 138, label: null },
         { zone: "Z2", min: 139, max: 152, label: null },
-        { zone: "Z3", min: 152, max: 165, label: null },
-        { zone: "Z4", min: 165, max: 179, label: null },
-        { zone: "Z5", min: 179, max: null, label: null },
+        { zone: "Z3", min: 153, max: 165, label: null },
+        { zone: "Z4", min: 166, max: 179, label: null },
+        { zone: "Z5", min: 180, max: null, label: null },
       ],
     };
+    expect(zoneOf(138, profile)).toBe("Z1");
     expect(zoneOf(140, profile)).toBe("Z2");
+    expect(zoneOf(152, profile)).toBe("Z2");
     expect(zoneOf(153, profile)).toBe("Z3");
   });
 

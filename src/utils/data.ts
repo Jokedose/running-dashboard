@@ -16,6 +16,8 @@ export const emptyData: DashboardData = {
   criteria: [],
   gateRules: [],
   phases: [],
+  trainingLoad: [],
+  intensity: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };
@@ -49,4 +51,35 @@ export function average(values: Array<number | null | undefined>) {
 export function clamp(value: number | null | undefined, min = 0, max = 100) {
   if (value == null || !Number.isFinite(value)) return 0;
   return Math.max(min, Math.min(max, value));
+}
+
+/* ─────────────────────────────────────────────
+   Pipeline version — ตัวบอกว่าแถวไหนคำนวณด้วยนิยามชุดไหน
+   ───────────────────────────────────────────── */
+
+/**
+ * MAJOR ของ pipeline version = "metric เดิมเปลี่ยนความหมาย" ดังนั้นแถวที่ MAJOR
+ * ต่างกันเอามาวาดเส้นเดียวกันไม่ได้ (เช่น 2026-08-18 "decoupling" เปลี่ยนจาก drift
+ * เป็น Pa:HR และระยะ main เลิกรวม warm-up) — ส่วน MINOR/PATCH ต่างกันไม่เป็นไร
+ * เพราะค่าเดิมไม่ขยับตามนิยามใน running-results/scripts/version.py
+ */
+export function majorVersion(version: string | null | undefined): string | null {
+  if (!version) return null;
+  const major = version.split(".")[0];
+  return /^\d+$/.test(major) ? major : null;
+}
+
+/** MAJOR ที่พบในชุดข้อมูล เรียงจากเก่าไปใหม่ — ความยาว > 1 คือเส้นกราฟกำลังปนนิยาม */
+export function pipelineMajors(rows: Array<{ pipeline_version: string | null }>): string[] {
+  const found = new Set<string>();
+  for (const row of rows) {
+    const major = majorVersion(row.pipeline_version);
+    if (major) found.add(major);
+  }
+  return [...found].sort((a, b) => Number(a) - Number(b));
+}
+
+/** แถวที่ยังไม่มี version = sync มาก่อนที่ระบบ version จะมี จึงไม่รู้ว่านิยามไหน */
+export function unversionedCount(rows: Array<{ pipeline_version: string | null }>): number {
+  return rows.filter((row) => !row.pipeline_version).length;
 }
