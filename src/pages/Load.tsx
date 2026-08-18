@@ -19,11 +19,45 @@ import { loadRatioBands, type LoadRatioBands } from "../utils/evaluate";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
 
-// load proxy per run = distance (km). fallback to duration/6 (~km-equiv) when distance missing.
+// Fallback only, for a dashboard pointed at a database that has not been synced
+// since training_load_daily was added. Distance is a poor stand-in for load —
+// see the note in Load() — so this exists to keep the page rendering, not
+// because the numbers are equivalent.
 function runLoad(r: RunLog): number {
   if (r.distance_km != null) return r.distance_km;
   if (r.duration_min != null) return r.duration_min / 6;
   return 0;
+}
+
+function legacyDistanceSeries(runs: RunLog[]) {
+  const loadByDate = new Map<string, number>();
+  for (const r of runs) {
+    loadByDate.set(r.run_date, (loadByDate.get(r.run_date) ?? 0) + runLoad(r));
+  }
+  const sortedDates = [...loadByDate.keys()].sort();
+  const start = sortedDates[0];
+  const today = todayIso();
+  const lastDate = sortedDates.length ? sortedDates[sortedDates.length - 1] : today;
+  const end = lastDate > today ? lastDate : today;
+  const allDays = start ? daysBetween(start, end) : [];
+
+  return allDays.map((day, i) => {
+    let acute = 0;
+    let chronic = 0;
+    for (let j = Math.max(0, i - 27); j <= i; j++) {
+      const v = loadByDate.get(allDays[j]) ?? 0;
+      chronic += v;
+      if (j >= i - 6) acute += v;
+    }
+    const chronicWeekly = chronic / 4;
+    return {
+      label: shortDate(day),
+      load: Number((loadByDate.get(day) ?? 0).toFixed(1)),
+      acute: Number(acute.toFixed(1)),
+      chronic: Number(chronicWeekly.toFixed(1)),
+      acwr: chronicWeekly > 0 ? Number((acute / chronicWeekly).toFixed(2)) : null,
+    };
+  });
 }
 
 function daysBetween(start: string, end: string): string[] {
@@ -51,38 +85,26 @@ export function Load({ data }: { data: DashboardData }) {
   const runs = data.runs.filter((r) => r.run_date);
   const bands = loadRatioBands(data.gateRules);
 
-  const loadByDate = new Map<string, number>();
-  for (const r of runs) {
-    loadByDate.set(r.run_date, (loadByDate.get(r.run_date) ?? 0) + runLoad(r));
-  }
+  // TRIMP + CTL/ATL/TSB/ACWR come from running-results (scripts/training_load.py)
+  // via training_load_daily. Before 2026-08-18 this page derived ACWR from
+  // kilometres and a pair of flat rolling windows, which priced a 5 km interval
+  // session and a 5 km recovery jog identically — the one number meant to warn
+  // about a spike in training stress could not see the difference between the
+  // hardest and easiest session of the week.
+  const synced = data.trainingLoad;
+  const usingTrimp = synced.length > 0;
 
-  const sortedDates = [...loadByDate.keys()].sort();
-  const start = sortedDates[0];
-  const today = todayIso();
-  const lastDate = sortedDates.length ? sortedDates[sortedDates.length - 1] : today;
-  const end = lastDate > today ? lastDate : today;
-  const allDays = start ? daysBetween(start, end) : [];
+  const series = usingTrimp
+    ? synced.map((row) => ({
+        label: shortDate(row.day),
+        load: Number(row.trimp.toFixed(1)),
+        acute: row.atl != null ? Number(row.atl.toFixed(1)) : 0,
+        chronic: row.ctl != null ? Number(row.ctl.toFixed(1)) : 0,
+        acwr: row.acwr != null ? Number(row.acwr.toFixed(2)) : null,
+      }))
+    : legacyDistanceSeries(runs);
 
-  const series = allDays.map((day, i) => {
-    let acute = 0;
-    let chronic = 0;
-    for (let j = Math.max(0, i - 27); j <= i; j++) {
-      const v = loadByDate.get(allDays[j]) ?? 0;
-      chronic += v;
-      if (j >= i - 6) acute += v;
-    }
-    const chronicWeekly = chronic / 4;
-    const acwr = chronicWeekly > 0 ? acute / chronicWeekly : null;
-    return {
-      label: shortDate(day),
-      load: Number((loadByDate.get(day) ?? 0).toFixed(1)),
-      acute: Number(acute.toFixed(1)),
-      chronic: Number(chronicWeekly.toFixed(1)),
-      acwr: acwr != null ? Number(acwr.toFixed(2)) : null,
-    };
-  });
-
-  const hasEnoughHistory = allDays.length >= 14;
+  const hasEnoughHistory = series.length >= 28;
   const currentAcwr = (() => {
     for (let i = series.length - 1; i >= 0; i--) {
       if (series[i].acwr != null) return series[i].acwr;
@@ -93,7 +115,9 @@ export function Load({ data }: { data: DashboardData }) {
 
   const acute7 = series.length ? series[series.length - 1].acute : 0;
   const chronicWk = series.length ? series[series.length - 1].chronic : 0;
+  const latestLoad = usingTrimp ? synced[synced.length - 1] : null;
   const chartRows = series.slice(-42);
+  const recentWeeks = data.intensity.slice(-8);
 
   const niggleRows = runs.filter((r) => painLevel(r.pain) !== "none");
   const recentNiggles = [...niggleRows].sort((a, b) => b.run_date.localeCompare(a.run_date)).slice(0, 6);
@@ -134,8 +158,27 @@ export function Load({ data }: { data: DashboardData }) {
           icon={HeartPulse}
           tone={zone.tone}
         />
-        <MetricCard label="โหลด 7 วัน (acute)" value={km(acute7)} detail="ระยะสะสม 7 วันล่าสุด" icon={Activity} />
-        <MetricCard label="โหลดเฉลี่ย/สัปดาห์ (chronic)" value={km(chronicWk)} detail="เฉลี่ย 28 วัน" icon={ShieldCheck} />
+        <MetricCard
+          label={usingTrimp ? "ATL — ความล้า (7 วัน)" : "โหลด 7 วัน (acute)"}
+          value={usingTrimp ? acute7.toFixed(1) : km(acute7)}
+          detail={usingTrimp ? "TRIMP เฉลี่ยถ่วงน้ำหนัก 7 วัน" : "ระยะสะสม 7 วันล่าสุด"}
+          icon={Activity}
+        />
+        <MetricCard
+          label={usingTrimp ? "CTL — ฐานที่สะสม (42 วัน)" : "โหลดเฉลี่ย/สัปดาห์ (chronic)"}
+          value={usingTrimp ? chronicWk.toFixed(1) : km(chronicWk)}
+          detail={usingTrimp ? "TRIMP เฉลี่ยถ่วงน้ำหนัก 42 วัน" : "เฉลี่ย 28 วัน"}
+          icon={ShieldCheck}
+        />
+        {usingTrimp && latestLoad?.tsb != null && (
+          <MetricCard
+            label="TSB — ความสด (CTL − ATL)"
+            value={latestLoad.tsb.toFixed(1)}
+            detail={latestLoad.tsb >= 0 ? "สดกว่าฐานที่สะสมไว้" : "ยังล้าสะสมอยู่"}
+            icon={HeartPulse}
+            tone={latestLoad.tsb >= 0 ? "good" : "warn"}
+          />
+        )}
         <MetricCard
           label="อาการเจ็บที่บันทึก"
           value={String(niggleRows.length)}
@@ -167,14 +210,66 @@ export function Load({ data }: { data: DashboardData }) {
                 strokeDasharray="5 5"
                 label={{ value: "1.5", position: "right", fontSize: 11, fill: chartColors.accent }}
               />
-              <Bar yAxisId="left" dataKey="load" fill="url(#primaryBar)" radius={[6, 6, 0, 0]} name="โหลดรายวัน km" />
+              <Bar
+                yAxisId="left"
+                dataKey="load"
+                fill="url(#primaryBar)"
+                radius={[6, 6, 0, 0]}
+                name={usingTrimp ? "TRIMP รายวัน" : "โหลดรายวัน km"}
+              />
               <Line yAxisId="right" dataKey="acwr" stroke={chartColors.ink} strokeWidth={3} dot={false} name="ACWR" connectNulls />
             </ComposedChart>
           </ResponsiveContainer>
           {!hasEnoughHistory && (
-            <p className="chart-note">ต้องมีข้อมูลวิ่งอย่างน้อย ~2 สัปดาห์เพื่อให้ ACWR แม่นยำ</p>
+            <p className="chart-note">ACWR ต้องมีประวัติอย่างน้อย 28 วันจึงจะเริ่มมีความหมาย</p>
           )}
+          <p className="chart-note">
+            {usingTrimp
+              ? "โหลด = TRIMP ถ่วงตาม HR รายวินาที · ACWR แบบ EWMA 7:28 วัน — เป็นสัญญาณให้ฉุกคิด ไม่ใช่กฎ"
+              : "⚠️ ยังไม่มีข้อมูล training_load_daily — กราฟนี้ใช้ระยะทางเป็น proxy ของโหลด ซึ่งมองไม่เห็นความต่างระหว่าง interval กับ jog"}
+          </p>
         </Panel>
+
+        {recentWeeks.length > 0 && (
+          <Panel
+            title="Intensity distribution รายสัปดาห์"
+            subtitle="สัดส่วนเวลา (ไม่ใช่จำนวน session) — ง่าย Z1-Z2 · กลาง Z3 · หนัก Z4-Z5"
+            className="span-12"
+          >
+            <ResponsiveContainer width="100%" height={240}>
+              <ComposedChart data={recentWeeks.map((w) => ({
+                label: w.iso_week.replace(/^\d{4}-/, ""),
+                easy: w.low_pct ?? 0,
+                moderate: w.moderate_pct ?? 0,
+                hard: w.high_pct ?? 0,
+              }))} margin={chartMargin}>
+                <ChartGradientDefs />
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="label" {...chartAxis} />
+                <YAxis domain={[0, 100]} {...chartAxis} />
+                <ChartTooltip />
+                <Bar dataKey="easy" stackId="i" fill={chartColors.primary} name="ง่าย %" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="moderate" stackId="i" fill={chartColors.ink} name="กลาง %" />
+                <Bar dataKey="hard" stackId="i" fill={chartColors.accent} name="หนัก %" radius={[6, 6, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+            <div className="signal-list">
+              {[...recentWeeks].reverse().slice(0, 4).map((week) => (
+                <div key={week.iso_week}>
+                  <Activity size={16} />
+                  <span>
+                    {week.iso_week} · {week.model ?? "-"} ({(week.low_pct ?? 0).toFixed(0)}/
+                    {(week.moderate_pct ?? 0).toFixed(0)}/{(week.high_pct ?? 0).toFixed(0)})
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="chart-note">
+              แผนประกาศว่าใช้โมเดล pyramidal — ตารางนี้คือการวัดว่าสัปดาห์ที่ทำจริงออกมาเป็นรูปแบบไหน
+              · การ map 5 โซนลงเป็น 3 domain เป็นค่าประมาณ (ขอบจริงคือ LT1/LT2 ซึ่งยังไม่เคยวัด)
+            </p>
+          </Panel>
+        )}
 
         <Panel title="Latest niggles" subtitle="ดึงจากช่อง pain ใน run log (markdown source)" className="span-12">
           {recentNiggles.length === 0 ? (

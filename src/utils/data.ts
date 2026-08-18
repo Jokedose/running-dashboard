@@ -16,6 +16,8 @@ export const emptyData: DashboardData = {
   criteria: [],
   gateRules: [],
   phases: [],
+  trainingLoad: [],
+  intensity: [],
 };
 
 export const chartMargin = { top: 8, right: 8, bottom: 0, left: -16 };

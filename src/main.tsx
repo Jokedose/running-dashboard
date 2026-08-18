@@ -24,6 +24,8 @@ import type {
   SessionCriteria,
   StrengthPlan,
   TrainingPhase,
+  TrainingLoadDay,
+  IntensityWeek,
   TrainingPlan,
   WeeklySummary,
 } from "./types";
@@ -84,7 +86,7 @@ function App() {
   async function fetchData() {
     setLoadState("loading");
     try {
-      const [daily, runs, weekly, gear, race, plan, strengthPlan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases] = await Promise.all([
+      const [daily, runs, weekly, gear, race, plan, strengthPlan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases, trainingLoad, intensity] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }).limit(DATA_QUERY_LIMIT),
@@ -100,6 +102,8 @@ function App() {
       supabase.from("session_criteria").select("*").order("session_kind", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("readiness_gate_rules").select("*").order("rule_order", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("training_phases").select("*").order("sort_order", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("training_load_daily").select("*").order("day", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("intensity_distribution_weekly").select("*").order("iso_week", { ascending: true }).limit(DATA_QUERY_LIMIT),
       ]);
     // hard-fail เฉพาะข้อมูลแกนหลัก — ตารางอื่น error ให้ degrade เป็นค่าว่างแทนที่จะบล็อกทั้งแอป
       if (daily.error || runs.error) {
@@ -120,6 +124,8 @@ function App() {
         ["session_criteria", criteria.error],
         ["readiness_gate_rules", gateRules.error],
         ["training_phases", phases.error],
+        ["training_load_daily", trainingLoad.error],
+        ["intensity_distribution_weekly", intensity.error],
       ].filter((entry) => Boolean(entry[1]));
       if (softErrors.length) console.warn("Optional dashboard data failed to load", softErrors.map(([table, error]) => ({ table, error })));
       lastFetchRef.current = Date.now();
@@ -139,6 +145,8 @@ function App() {
       criteria: criteria.error ? [] : ((criteria.data ?? []) as SessionCriteria[]),
       gateRules: gateRules.error ? [] : ((gateRules.data ?? []) as ReadinessGateRule[]),
       phases: phases.error ? [] : ((phases.data ?? []) as TrainingPhase[]),
+      trainingLoad: trainingLoad.error ? [] : ((trainingLoad.data ?? []) as TrainingLoadDay[]),
+      intensity: intensity.error ? [] : ((intensity.data ?? []) as IntensityWeek[]),
       });
       setLoadState("ready");
     } catch {
