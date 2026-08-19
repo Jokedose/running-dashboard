@@ -9,16 +9,19 @@ import { isoWeekId, shortIsoWeek } from "./calendarDates";
    ตัวเลขจากนาฬิกา/แอปอาหารส่วนใหญ่เป็น gross จึงสูงกว่าเลขในหน้านี้เสมอ
    ───────────────────────────────────────────── */
 
-export type RunKcalSource = "device" | "estimate" | "mixed";
+export type RunKcalSource = "device" | "estimate" | "mixed" | "none";
 
 export const RUN_KCAL_SOURCE_LABEL: Record<RunKcalSource, string> = {
   device: "จากนาฬิกา",
   estimate: "จากสมการ",
   mixed: "ปนกัน",
+  // "none" ไม่ได้แปลว่าไม่รู้ที่มา แต่แปลว่าสัปดาห์นั้นไม่มีวิ่งให้คิดเลย
+  // (scripts/energy.py ส่งค่านี้มาตรง ๆ ไม่ใช่ null) — สองอย่างนี้ต้องอ่านต่างกัน
+  none: "ไม่มีวิ่ง",
 };
 
 export function normalizeSource(value: string | null | undefined): RunKcalSource | null {
-  if (value === "device" || value === "estimate" || value === "mixed") return value;
+  if (value === "device" || value === "estimate" || value === "mixed" || value === "none") return value;
   return null;
 }
 
@@ -32,7 +35,8 @@ export function mixedKcalSources(weeks: EnergyWeek[]): boolean {
   for (const week of weeks) {
     const source = normalizeSource(week.run_kcal_source);
     if (source === "mixed") return true;
-    if (source) found.add(source);
+    // สัปดาห์ที่ไม่มีวิ่งไม่ได้ปนอะไรกับใคร จึงไม่นับเป็นแหล่งที่สอง
+    if (source && source !== "none") found.add(source);
   }
   return found.size > 1;
 }

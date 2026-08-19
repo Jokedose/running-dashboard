@@ -98,6 +98,17 @@ describe("run_kcal_source", () => {
   test("สัปดาห์เดียวที่เป็น mixed ก็พอให้เตือนแล้ว", () => {
     expect(mixedKcalSources([week({ run_kcal_source: "mixed" })])).toBe(true);
   });
+
+  // scripts/energy.py ส่ง "none" มาสำหรับสัปดาห์ที่ไม่มีวิ่งเลย (ไม่ใช่ null)
+  test("สัปดาห์ที่ไม่มีวิ่งไม่นับเป็นแหล่งที่สอง จึงไม่ทำให้ขึ้นคำเตือน", () => {
+    expect(normalizeSource("none")).toBe("none");
+    expect(
+      mixedKcalSources([
+        week({ iso_week: "2026-W33", run_kcal_source: "device" }),
+        week({ iso_week: "2026-W34", run_kcal: 0, run_kcal_source: "none" }),
+      ]),
+    ).toBe(false);
+  });
 });
 
 describe("energyChartRows", () => {

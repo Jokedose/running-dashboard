@@ -56,11 +56,12 @@ export function Energy({ data }: { data: DashboardData }) {
       <section className="page-stack">
         <Panel
           title="ยังไม่มีข้อมูลพลังงาน"
-          subtitle="ตาราง energy_weekly ยังไม่ถูกสร้าง หรือยังไม่มีสัปดาห์ไหน sync ขึ้นมา"
+          subtitle="ยังไม่มีสัปดาห์ไหนใน energy_weekly ถูก sync ขึ้นมา"
         >
           <p className="chart-note">
-            หน้านี้อ่านจากตาราง <code>energy_weekly</code> ซึ่ง running-results เป็นคนคำนวณแล้ว sync ขึ้น Supabase
-            {" "}— พอ migration 013 ถูก merge เข้า main และ CI sync รอบแรกวิ่งจบ ตัวเลขจะขึ้นเองโดยไม่ต้องแก้อะไรที่หน้านี้
+            หน้านี้อ่านจากตาราง <code>energy_weekly</code> ซึ่ง running-results เป็นคนคำนวณ (<code>scripts/energy.py</code>)
+            {" "}แล้ว sync ขึ้น Supabase — แดชบอร์ดไม่ได้คิดเลขเอง ถ้าตรงนี้ว่างแปลว่ายังไม่มีแถวให้อ่าน
+            {" "}ไม่ใช่ว่าไม่มีการซ้อม ลองสั่ง sync ฝั่ง running-results อีกรอบแล้วกลับมาดูใหม่
           </p>
         </Panel>
       </section>
@@ -186,15 +187,27 @@ export function Energy({ data }: { data: DashboardData }) {
           </ResponsiveContainer>
           {reality ? (
             <p className="chart-note">
-              ช่วง {reality.weeks} สัปดาห์ที่มีทั้งข้อมูลพลังงานและการชั่ง — น้ำหนักลดจริง{" "}
-              <strong>{reality.actualLossKg.toFixed(2)} kg</strong> ขณะที่แผนคาดไว้{" "}
-              <strong>{reality.expectedLossKg.toFixed(2)} kg</strong>
-              {": "}
-              {reality.gapKg >= 0.3
-                ? "ลดเร็วกว่าแผน — อาจกินต่ำกว่าเป้า หรือ TDEE จริงสูงกว่าที่คำนวณไว้"
-                : reality.gapKg <= -0.3
-                  ? "ลดช้ากว่าแผน — deficit ที่ตั้งใจไว้ยังไม่เกิดขึ้นจริงเท่าที่ควร"
-                  : "ใกล้เคียงแผน — สมมติฐาน TDEE ที่ใช้อยู่ยังใช้ได้"}
+              ช่วง {reality.weeks} สัปดาห์ที่มีทั้งข้อมูลพลังงานและการชั่ง —{" "}
+              {/* น้ำหนักขึ้นต้องพูดว่า "ขึ้น" ไม่ใช่ "ลดช้ากว่าแผน" — ช่วงบาดเจ็บกลางปี 2026
+                  น้ำหนักเพิ่ม 1.6 kg ซึ่งเป็นคนละเรื่องกับการลดได้ไม่ถึงเป้า */}
+              {reality.actualLossKg < 0 ? (
+                <>
+                  น้ำหนัก<strong>เพิ่มขึ้น {Math.abs(reality.actualLossKg).toFixed(2)} kg</strong> สวนทางกับแผนที่คาดว่าจะลด{" "}
+                  <strong>{reality.expectedLossKg.toFixed(2)} kg</strong> — deficit ไม่ได้เกิดขึ้นจริงในช่วงนี้
+                  {" "}(ถ้าเป็นช่วงพักบาดเจ็บก็สมเหตุสมผล เพราะฝั่งเผาหายไปแต่ฝั่งกินมักเท่าเดิม)
+                </>
+              ) : (
+                <>
+                  น้ำหนักลดจริง <strong>{reality.actualLossKg.toFixed(2)} kg</strong> ขณะที่แผนคาดไว้{" "}
+                  <strong>{reality.expectedLossKg.toFixed(2)} kg</strong>
+                  {": "}
+                  {reality.gapKg >= 0.3
+                    ? "ลดเร็วกว่าแผน — อาจกินต่ำกว่าเป้า หรือ TDEE จริงสูงกว่าที่คำนวณไว้"
+                    : reality.gapKg <= -0.3
+                      ? "ลดช้ากว่าแผน — deficit ที่ตั้งใจไว้ยังไม่เกิดขึ้นจริงเท่าที่ควร"
+                      : "ใกล้เคียงแผน — สมมติฐาน TDEE ที่ใช้อยู่ยังใช้ได้"}
+                </>
+              )}
             </p>
           ) : (
             <p className="chart-note">
