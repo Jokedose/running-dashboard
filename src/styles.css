@@ -775,6 +775,12 @@ button.kb-lightbox-close {
   background: #fee2e8;
 }
 
+/* คู่กับ .panel.hot — ใช้กับแบนเนอร์ "ข้อมูลอ่านผิดได้" ที่ยังไม่ถึงขั้นอันตราย */
+.panel.warn {
+  border-color: #eed28b;
+  background: #fef3c7;
+}
+
 .panel-head {
   display: flex;
   justify-content: space-between;

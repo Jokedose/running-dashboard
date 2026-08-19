@@ -19,7 +19,8 @@ Personal running dashboard for tracking 10K training — built with Vite + React
 | **Trends** | Long-term trend charts — pace, HR, Z2% |
 | **Load** | Training load — acute/chronic ratio, HR strain |
 | **Injury** | Active injury status (source of truth: `injury_status` table) + pain history from run logs |
-| **Strength** | Kettlebell strength routine + exercise reference |
+| **Strength** | Plan adherence (this week, streak, 8-week planned vs done) + kettlebell routine and exercise reference |
+| **Energy** | Weekly training energy (net kcal), TDEE, intake target, and burn vs actual weight |
 | **Gear** | Shoe mileage tracker |
 | **Body** | Body composition — weight, fat %, muscle mass (OCR intake) |
 | **Activities** | Run logs — distance, pace, HR, Z2%, drift |
