@@ -1,9 +1,11 @@
 import { Activity, AlertTriangle, CalendarCheck, HeartPulse, MapPin, ShieldAlert } from "lucide-react";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData, InjuryStatus } from "../types";
 import { shortDate } from "../utils/format";
 import { painLevel, type PainLevel } from "../utils/session";
+import { injurySummary } from "../utils/summary";
 
 type Tone = "good" | "warn" | "hot" | "neutral";
 
@@ -132,8 +134,18 @@ export function Injury({ data }: { data: DashboardData }) {
   // source of truth: injury_status (open ก่อน). run_logs = supporting detail ด้านล่าง
   const openInjuries = data.injuries.filter((i) => i.is_open);
 
+  const summary = injurySummary({
+    openTitles: openInjuries.map((injury) => injury.title ?? injury.injury_slug),
+    daysPainFree,
+    totalNiggles: niggles.length,
+    highCount,
+    recurrencePart: recurrenceAlert ? recentTopPart[0] : null,
+    recurrenceCount: recentTopPart?.[1] ?? 0,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       {openInjuries.length > 0 && (
         <div className="content-grid">
           {openInjuries.map((injury) => (

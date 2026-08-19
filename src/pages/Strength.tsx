@@ -3,6 +3,7 @@ import { CalendarCheck, CircleCheck, Dumbbell, Flame, ShieldCheck, TriangleAlert
 import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { TaperBanner } from "../components/TaperBanner";
 import { KB_GROUP_LABEL, kbExercises, kbRoutine, type KbGroup } from "../data/kbExercises";
@@ -10,6 +11,7 @@ import type { DashboardData } from "../types";
 import { todayIso } from "../utils/calendarDates";
 import { buildTrainingContext } from "../utils/context";
 import { strengthSummary, strengthWeekBuckets } from "../utils/strength";
+import { strengthPanelSummary } from "../utils/summary";
 
 const GROUPS: KbGroup[] = ["power", "upper", "core", "stability"];
 const framesByName = new Map(kbExercises.map((e) => [e.name, e.frames]));
@@ -41,6 +43,14 @@ export function Strength({ data }: { data: DashboardData }) {
   const summary = strengthSummary(data.strengthPlan, today);
   const weekBars = strengthWeekBuckets(data.strengthPlan, today, 8);
   const weekRatio = summary.weekPlanned > 0 ? summary.weekDone / summary.weekPlanned : null;
+  const pageSummary = strengthPanelSummary({
+    weekDone: summary.weekDone,
+    weekPlanned: summary.weekPlanned,
+    streakWeeks: summary.streakWeeks,
+    monthDone: summary.monthDone,
+    nextDate: summary.nextSession?.plan_date ?? null,
+    isTaper,
+  });
 
   return (
     <section className="page-stack">
@@ -48,6 +58,7 @@ export function Strength({ data }: { data: DashboardData }) {
 
       {data.strengthPlan.length > 0 && (
         <>
+          <PageSummary summary={pageSummary} />
           <div className="metric-grid">
             <MetricCard
               label="สัปดาห์นี้ทำแล้ว"

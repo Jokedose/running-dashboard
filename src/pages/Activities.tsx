@@ -3,12 +3,14 @@ import { Activity, AlertCircle, Clock3, Gauge, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { RunLaps } from "../components/RunLaps";
 import type { DashboardData, RunLog, SessionCriteria } from "../types";
 import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { painLevel } from "../utils/session";
+import { activitiesSummary } from "../utils/summary";
 import { thaiText } from "../utils/thaiText";
 
 // verdict จาก evaluateRun (เกณฑ์ session_criteria ใน db) → icon + label + สี
@@ -190,9 +192,18 @@ export function Activities({ data }: { data: DashboardData }) {
     session: run.session_type,
   }));
   const painCount = recentPain.filter((p) => p.level !== "none").length;
+  const summary = activitiesSummary({
+    totalActivities,
+    totalDistanceKm: totalDistance,
+    totalDurationMin: totalDuration,
+    avgPaceSec: avgPaceSeconds,
+    painCount,
+    painWindow: recentPain.length,
+  });
 
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       <div className="metric-grid">
         <MetricCard label="กิจกรรมทั้งหมด" value={String(totalActivities)} detail="รายการที่บันทึกไว้" icon={Activity} />
         <MetricCard label="เวลารวมทั้งหมด" value={minutes(totalDuration || null)} detail="รวมเวลาที่ใช้ทุกกิจกรรม" icon={Timer} tone="good" />

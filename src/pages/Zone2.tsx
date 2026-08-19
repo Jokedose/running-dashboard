@@ -12,12 +12,14 @@ import {
 } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { average, latest } from "../utils/data";
 import { criteriaFor, resolveProfile } from "../utils/evaluate";
 import { pace, paceMinutes, percent, sessionLabel, shortDate } from "../utils/format";
 import { classifySession } from "../utils/session";
+import { zone2Summary } from "../utils/summary";
 import { thaiText } from "../utils/thaiText";
 
 const TARGET_ZONE2_PACE_MIN = 7;
@@ -85,8 +87,20 @@ export function Zone2({ data }: { data: DashboardData }) {
     latestCadence >= TARGET_CADENCE_MIN ? "good" :
     latestCadence >= 165 ? "warn" : "hot";
 
+  const summary = zone2Summary({
+    sampleSize: zone2Runs.length,
+    avgZ2,
+    avgDrift,
+    latestZ2: latestRun?.z2_percent ?? null,
+    z2Min,
+    driftMax,
+    latestCadence,
+    cadenceMin: TARGET_CADENCE_MIN,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       <div className="metric-grid">
         <MetricCard label="เป้าหมายระยะยาว" value="7:00/km" detail="เพซโซน 2" icon={Gauge} tone="hot" />
         <MetricCard

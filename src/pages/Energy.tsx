@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { shortIsoWeek } from "../utils/calendarDates";
@@ -23,6 +24,7 @@ import {
   latestEnergyWeek,
   mixedKcalSources,
 } from "../utils/energy";
+import { energyPanelSummary } from "../utils/summary";
 
 const WEEKS_IN_VIEW = 12;
 
@@ -68,8 +70,20 @@ export function Energy({ data }: { data: DashboardData }) {
     );
   }
 
+  const pageSummary = energyPanelSummary({
+    isoWeek: current?.iso_week ?? null,
+    exerciseKcal: current?.exercise_kcal ?? null,
+    tdeeKcal: current?.avg_daily_tdee_kcal ?? null,
+    targetIntakeKcal: current?.target_intake_kcal ?? null,
+    weightKg: body?.weight_kg ?? null,
+    actualLossKg: reality?.actualLossKg ?? null,
+    expectedLossKg: reality?.expectedLossKg ?? null,
+    mixedSources,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={pageSummary} />
       {mixedSources && (
         <Panel title="⚠️ ช่วงที่แสดงอยู่ปนแหล่ง kcal สองแบบ" className="warn">
           <p style={{ margin: 0, lineHeight: 1.7 }}>
