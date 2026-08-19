@@ -3,9 +3,11 @@ import { Activity, AlertTriangle, CalendarDays, CalendarRange, CheckCircle2, Clo
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
 import { latest } from "../utils/data";
+import { reportsSummary } from "../utils/summary";
 import { evaluateRun } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { classifySession } from "../utils/session";
@@ -275,8 +277,22 @@ function WeeklyView({ data }: { data: DashboardData }) {
   const modalSummary = selectedWeek ? summaryRows.find((w) => w.week_id === selectedWeek) ?? null : null;
   const modalRuns = runsFor(selectedWeek);
 
+  // เทียบกับสัปดาห์ก่อนหน้าใน summaryRows ที่เรียงตามเวลาอยู่แล้ว
+  const prevWeek = summaryRows.length >= 2 ? summaryRows[summaryRows.length - 2] : null;
+  const summary = reportsSummary({
+    periodLabel: week?.week_id ?? null,
+    periodNoun: "สัปดาห์",
+    distanceKm: week?.total_distance_km ?? null,
+    durationMin: week?.total_duration_min ?? null,
+    runCount: week?.run_count ?? null,
+    longRunCount: week?.long_run_count ?? null,
+    qualityCount: week?.quality_count ?? null,
+    prevDistanceKm: prevWeek?.total_distance_km ?? null,
+  });
+
   return (
     <>
+      <PageSummary summary={summary} />
       <div className="metric-grid">
         <MetricCard label="สัปดาห์ล่าสุด" value={week?.week_id ?? "-"} icon={CalendarDays} />
         <MetricCard label="ระยะรวม" value={km(week?.total_distance_km)} icon={Activity} />
@@ -391,8 +407,20 @@ function MonthlyView({ data }: { data: DashboardData }) {
     paceMin: m.paceSec ? Number((m.paceSec / 60).toFixed(2)) : null,
   }));
 
+  const summary = reportsSummary({
+    periodLabel: latestMonth?.label ?? null,
+    periodNoun: "เดือน",
+    distanceKm: latestMonth?.distance ?? null,
+    durationMin: latestMonth?.duration ?? null,
+    runCount: latestMonth?.runs ?? null,
+    longRunCount: null,
+    qualityCount: null,
+    prevDistanceKm: prev?.distance ?? null,
+  });
+
   return (
     <>
+      <PageSummary summary={summary} />
       <div className="metric-grid">
         <MetricCard label="เดือนล่าสุด" value={latestMonth?.label ?? "-"} detail={`${latestMonth?.runs ?? 0} ครั้ง`} icon={CalendarRange} />
         <MetricCard

@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
-import { CalendarCheck, ShieldCheck, TriangleAlert } from "lucide-react";
+import { CalendarCheck, CircleCheck, Dumbbell, Flame, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Bar, CartesianGrid, ComposedChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
+import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { TaperBanner } from "../components/TaperBanner";
 import { KB_GROUP_LABEL, kbExercises, kbRoutine, type KbGroup } from "../data/kbExercises";
 import type { DashboardData } from "../types";
+import { todayIso } from "../utils/calendarDates";
 import { buildTrainingContext } from "../utils/context";
+import { strengthSummary, strengthWeekBuckets } from "../utils/strength";
+import { strengthPanelSummary } from "../utils/summary";
 
 const GROUPS: KbGroup[] = ["power", "upper", "core", "stability"];
 const framesByName = new Map(kbExercises.map((e) => [e.name, e.frames]));
@@ -30,9 +37,95 @@ export function Strength({ data }: { data: DashboardData }) {
 
   const list = safeOnly ? kbExercises.filter((e) => e.injurySafe) : kbExercises;
 
+  // strength_plan คือแผนจริงที่ sync มาจาก running-results ส่วน kbRoutine ข้างล่าง
+  // เป็นคลังท่าแบบ static — หน้านี้เคยมีแต่คลังท่า จึงตอบไม่ได้ว่า "ทำจริงไหม"
+  const today = todayIso();
+  const summary = strengthSummary(data.strengthPlan, today);
+  const weekBars = strengthWeekBuckets(data.strengthPlan, today, 8);
+  const weekRatio = summary.weekPlanned > 0 ? summary.weekDone / summary.weekPlanned : null;
+  const pageSummary = strengthPanelSummary({
+    weekDone: summary.weekDone,
+    weekPlanned: summary.weekPlanned,
+    streakWeeks: summary.streakWeeks,
+    monthDone: summary.monthDone,
+    nextDate: summary.nextSession?.plan_date ?? null,
+    isTaper,
+  });
+
   return (
     <section className="page-stack">
       {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
+
+      {data.strengthPlan.length > 0 && (
+        <>
+          <PageSummary summary={pageSummary} />
+          <div className="metric-grid">
+            <MetricCard
+              label="สัปดาห์นี้ทำแล้ว"
+              value={`${summary.weekDone}/${summary.weekPlanned}`}
+              detail={summary.weekPlanned === 0 ? "สัปดาห์นี้ไม่มีแผนเวท" : weekRatio === 1 ? "ครบตามแผนแล้ว" : "ยังเหลืออยู่"}
+              icon={CircleCheck}
+              tone={summary.weekPlanned === 0 ? "neutral" : weekRatio === 1 ? "good" : weekRatio != null && weekRatio >= 0.5 ? "warn" : "hot"}
+            />
+            <MetricCard
+              label="streak สัปดาห์ที่ทำครบ"
+              value={`${summary.streakWeeks} สัปดาห์`}
+              detail="นับต่อเนื่องย้อนหลัง — สัปดาห์นี้ที่ยังไม่จบไม่ตัด streak"
+              icon={Flame}
+              tone={summary.streakWeeks >= 3 ? "good" : summary.streakWeeks > 0 ? "warn" : "neutral"}
+            />
+            <MetricCard
+              label="เซสชันสะสมเดือนนี้"
+              value={String(summary.monthDone)}
+              detail={`เดือน ${today.slice(0, 7)} · นับเฉพาะที่ทำจริง`}
+              icon={Dumbbell}
+            />
+            <MetricCard
+              label="วันถัดไปที่วางแผนไว้"
+              value={summary.nextSession ? summary.nextSession.plan_date.slice(5) : "-"}
+              detail={summary.nextSession?.session_type ?? (summary.nextSession ? "ไม่ระบุประเภท" : "ยังไม่มีแผนข้างหน้า")}
+              icon={CalendarCheck}
+            />
+          </div>
+
+          <Panel
+            title="ทำตามแผนไหม — 8 สัปดาห์ย้อนหลัง"
+            subtitle="แท่งซ้าย = วางแผนไว้ · แท่งขวา = ทำจริง (group ตามวันที่ในแผนเป็น ISO week)"
+          >
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={weekBars} margin={chartMargin}>
+                <CartesianGrid {...chartGrid} />
+                <XAxis dataKey="label" {...chartAxis} />
+                <YAxis allowDecimals={false} {...chartAxis} />
+                <ChartTooltip />
+                <Bar dataKey="planned" fill={chartColors.grid} radius={[6, 6, 0, 0]} name="วางแผน" />
+                <Bar dataKey="done" fill={chartColors.primary} radius={[6, 6, 0, 0]} name="ทำจริง" />
+              </ComposedChart>
+            </ResponsiveContainer>
+            <div className="signal-list">
+              {[...weekBars].reverse().slice(0, 4).map((week) => (
+                <div key={week.isoWeek}>
+                  <Dumbbell size={16} />
+                  <span>{week.isoWeek}</span>
+                  <strong>
+                    <span className="metric-trend good">ทำแล้ว {week.done}</span>
+                    {week.skipped > 0 && <span className="metric-trend hot" style={{ marginLeft: 6 }}>ข้าม {week.skipped}</span>}
+                    {week.planned - week.done - week.skipped > 0 && (
+                      <span className="metric-trend neutral" style={{ marginLeft: 6 }}>
+                        ค้าง {week.planned - week.done - week.skipped}
+                      </span>
+                    )}
+                  </strong>
+                </div>
+              ))}
+            </div>
+            <p className="chart-note">
+              สัปดาห์ที่ไม่มีแผนเลยจะขึ้นเป็นแท่งศูนย์ — ช่องว่างตรงนั้นคือข้อมูล ไม่ใช่ข้อมูลหาย
+            </p>
+          </Panel>
+        </>
+      )}
+
       {zoom && (
         <div className="kb-lightbox" role="dialog" aria-label={zoom.name} onClick={() => setZoom(null)}>
           <div className="kb-lightbox-inner" onClick={(e) => e.stopPropagation()}>

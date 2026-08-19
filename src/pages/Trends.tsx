@@ -14,12 +14,14 @@ import {
 } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData } from "../types";
 import { longRunTargetKm } from "../utils/context";
 import { average } from "../utils/data";
 import { km, minutes, shortDate } from "../utils/format";
 import { classifySession } from "../utils/session";
+import { trendsSummary } from "../utils/summary";
 
 export function Trends({ data }: { data: DashboardData }) {
   // เป้า long run ตามแผนปัจจุบัน (ladder ไต่ตาม phase) แทนค่าคงที่ 9.5 ของช่วง pre-race
@@ -105,8 +107,18 @@ export function Trends({ data }: { data: DashboardData }) {
     .filter((r) => r.temperature_c != null && r.drift_bpm != null)
     .map((r) => ({ temp: r.temperature_c, drift: r.drift_bpm, date: r.run_date }));
 
+  const summary = trendsSummary({
+    totalWeeks,
+    avgWeeklyKm,
+    longestLongRunKm: longRunRows.length ? Math.max(...longRunRows.map((r) => r.distance ?? 0)) : null,
+    longTargetKm: longTarget,
+    avgHrvMs: avgHrv,
+    avgSleepMin,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       <div className="metric-grid">
         <MetricCard label="สัปดาห์ทั้งหมด" value={String(totalWeeks)} detail="ที่บันทึกไว้" icon={TrendingUp} />
         <MetricCard label="ระยะ/สัปดาห์" value={km(avgWeeklyKm)} detail="เฉลี่ยทุกสัปดาห์" icon={Activity} />

@@ -12,12 +12,14 @@ import {
 } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import type { DashboardData, RunLog } from "../types";
 import { pipelineMajors, todayIso, unversionedCount } from "../utils/data";
 import { loadRatioBands, type LoadRatioBands } from "../utils/evaluate";
 import { km, shortDate } from "../utils/format";
 import { painLevel } from "../utils/session";
+import { loadSummary } from "../utils/summary";
 
 // Fallback only, for a dashboard pointed at a database that has not been synced
 // since training_load_daily was added. Distance is a poor stand-in for load —
@@ -137,8 +139,19 @@ export function Load({ data }: { data: DashboardData }) {
   const unversioned = unversionedCount(runs);
   const mixedDefinitions = majors.length > 1 || (majors.length > 0 && unversioned > 0);
 
+  const summary = loadSummary({
+    acwr: currentAcwr,
+    zoneLabel: zone.label,
+    zoneTone: zone.tone,
+    tsb: latestLoad?.tsb ?? null,
+    openInjuries: openInjuries.length,
+    hasEnoughHistory,
+    usingTrimp,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       {mixedDefinitions && (
         <Panel title="⚠️ ข้อมูลชุดนี้มาจาก pipeline หลายเวอร์ชัน" className="warn">
           <p style={{ margin: 0, lineHeight: 1.7 }}>

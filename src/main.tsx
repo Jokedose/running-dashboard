@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarRange, Cross, Dumbbell, Gauge, HeartPulse, Home as HomeIcon, ShieldCheck, Trophy, TrendingUp, User } from "lucide-react";
+import { Activity, CalendarRange, Cross, Dumbbell, Flame, Gauge, HeartPulse, Home as HomeIcon, ShieldCheck, Trophy, TrendingUp, User } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -11,6 +11,7 @@ import type {
   BodyComposition,
   DailyReadiness,
   DashboardData,
+  EnergyWeek,
   GearMileage,
   InjuryStatus,
   LoadState,
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { key: "load", label: "Load", icon: HeartPulse },
   { key: "injury", label: "Injury", icon: Cross },
   { key: "strength", label: "Strength", icon: Dumbbell },
+  { key: "energy", label: "Energy", icon: Flame },
   { key: "profile", label: "Profile", icon: User },
   { key: "activities", label: "Activities", icon: ShieldCheck },
 ];
@@ -59,6 +61,7 @@ const Profile = lazy(() => import("./pages/Profile").then((module) => ({ default
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
 const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
+const Energy = lazy(() => import("./pages/Energy").then((module) => ({ default: module.Energy })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -86,7 +89,7 @@ function App() {
   async function fetchData() {
     setLoadState("loading");
     try {
-      const [daily, runs, weekly, gear, race, plan, strengthPlan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases, trainingLoad, intensity] = await Promise.all([
+      const [daily, runs, weekly, gear, race, plan, strengthPlan, body, monthly, injuries, raceGoals, profile, criteria, gateRules, phases, trainingLoad, intensity, energy] = await Promise.all([
       supabase.from("daily_readiness").select("*").order("log_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("run_logs").select("*").order("run_date", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("weekly_summaries").select("*").order("week_id", { ascending: true }).limit(DATA_QUERY_LIMIT),
@@ -104,6 +107,7 @@ function App() {
       supabase.from("training_phases").select("*").order("sort_order", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("training_load_daily").select("*").order("day", { ascending: true }).limit(DATA_QUERY_LIMIT),
       supabase.from("intensity_distribution_weekly").select("*").order("iso_week", { ascending: true }).limit(DATA_QUERY_LIMIT),
+      supabase.from("energy_weekly").select("*").order("iso_week", { ascending: true }).limit(DATA_QUERY_LIMIT),
       ]);
     // hard-fail เฉพาะข้อมูลแกนหลัก — ตารางอื่น error ให้ degrade เป็นค่าว่างแทนที่จะบล็อกทั้งแอป
       if (daily.error || runs.error) {
@@ -126,6 +130,9 @@ function App() {
         ["training_phases", phases.error],
         ["training_load_daily", trainingLoad.error],
         ["intensity_distribution_weekly", intensity.error],
+        // energy_weekly ยังไม่มีในฐานจนกว่า running-results#88 (migration 013) จะ merge
+        // — จึงต้องอยู่ฝั่ง soft error เท่านั้น ไม่งั้นทั้งแอปดับเพราะตารางที่ยังไม่เกิด
+        ["energy_weekly", energy.error],
       ].filter((entry) => Boolean(entry[1]));
       if (softErrors.length) console.warn("Optional dashboard data failed to load", softErrors.map(([table, error]) => ({ table, error })));
       lastFetchRef.current = Date.now();
@@ -147,6 +154,7 @@ function App() {
       phases: phases.error ? [] : ((phases.data ?? []) as TrainingPhase[]),
       trainingLoad: trainingLoad.error ? [] : ((trainingLoad.data ?? []) as TrainingLoadDay[]),
       intensity: intensity.error ? [] : ((intensity.data ?? []) as IntensityWeek[]),
+      energy: energy.error ? [] : ((energy.data ?? []) as EnergyWeek[]),
       });
       setLoadState("ready");
     } catch {
@@ -237,6 +245,7 @@ function App() {
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
     if (route === "strength") return <Strength data={data} />;
+    if (route === "energy") return <Energy data={data} />;
     if (route === "profile") return <Profile data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
     return <Home data={data} />;

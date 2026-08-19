@@ -331,6 +331,40 @@ export type IntensityWeek = {
   model: string | null;
 };
 
+/* Weekly energy balance. Computed in running-results (scripts/energy.py) and
+   synced — the dashboard only reads it.
+
+   ⚠️ ทุกคอลัมน์ที่ลงท้ายด้วย _kcal ของการซ้อมเป็น **net** (พลังงานส่วนที่เกิน
+   จากการนอนเฉย ๆ) ไม่ใช่ gross แบบที่นาฬิกา/แอปอาหารส่วนใหญ่รายงาน — เพราะ
+   avg_daily_tdee_kcal นับ BMR ไว้แล้ว การเอา BMR มาบวกซ้ำในหน้าเว็บจะทำให้
+   TDEE เกินจริงราววันละหนึ่งพันกว่า kcal */
+export type EnergyWeek = {
+  id: string;
+  iso_week: string;
+  /** net kcal จากการวิ่งในสัปดาห์นั้น — ความแม่นขึ้นกับ run_kcal_source */
+  run_kcal: number | null;
+  strength_kcal: number | null;
+  cardio_kcal: number | null;
+  /** รวมทั้งสามหมวด — ใช้เป็นตัวตั้งของ TDEE เฉลี่ยราย 7 วัน */
+  exercise_kcal: number | null;
+  exercise_minutes: number | null;
+  /** BMR × 1.35 + kcal การซ้อมเฉลี่ยราย 7 วัน — ตัวเดียวในตารางนี้ที่รวม BMR */
+  avg_daily_tdee_kcal: number | null;
+  target_intake_kcal: number | null;
+  deficit_target_kcal: number | null;
+  expected_kg_per_week: number | null;
+  /** true = มี strength session ที่เดานาทีจากจำนวนเซต ตัวเลขสัปดาห์นั้นจึงหยาบกว่า */
+  has_estimated_duration: boolean | null;
+  /**
+   * 'device' = active calories จากนาฬิกา · 'estimate' = สมการ Keytel ซึ่งให้ค่า
+   * สูงกว่านาฬิกาประมาณ 30% สำหรับนักวิ่งคนนี้ · 'mixed' = ปนกันภายในสัปดาห์
+   * สองแหล่งนี้ต่างระดับกันมากเกินกว่าจะลากเป็นเทรนด์เส้นเดียวโดยไม่เตือน
+   */
+  run_kcal_source: string | null;
+  pipeline_version: string | null;
+  updated_at: string | null;
+};
+
 export type DashboardData = {
   daily: DailyReadiness[];
   runs: RunLog[];
@@ -349,6 +383,7 @@ export type DashboardData = {
   phases: TrainingPhase[];
   trainingLoad: TrainingLoadDay[];
   intensity: IntensityWeek[];
+  energy: EnergyWeek[];
 };
 
 export type LoadState = "idle" | "loading" | "ready" | "error";
