@@ -181,3 +181,30 @@ export function deficitReality(points: EnergyWeightPoint[]): DeficitReality | nu
     weeks: endIndex - startIndex,
   };
 }
+
+/* ─────────────────────────────────────────────
+   พลังงานรายเซสชัน (run_logs.kcal_net) — คนละ grain กับ energy_weekly ข้างบน
+   ───────────────────────────────────────────── */
+
+/** ป้ายภาษาไทยของ run_logs.kcal_source (ค่ามาจาก scripts/energy.py) */
+export function runKcalSourceLabel(source: string | null | undefined): string | null {
+  if (source === "coros-device") return "จากนาฬิกา";
+  if (source === "keytel-hr") return "จากสมการ HR";
+  if (source === "met") return "จากค่า MET";
+  return null;
+}
+
+/**
+ * true เมื่อค่ามาจากสมการ ไม่ใช่จากนาฬิกา — สมการ Keytel ให้ค่าสูงกว่านาฬิกา
+ * ราว 30% สำหรับนักวิ่งคนนี้ แถวพวกนี้จึงเทียบกับแถวอื่นตรง ๆ ไม่ได้
+ */
+export function isEstimatedRunKcal(source: string | null | undefined): boolean {
+  return source === "keytel-hr" || source === "met";
+}
+
+/** kcal net รวมของรันที่มีค่า — null เมื่อยังไม่มีรันไหนมีข้อมูลเลย */
+export function totalRunKcal(runs: Array<{ kcal_net: number | null }>): number | null {
+  const values = runs.map((run) => run.kcal_net).filter((v): v is number => v != null);
+  if (!values.length) return null;
+  return values.reduce((sum, v) => sum + v, 0);
+}

@@ -255,8 +255,10 @@ export function activitiesSummary(input: {
   avgPaceSec: number | null;
   painCount: number;
   painWindow: number;
+  /** null เมื่อฐานยังไม่มี run_logs.kcal_net (ก่อน migration 014) */
+  totalKcal?: number | null;
 }): PageSummary {
-  const { totalActivities, totalDistanceKm, totalDurationMin, avgPaceSec, painCount, painWindow } = input;
+  const { totalActivities, totalDistanceKm, totalDurationMin, avgPaceSec, painCount, painWindow, totalKcal } = input;
   if (!totalActivities) {
     return { ...NO_DATA, headline: "ยังไม่มีกิจกรรมที่บันทึก", detail: "พอ run log แรกถูก sync ขึ้นมา หน้านี้จะเริ่มสะสมสถิติให้เอง" };
   }
@@ -267,6 +269,10 @@ export function activitiesSummary(input: {
     { label: "เวลารวม", value: duration(totalDurationMin) },
     { label: "เพซเฉลี่ยรวม", value: pace(avgPaceSec) },
   ];
+  // เพิ่มเป็นตัวที่ห้าเมื่อมีข้อมูล ไม่ใช่ไปแทนที่เพซซึ่งเป็นตัวเลขที่ดูบ่อยกว่า
+  if (totalKcal != null) {
+    facts.push({ label: "พลังงานรวม (net)", value: `${Math.round(totalKcal).toLocaleString("en-US")} kcal` });
+  }
 
   return {
     headline: `บันทึกไว้ ${totalActivities} ครั้ง รวม ${km(totalDistanceKm)}`,

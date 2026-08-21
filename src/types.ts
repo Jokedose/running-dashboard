@@ -59,6 +59,14 @@ export type RunLog = {
   /** Banister TRIMP for the session. */
   trimp: number | null;
   /**
+   * kcal ของรันครั้งนี้ แบบ net (ไม่รวม BMR) เหมือนทุกคอลัมน์ kcal ใน energy_weekly
+   * — ตัวเลขจากนาฬิกา/แอปอาหารเป็น gross จึงสูงกว่าเสมอ เอามาเทียบตรง ๆ ไม่ได้
+   * null = ฐานยังไม่ได้ apply migration 014 หรือรันนั้นไม่มีเวลาให้คำนวณ
+   */
+  kcal_net: number | null;
+  /** 'coros-device' (จากนาฬิกา) · 'keytel-hr' หรือ 'met' (จากสมการ ซึ่งให้ค่าสูงกว่า ~30%) */
+  kcal_source: string | null;
+  /**
    * Pipeline version that computed this row (running-results scripts/version.py).
    * A MAJOR difference between rows means a metric changed meaning and the
    * values must not be drawn on one axis — see mixedPipelineVersions().

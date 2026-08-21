@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, AlertCircle, Clock3, Gauge, Timer, X } from "lucide-react";
+import { Activity, AlertCircle, Clock3, Flame, Gauge, Timer, X } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
@@ -7,6 +7,7 @@ import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { RunLaps } from "../components/RunLaps";
 import type { DashboardData, RunLog, SessionCriteria } from "../types";
+import { isEstimatedRunKcal, runKcalSourceLabel, totalRunKcal } from "../utils/energy";
 import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
 import { km, minutes, pace, percent, sessionLabel } from "../utils/format";
 import { painLevel } from "../utils/session";
@@ -20,6 +21,10 @@ function verdictBadge(evaluation: RunEvaluation | null): { icon: string; label: 
   if (evaluation.verdict === "warn") return { icon: "⚠️", label: "หลุด 1 ข้อ", bg: "#fef9ec", color: "#7a5300" };
   return { icon: "⛔", label: "หลุดหลายข้อ", bg: "#fee2e8", color: "#9d1c37" };
 }
+
+// คั่นหลักพันเหมือนหน้าพลังงานใน Reports — ตัวเลขเดียวกันต้องอ่านเหมือนกันทั้งแอป
+const kcal = (value: number | null | undefined) =>
+  value == null ? "-" : `${Math.round(value).toLocaleString("en-US")} kcal`;
 
 function painColor(level: ReturnType<typeof painLevel>): string {
   switch (level) {
@@ -87,6 +92,16 @@ function RunDetailModal({ run, criteria, onClose }: { run: RunLog; criteria: Ses
             <DataRow label="ชีพจรเฉลี่ย" value={`${run.avg_hr_bpm?.toFixed(0) ?? "-"} bpm`} />
             <DataRow label="ชีพจรสูงสุด" value={`${run.hr_max_bpm?.toFixed(0) ?? "-"} bpm`} />
             <DataRow label="RPE" value={thaiText(run.rpe)} />
+            <DataRow
+              label="พลังงาน (net)"
+              value={
+                run.kcal_net == null
+                  ? "-"
+                  : `${kcal(run.kcal_net)}${runKcalSourceLabel(run.kcal_source) ? ` · ${runKcalSourceLabel(run.kcal_source)}` : ""}${
+                      isEstimatedRunKcal(run.kcal_source) ? " ⚠ ค่าประมาณ สูงกว่านาฬิการาว 30%" : ""
+                    }`
+              }
+            />
           </div>
         </div>
 
@@ -192,6 +207,10 @@ export function Activities({ data }: { data: DashboardData }) {
     session: run.session_type,
   }));
   const painCount = recentPain.filter((p) => p.level !== "none").length;
+  // ฐานที่ยังไม่ได้ apply migration 014 จะไม่มีค่าเลยสักแถว — ซ่อนคอลัมน์ทิ้งไป
+  // ดีกว่าโชว์คอลัมน์ที่มีแต่ขีดยาวลงไปทั้งตาราง
+  const totalKcal = totalRunKcal(data.runs);
+  const runsWithKcal = data.runs.filter((run) => run.kcal_net != null).length;
   const summary = activitiesSummary({
     totalActivities,
     totalDistanceKm: totalDistance,
@@ -199,6 +218,7 @@ export function Activities({ data }: { data: DashboardData }) {
     avgPaceSec: avgPaceSeconds,
     painCount,
     painWindow: recentPain.length,
+    totalKcal,
   });
 
   return (
@@ -209,6 +229,14 @@ export function Activities({ data }: { data: DashboardData }) {
         <MetricCard label="เวลารวมทั้งหมด" value={minutes(totalDuration || null)} detail="รวมเวลาที่ใช้ทุกกิจกรรม" icon={Timer} tone="good" />
         <MetricCard label="ระยะรวม" value={km(totalDistance || null)} detail="รวมจากบันทึกวิ่งทั้งหมด" icon={Gauge} />
         <MetricCard label="เพซเฉลี่ยรวม" value={pace(avgPaceSeconds)} detail="คำนวณจากเวลารวมและระยะรวม" icon={Clock3} />
+        {totalKcal != null && (
+          <MetricCard
+            label="พลังงานรวม (net)"
+            value={kcal(totalKcal)}
+            detail={`เฉพาะส่วนที่เกินจากการนอนเฉย ๆ · ${runsWithKcal} จาก ${totalActivities} ครั้งมีค่า`}
+            icon={Flame}
+          />
+        )}
       </div>
 
       <Panel title="Pain / soreness timeline" subtitle={`30 ครั้งล่าสุด · มีอาการ ${painCount} ครั้ง`}>
@@ -256,6 +284,7 @@ export function Activities({ data }: { data: DashboardData }) {
                 <span>{pace(run.pace_sec_per_km)}</span>
                 <span>{run.avg_hr_bpm == null ? "-" : `${run.avg_hr_bpm.toFixed(0)} bpm`}</span>
                 <span>Z2 {percent(run.z2_percent)}</span>
+                {run.kcal_net != null && <span>{kcal(run.kcal_net)}</span>}
               </div>
             </button>
           );
@@ -281,6 +310,7 @@ export function Activities({ data }: { data: DashboardData }) {
                 <th>เพซ</th>
                 <th>ชีพจร</th>
                 <th>Z2</th>
+                {totalKcal != null && <th>พลังงาน</th>}
                 <th>การไหล</th>
                 <th>Cadence</th>
                 <th>รองเท้า</th>
@@ -299,6 +329,12 @@ export function Activities({ data }: { data: DashboardData }) {
                   <td>{pace(run.pace_sec_per_km)}</td>
                   <td>{run.avg_hr_bpm?.toFixed(1) ?? "-"} bpm</td>
                   <td>{percent(run.z2_percent)}</td>
+                  {totalKcal != null && (
+                    <td title={runKcalSourceLabel(run.kcal_source) ?? undefined}>
+                      {kcal(run.kcal_net)}
+                      {isEstimatedRunKcal(run.kcal_source) && " ~"}
+                    </td>
+                  )}
                   <td>{run.drift_bpm?.toFixed(1) ?? "-"} bpm</td>
                   <td style={{ color: run.cadence_spm != null && run.cadence_spm < 168 ? "#c2410c" : undefined }}>
                     {run.cadence_spm?.toFixed(0) ?? "-"} spm
