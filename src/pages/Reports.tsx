@@ -501,7 +501,10 @@ const MODE_TABS: { key: ReportMode; label: string }[] = [
 ];
 
 export function Reports({ data }: { data: DashboardData }) {
-  const [mode, setMode] = useState<ReportMode>("week");
+  // ลิงก์เก่า #/energy เคยเป็นหน้าเดี่ยว — คนที่กดมาคาดหวังเห็นพลังงาน ไม่ใช่รายสัปดาห์
+  const [mode, setMode] = useState<ReportMode>(() =>
+    window.location.hash.replace("#/", "") === "energy" ? "energy" : "week",
+  );
   return (
     <section className="page-stack">
       <div className="cal-view-toggle" role="tablist" aria-label="สลับมุมมองรายงาน">

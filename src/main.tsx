@@ -238,7 +238,7 @@ function App() {
     if (route === "calendar") return <Calendar data={data} />;
     if (route === "race") return <Race data={data} />;
     if (route === "zone2") return <Zone2 data={data} />;
-    if (route === "reports" || route === "energy") return <Reports data={data} />;
+    if (route === "reports") return <Reports data={data} />;
     if (route === "trends") return <Trends data={data} />;
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
