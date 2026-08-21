@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { isoWeekId, isoWeekStart, shortIsoWeek } from "../src/utils/calendarDates";
 import {
   deficitReality,
+  isEstimatedRunKcal,
+  runKcalSourceLabel,
+  totalRunKcal,
   energyChartRows,
   energyWeightSeries,
   estimatedDurationWeeks,
@@ -191,5 +194,33 @@ describe("น้ำหนักจริง vs แผน", () => {
   test("ชั่งไม่ถึงสองครั้งก็ไม่เดา", () => {
     const points = energyWeightSeries([week({})], [body("2026-08-19", 70)]);
     expect(deficitReality(points)).toBeNull();
+  });
+});
+
+describe("พลังงานรายรัน (run_logs.kcal_net)", () => {
+  test("แปลง kcal_source เป็นภาษาไทย และไม่เดาค่าที่ไม่รู้จัก", () => {
+    expect(runKcalSourceLabel("coros-device")).toBe("จากนาฬิกา");
+    expect(runKcalSourceLabel("keytel-hr")).toBe("จากสมการ HR");
+    expect(runKcalSourceLabel("met")).toBe("จากค่า MET");
+    expect(runKcalSourceLabel("garmin")).toBeNull();
+    expect(runKcalSourceLabel(null)).toBeNull();
+  });
+
+  // ค่าจากสมการสูงกว่านาฬิการาว 30% จึงต้องกำกับไว้ว่าเทียบตรง ๆ กับแถวอื่นไม่ได้
+  test("รู้ว่าแถวไหนเป็นค่าประมาณ", () => {
+    expect(isEstimatedRunKcal("keytel-hr")).toBe(true);
+    expect(isEstimatedRunKcal("met")).toBe(true);
+    expect(isEstimatedRunKcal("coros-device")).toBe(false);
+    expect(isEstimatedRunKcal(null)).toBe(false);
+  });
+
+  test("รวม kcal เฉพาะรันที่มีค่า", () => {
+    expect(totalRunKcal([{ kcal_net: 300 }, { kcal_net: null }, { kcal_net: 225.5 }])).toBeCloseTo(525.5, 5);
+  });
+
+  // ฐานที่ยังไม่ได้ apply migration 014 ต้องได้ null ไม่ใช่ 0 — ศูนย์แปลว่า "ไม่ได้เผาอะไรเลย"
+  test("ไม่มีรันไหนมีค่า = null ไม่ใช่ 0", () => {
+    expect(totalRunKcal([{ kcal_net: null }, { kcal_net: null }])).toBeNull();
+    expect(totalRunKcal([])).toBeNull();
   });
 });
