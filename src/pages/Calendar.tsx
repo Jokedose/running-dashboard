@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import type { DailyReadiness, DashboardData, RunLog, StrengthPlan, TrainingPlan } from "../types";
 import { km, minutes, pace, percent, sessionLabel, workoutSegments } from "../utils/format";
+import { PageSummary } from "../components/PageSummary";
 import { RunLaps } from "../components/RunLaps";
 import { StrengthCalendar, StrengthDayModal, strengthStatusDot, type StrengthDayData } from "../components/StrengthCalendar";
 import { TaperBanner } from "../components/TaperBanner";
 import { thaiText } from "../utils/thaiText";
 import { buildTrainingContext } from "../utils/context";
+import { calendarSummary } from "../utils/summary";
 import { MONTHS_TH, WEEKDAYS_SHORT, addDays, monthGrid, todayIso, weekDates } from "../utils/calendarDates";
 
 type ViewMode = "month" | "week";
@@ -182,6 +184,25 @@ export function Calendar({ data }: { data: DashboardData }) {
     return { done: rows.filter((r) => r.status === "done").length, total: rows.length };
   }, [data.strengthPlan, thisWeekDates]);
 
+  // แถบสรุปสัปดาห์: ตัวเลข x/y เดิมบอกแค่ว่าทำไปเท่าไร ไม่ได้บอกว่าเหลืออะไรและถัดไปคือวันไหน
+  const weekSummary = useMemo(() => {
+    const runRows = data.plan.filter((p) => thisWeekDates.includes(p.plan_date));
+    const strengthRows = data.strengthPlan.filter((p) => thisWeekDates.includes(p.plan_date));
+    const next = [...runRows]
+      .filter((p) => p.plan_date >= today && p.status !== "done" && p.status !== "skipped")
+      .sort((a, b) => a.plan_date.localeCompare(b.plan_date))[0] ?? null;
+    return calendarSummary({
+      plannedCount: runRows.length,
+      doneCount: runRows.filter((r) => r.status === "done").length,
+      skippedCount: runRows.filter((r) => r.status === "skipped").length,
+      plannedKm: runRows.reduce((sum, r) => sum + (r.target_distance_km ?? 0), 0) || null,
+      nextTitle: next ? sessionLabel(next.session_type ?? next.title) : null,
+      nextDate: next?.plan_date ?? null,
+      strengthPlanned: strengthRows.length,
+      strengthDone: strengthRows.filter((r) => r.status === "done").length,
+    });
+  }, [data.plan, data.strengthPlan, thisWeekDates, today]);
+
   const runMonthPrefix = `${navYear}-${String(navMonth).padStart(2, "0")}`;
   const runAdherence = useMemo(() => {
     const rows = data.plan.filter((p) => p.plan_date.startsWith(runMonthPrefix));
@@ -195,16 +216,7 @@ export function Calendar({ data }: { data: DashboardData }) {
         <button className={`cal-btn${pageView === "agenda" ? " cal-btn-active" : ""}`} onClick={() => setPageView("agenda")} type="button">รายการ</button>
       </div>
 
-      <div className="cal-week-summary">
-        <span className="cal-week-summary-item running">
-          🏃 วิ่งสัปดาห์นี้{" "}
-          {weekRunStats.total > 0 ? <><strong>{weekRunStats.done}/{weekRunStats.total}</strong> ทำแล้ว</> : "ยังไม่มีแผน"}
-        </span>
-        <span className="cal-week-summary-item strength">
-          🏋️ Strength สัปดาห์นี้{" "}
-          {weekStrengthStats.total > 0 ? <><strong>{weekStrengthStats.done}/{weekStrengthStats.total}</strong> ทำแล้ว</> : "ยังไม่มีแผน"}
-        </span>
-      </div>
+      <PageSummary summary={weekSummary} />
 
       {isTaper && <TaperBanner phaseName={ctx.phase?.phase_name ?? ""} />}
 

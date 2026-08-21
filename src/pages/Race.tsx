@@ -13,11 +13,13 @@ import { BrandLogo } from "../components/BrandLogo";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { ListPanel, Panel } from "../components/Panel";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { MilestoneRoadmap } from "../components/MilestoneRoadmap";
 import { RaceEngine } from "../components/RaceEngine";
 import type { DashboardData, PacingSplit, RunLap, RunLog } from "../types";
 import { resolveCurrentRaceGoal, todayIso } from "../utils/data";
 import { diffDays, raceShortLabel } from "../utils/context";
+import { raceSummary } from "../utils/summary";
 import { km, pace, percent, raceTime, sessionLabel, shortDate } from "../utils/format";
 import { classifySession, isSteadyAerobic } from "../utils/session";
 import { thaiText } from "../utils/thaiText";
@@ -475,8 +477,20 @@ export function Race({ data }: { data: DashboardData }) {
     );
   }
 
+  const summary = raceSummary({
+    raceName: currentGoal?.race_name ?? null,
+    raceDate,
+    daysLeft,
+    readinessScore: race?.readiness_score ?? null,
+    targetText: currentGoal?.target_a_text ?? null,
+    targetLocked,
+    completed: raceCompleted,
+    resultText: race?.result_time_min != null ? raceTime(race.result_time_min) : null,
+  });
+
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       {goals.length > 1 && (
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 2 }}>
           {goals.map((g) => {
