@@ -13,6 +13,8 @@ export type SummaryTone = "good" | "warn" | "hot" | "neutral";
 export type SummaryFact = { label: string; value: string };
 
 export type PageSummary = {
+  /** ป้ายสั้น ๆ เหนือพาดหัว เช่นสถานะจาก db หรือชื่อรายการแข่ง (ไม่ใส่ก็ได้) */
+  badge?: string;
   /** พาดหัว: สถานะตอนนี้เป็นภาษาคน ไม่ใช่ชื่อ metric */
   headline: string;
   /** แปลว่าอะไร และควรทำอะไรต่อ */
@@ -435,6 +437,208 @@ export function energyPanelSummary(input: {
           : "ใกล้เคียงแผน — สมมติฐาน TDEE ที่ใช้อยู่ยังใช้ได้"
     }${mixedNote}`,
     tone: gap <= -0.3 ? "warn" : "good",
+    facts,
+  };
+}
+
+/* ── Home — ความพร้อมวันนี้ ── */
+
+/**
+ * ต่างจาก builder ตัวอื่นตรงที่ข้อความหลักมาจาก daily_readiness ซึ่ง pipeline
+ * ตัดสินไว้แล้ว — ที่นี่จึงไม่ตัดสินซ้ำ แค่จัดรูปให้เข้าแถบเดียวกับหน้าอื่น
+ * และเขียนเองเฉพาะตอนที่ต้นทางยังไม่มีข้อความมาให้
+ */
+export function homeReadinessSummary(input: {
+  status: string | null;
+  recommendation: string | null;
+  plannedSession: string | null;
+  recoveryPercent: number | null;
+  sleepMinutes: number | null;
+  hrvMs: number | null;
+  loadRatio: number | null;
+  tone: SummaryTone;
+}): PageSummary {
+  const { status, recommendation, plannedSession, recoveryPercent, sleepMinutes, hrvMs, loadRatio, tone } = input;
+  const facts: SummaryFact[] = [
+    { label: "การฟื้นตัว", value: recoveryPercent == null ? "-" : `${recoveryPercent}%` },
+    { label: "การนอน", value: sleepMinutes == null ? "-" : `${(sleepMinutes / 60).toFixed(1)} ชม.` },
+    { label: "HRV", value: hrvMs == null ? "-" : `${hrvMs} ms` },
+    { label: "โหลด (ACWR)", value: loadRatio == null ? "-" : loadRatio.toFixed(2) },
+  ];
+
+  if (!status && !recommendation) {
+    return {
+      ...NO_DATA,
+      headline: "ยังไม่มีข้อมูลความพร้อมของวันนี้",
+      detail: "daily_readiness ยังไม่มีแถวของวันนี้ — ดึงข้อมูล COROS แล้ว sync ก่อนค่อยตัดสินใจว่าจะซ้อมอะไร",
+      facts,
+    };
+  }
+
+  return {
+    badge: status ?? undefined,
+    headline: plannedSession?.trim() || "ยังไม่มีแผนของวันนี้",
+    detail:
+      recommendation?.trim() ||
+      "มีสถานะความพร้อมแล้วแต่ยังไม่มีคำแนะนำจากต้นทาง — ดูตัวเลขข้างล่างประกอบก่อนตัดสินใจ",
+    tone,
+    facts,
+  };
+}
+
+/* ── Calendar — สัปดาห์นี้เดินตามแผนแค่ไหน ── */
+
+export function calendarSummary(input: {
+  plannedCount: number;
+  doneCount: number;
+  skippedCount: number;
+  plannedKm: number | null;
+  nextTitle: string | null;
+  nextDate: string | null;
+  strengthPlanned: number;
+  strengthDone: number;
+}): PageSummary {
+  const { plannedCount, doneCount, skippedCount, plannedKm, nextTitle, nextDate, strengthPlanned, strengthDone } = input;
+  const facts: SummaryFact[] = [
+    { label: "วิ่งสัปดาห์นี้", value: `${doneCount}/${plannedCount}` },
+    { label: "ระยะตามแผน", value: km(plannedKm) },
+    { label: "เวทสัปดาห์นี้", value: `${strengthDone}/${strengthPlanned}` },
+    { label: "ถัดไป", value: nextDate ?? "ไม่มีในแผน" },
+  ];
+
+  if (!plannedCount && !strengthPlanned) {
+    return {
+      ...NO_DATA,
+      headline: "สัปดาห์นี้ยังไม่มีแผนในปฏิทิน",
+      detail: "ทั้ง training_plan และ strength_plan ไม่มีรายการของสัปดาห์นี้ — ถ้าเพิ่งวางแผนไว้ ลอง sync ฝั่ง running-results อีกรอบ",
+      facts,
+    };
+  }
+
+  const remaining = plannedCount - doneCount - skippedCount;
+  const nextText = nextTitle && nextDate ? `ถัดไปคือ ${nextTitle} วันที่ ${nextDate}` : "ไม่มีรายการที่ยังไม่ทำเหลือในสัปดาห์นี้";
+
+  if (remaining <= 0 && plannedCount > 0) {
+    return {
+      headline: skippedCount > 0 ? `สัปดาห์นี้จบแล้ว — ทำ ${doneCount} ข้าม ${skippedCount}` : "สัปดาห์นี้ทำครบทุกรายการ",
+      detail:
+        skippedCount > 0
+          ? `รายการที่ข้ามไม่ได้หายไปจากสถิติ เหตุผลที่ข้ามอยู่ในการ์ดของวันนั้น · ${nextText}`
+          : `เดินตามแผนได้ครบทั้งสัปดาห์ · ${nextText}`,
+      tone: skippedCount > 0 ? "warn" : "good",
+      facts,
+    };
+  }
+
+  return {
+    headline: `สัปดาห์นี้เหลืออีก ${remaining} รายการ`,
+    detail: `ทำไปแล้ว ${doneCount} จาก ${plannedCount} รายการ${skippedCount > 0 ? ` (ข้าม ${skippedCount})` : ""} · ${nextText}`,
+    tone: doneCount > 0 ? "warn" : "neutral",
+    facts,
+  };
+}
+
+/* ── Race ── */
+
+export function raceSummary(input: {
+  raceName: string | null;
+  raceDate: string | null;
+  daysLeft: number | null;
+  readinessScore: number | null;
+  targetText: string | null;
+  targetLocked: boolean;
+  completed: boolean;
+  resultText: string | null;
+}): PageSummary {
+  const { raceName, raceDate, daysLeft, readinessScore, targetText, targetLocked, completed, resultText } = input;
+  const facts: SummaryFact[] = [
+    { label: "วันแข่ง", value: raceDate ?? "-" },
+    {
+      label: completed ? "ผลที่ทำได้" : "เหลืออีก",
+      value: completed ? resultText ?? "-" : daysLeft == null ? "-" : `${Math.max(0, daysLeft)} วัน`,
+    },
+    { label: "ความพร้อม", value: readinessScore == null ? "-" : `${readinessScore}/100` },
+    { label: "เป้า", value: targetText ?? (targetLocked ? "-" : "ยังไม่ล็อก") },
+  ];
+
+  if (!raceDate) {
+    return {
+      ...NO_DATA,
+      headline: "ยังไม่มีรายการแข่งที่ตั้งเป้าไว้",
+      detail: "หน้านี้จะเริ่มคาดการณ์ให้เมื่อมี race goal ที่ยังไม่ถูกยกเลิกอยู่ใน race_goals",
+      facts,
+    };
+  }
+
+  if (completed) {
+    return {
+      badge: raceName ?? undefined,
+      headline: `แข่งจบแล้ว${resultText ? ` — ${resultText}` : ""}`,
+      detail: "ตัวเลขข้างล่างเป็นการเทียบผลจริงกับเป้าที่ตั้งไว้ ไม่ใช่การคาดการณ์อีกต่อไป",
+      tone: "good",
+      facts,
+    };
+  }
+
+  // ใกล้วันแข่งแต่ยังไม่ล็อกเป้า เป็นสองสถานะที่ต้องพูดพร้อมกัน ไม่ใช่แยกกันอ่าน
+  const near = daysLeft != null && daysLeft <= 21;
+  return {
+    badge: raceName ?? undefined,
+    headline: daysLeft == null ? "ยังไม่รู้ว่าเหลืออีกกี่วัน" : daysLeft <= 0 ? "ถึงวันแข่งแล้ว" : `เหลืออีก ${daysLeft} วัน`,
+    detail: targetLocked
+      ? `เป้าที่ล็อกไว้คือ ${targetText ?? "-"}${
+          readinessScore != null ? ` · คะแนนความพร้อมตอนนี้ ${readinessScore}/100` : ""
+        } — กราฟข้างล่างเทียบฟอร์มจริงกับเส้นที่ควรจะเป็น`
+      : `เป้าเวลายังไม่ล็อก จะกำหนดหลังผ่าน Go/No-Go gate${near ? " — เหลือเวลาไม่ถึงสามสัปดาห์แล้ว ควรตัดสินใจเร็ว ๆ นี้" : ""}`,
+    tone: targetLocked ? "good" : near ? "warn" : "neutral",
+    facts,
+  };
+}
+
+/* ── Profile / body composition ── */
+
+export function bodySummary(input: {
+  weightKg: number | null;
+  measuredDate: string | null;
+  prevWeightKg: number | null;
+  bodyFatPct: number | null;
+  muscleMassKg: number | null;
+  guideWeightKg: number | null;
+  entryCount: number;
+}): PageSummary {
+  const { weightKg, measuredDate, prevWeightKg, bodyFatPct, muscleMassKg, guideWeightKg, entryCount } = input;
+  if (!entryCount || weightKg == null) {
+    return {
+      ...NO_DATA,
+      headline: "ยังไม่มีผลชั่งในระบบ",
+      detail: "ถ่ายรูปหน้าจอแอปเครื่องชั่งแล้วอัปโหลดในหน้านี้ ระบบจะอ่านค่าให้เองผ่าน OCR",
+    };
+  }
+
+  const delta = prevWeightKg == null ? null : weightKg - prevWeightKg;
+  const facts: SummaryFact[] = [
+    { label: "น้ำหนักล่าสุด", value: `${weightKg.toFixed(1)} kg` },
+    { label: "เทียบครั้งก่อน", value: delta == null ? "-" : `${delta >= 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)} kg` },
+    { label: "ไขมัน", value: bodyFatPct == null ? "-" : `${bodyFatPct.toFixed(1)}%` },
+    { label: "กล้ามเนื้อ", value: muscleMassKg == null ? "-" : `${muscleMassKg.toFixed(1)} kg` },
+  ];
+
+  // เทียบกับเส้น guide ของแผนด้วย เพราะ "ขึ้น 0.3 kg" คนละความหมายกัน
+  // ระหว่างตอนอยู่ต่ำกว่าเส้นแผนกับตอนอยู่สูงกว่า
+  const vsGuide = guideWeightKg == null ? null : weightKg - guideWeightKg;
+  const guideText =
+    vsGuide == null
+      ? ""
+      : vsGuide <= 0
+        ? ` · ต่ำกว่าเส้นแผน ${Math.abs(vsGuide).toFixed(1)} kg`
+        : ` · สูงกว่าเส้นแผน ${vsGuide.toFixed(1)} kg`;
+  const deltaText = delta == null ? "" : delta < -0.05 ? ` (ลด ${Math.abs(delta).toFixed(1)})` : delta > 0.05 ? ` (เพิ่ม ${delta.toFixed(1)})` : " (เท่าเดิม)";
+
+  return {
+    badge: measuredDate ? `ชั่งเมื่อ ${measuredDate}` : undefined,
+    headline: `${weightKg.toFixed(1)} kg${deltaText}`,
+    detail: `บันทึกไว้ทั้งหมด ${entryCount} ครั้ง${guideText} — น้ำหนักรายวันแกว่งตามน้ำและอาหาร ให้ดูทิศทางของเส้น ไม่ใช่ตัวเลขวันเดียว`,
+    tone: vsGuide == null ? "neutral" : vsGuide <= 0 ? "good" : vsGuide > 1 ? "warn" : "neutral",
     facts,
   };
 }

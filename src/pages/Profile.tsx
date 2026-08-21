@@ -3,11 +3,13 @@ import { Activity, Droplet, Flame, Scale, Upload } from "lucide-react";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { ProgressBar } from "../components/ProgressBar";
 import { supabase } from "../supabase";
 import type { BodyComposition, DashboardData } from "../types";
 import { resolveCurrentRaceGoal, todayIso, unversionedCount } from "../utils/data";
+import { bodySummary } from "../utils/summary";
 import { km, percent, shortDate } from "../utils/format";
 
 /* ─────────────────────────────────────────────
@@ -117,6 +119,19 @@ export function Profile({ data, onSaved }: { data: DashboardData; onSaved: () =>
 
   const today = todayIso;
   const blankEntry = () => ({ measured_date: today() });
+
+  // เส้น guide ไต่เป็นช่วง ๆ ตาม milestone — เทียบกับหมุดล่าสุดที่ผ่านมาแล้วเท่านั้น
+  // หมุดที่ยังมาไม่ถึงคือเป้าอนาคต ไม่ใช่เกณฑ์ตัดสินน้ำหนักวันนี้
+  const passedMilestone = [...milestones].filter((m) => latest != null && m.date <= latest.measured_date).at(-1) ?? null;
+  const summary = bodySummary({
+    weightKg: latest?.weight_kg ?? null,
+    measuredDate: latest?.measured_date ?? null,
+    prevWeightKg: rows.length >= 2 ? rows[rows.length - 2].weight_kg : null,
+    bodyFatPct: latest?.body_fat_pct ?? null,
+    muscleMassKg: latest?.muscle_mass_kg ?? null,
+    guideWeightKg: passedMilestone?.weight ?? null,
+    entryCount: rows.length,
+  });
 
   // Merge actual measurements with the recommended guide trajectory into one
   // date-sorted series. The guide starts from the latest actual weight so the
@@ -257,6 +272,7 @@ export function Profile({ data, onSaved }: { data: DashboardData; onSaved: () =>
 
   return (
     <section className="page-stack">
+      <PageSummary summary={summary} />
       {ocrErr && (
         <div
           role="dialog"

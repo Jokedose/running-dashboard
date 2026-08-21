@@ -2412,6 +2412,39 @@ button.cal-agenda-entry:disabled {
   line-height: 1.6;
 }
 
+.page-summary-badge {
+  justify-self: start;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--color-line);
+  color: var(--color-primary);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.page-summary-actions {
+  margin-top: 2px;
+}
+
+/* หน้าที่มีภาพประกอบของตัวเอง (วงแหวนการฟื้นตัว) — ภาพอยู่ขวา ตัวเลขลงแถวล่างเต็มความกว้าง
+   เพราะบีบทั้งสองอย่างให้อยู่คอลัมน์เดียวกันแล้วอ่านไม่ออกทั้งคู่ */
+.page-summary.has-aside {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.page-summary-aside {
+  display: grid;
+  place-items: center;
+}
+
+.page-summary-facts.wide {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-line-soft);
+}
+
 .page-summary-facts {
   margin: 0;
   display: grid;
@@ -3151,12 +3184,17 @@ nav a:focus-visible {
 }
 
 @media (max-width: 780px) {
-  .page-summary {
+  .page-summary,
+  .page-summary.has-aside {
     grid-template-columns: minmax(0, 1fr);
     padding: var(--space-4);
   }
 
   .page-summary-copy strong {
     font-size: 18px;
+  }
+
+  .page-summary-facts.wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

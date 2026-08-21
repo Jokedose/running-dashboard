@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import {
   activitiesSummary,
+  bodySummary,
+  calendarSummary,
+  homeReadinessSummary,
+  raceSummary,
   energyPanelSummary,
   injurySummary,
   loadSummary,
@@ -244,5 +248,143 @@ describe("energyPanelSummary", () => {
 
   test("ยังไม่มีข้อมูลพลังงานเลย", () => {
     expect(energyPanelSummary({ ...base, isoWeek: null }).facts).toHaveLength(0);
+  });
+});
+
+describe("homeReadinessSummary", () => {
+  const base = {
+    status: "เขียว",
+    recommendation: "ซ้อมตามแผนได้",
+    plannedSession: "Easy run 40 นาที",
+    recoveryPercent: 78,
+    sleepMinutes: 430,
+    hrvMs: 62,
+    loadRatio: 1.1,
+    tone: "good" as const,
+  };
+
+  // ข้อความมาจาก daily_readiness ที่ pipeline ตัดสินไว้แล้ว — หน้าเว็บต้องไม่ตัดสินใหม่
+  test("ใช้คำแนะนำจากต้นทางตรง ๆ ไม่เขียนทับ", () => {
+    const summary = homeReadinessSummary(base);
+    expect(summary.headline).toBe("Easy run 40 นาที");
+    expect(summary.detail).toBe("ซ้อมตามแผนได้");
+    expect(summary.badge).toBe("เขียว");
+  });
+
+  test("ไม่มีทั้งสถานะและคำแนะนำ = ยังไม่มีข้อมูลของวันนี้", () => {
+    const summary = homeReadinessSummary({ ...base, status: null, recommendation: null });
+    expect(summary.tone).toBe("neutral");
+    expect(summary.facts).toHaveLength(4); // ตัวเลขยังแสดงได้แม้ไม่มีข้อความ
+  });
+
+  test("มีสถานะแต่ไม่มีคำแนะนำ ก็ยังบอกให้ดูตัวเลขเอง", () => {
+    const summary = homeReadinessSummary({ ...base, recommendation: "  " });
+    expect(summary.detail).toContain("ดูตัวเลขข้างล่าง");
+  });
+});
+
+describe("calendarSummary", () => {
+  const base = {
+    plannedCount: 4,
+    doneCount: 2,
+    skippedCount: 0,
+    plannedKm: 24,
+    nextTitle: "Long run",
+    nextDate: "2026-08-23",
+    strengthPlanned: 3,
+    strengthDone: 1,
+  };
+
+  test("บอกว่าเหลืออีกกี่รายการและถัดไปคืออะไร", () => {
+    const summary = calendarSummary(base);
+    expect(summary.headline).toContain("เหลืออีก 2");
+    expect(summary.detail).toContain("Long run");
+  });
+
+  test("ทำครบไม่มีข้าม = เขียว", () => {
+    expect(calendarSummary({ ...base, doneCount: 4 }).tone).toBe("good");
+  });
+
+  // รายการที่ข้ามทำให้สัปดาห์ "จบ" แต่ไม่ใช่ "ครบ" — สองอย่างนี้ต้องอ่านต่างกัน
+  test("จบสัปดาห์ด้วยการข้ามบางรายการ = เตือน ไม่ใช่เขียว", () => {
+    const summary = calendarSummary({ ...base, doneCount: 2, skippedCount: 2 });
+    expect(summary.tone).toBe("warn");
+    expect(summary.headline).toContain("ข้าม 2");
+  });
+
+  test("สัปดาห์ที่ไม่มีแผนทั้งวิ่งและเวท", () => {
+    expect(calendarSummary({ ...base, plannedCount: 0, doneCount: 0, strengthPlanned: 0, strengthDone: 0 }).tone).toBe("neutral");
+  });
+});
+
+describe("raceSummary", () => {
+  const base = {
+    raceName: "Bangkok 10K",
+    raceDate: "2026-11-22",
+    daysLeft: 93,
+    readinessScore: 72,
+    targetText: "58:00",
+    targetLocked: true,
+    completed: false,
+    resultText: null,
+  };
+
+  test("เป้าล็อกแล้วและยังอีกไกล = เขียว", () => {
+    const summary = raceSummary(base);
+    expect(summary.tone).toBe("good");
+    expect(summary.headline).toContain("93 วัน");
+  });
+
+  // ใกล้วันแข่งแต่ยังไม่ล็อกเป้า ต้องเตือน ไม่ใช่ปล่อยผ่านเป็นกลาง
+  test("เหลือไม่ถึงสามสัปดาห์และยังไม่ล็อกเป้า = เตือน", () => {
+    const summary = raceSummary({ ...base, daysLeft: 14, targetLocked: false, targetText: null });
+    expect(summary.tone).toBe("warn");
+    expect(summary.detail).toContain("สามสัปดาห์");
+  });
+
+  test("ยังไม่ล็อกเป้าแต่ยังอีกไกล = เป็นกลาง", () => {
+    expect(raceSummary({ ...base, targetLocked: false, targetText: null }).tone).toBe("neutral");
+  });
+
+  test("แข่งจบแล้วเลิกคาดการณ์ หันไปเทียบผลจริง", () => {
+    const summary = raceSummary({ ...base, completed: true, resultText: "57:42", daysLeft: -3 });
+    expect(summary.headline).toContain("57:42");
+    expect(summary.facts.some((fact) => fact.label === "ผลที่ทำได้")).toBe(true);
+  });
+
+  test("ไม่มีวันแข่งก็ไม่เดา", () => {
+    expect(raceSummary({ ...base, raceDate: null }).tone).toBe("neutral");
+  });
+});
+
+describe("bodySummary", () => {
+  const base = {
+    weightKg: 71.2,
+    measuredDate: "2026-08-21",
+    prevWeightKg: 71.9,
+    bodyFatPct: 22.4,
+    muscleMassKg: 52.4,
+    guideWeightKg: 72,
+    entryCount: 14,
+  };
+
+  test("บอกทิศทางเทียบครั้งก่อน", () => {
+    const summary = bodySummary(base);
+    expect(summary.headline).toContain("ลด 0.7");
+    expect(summary.badge).toContain("2026-08-21");
+  });
+
+  test("อยู่ต่ำกว่าเส้นแผน = เขียว", () => {
+    expect(bodySummary(base).tone).toBe("good");
+  });
+
+  test("สูงกว่าเส้นแผนเกินหนึ่งกิโล = เตือน", () => {
+    expect(bodySummary({ ...base, weightKg: 73.5 }).tone).toBe("warn");
+  });
+
+  test("ยังไม่มีผลชั่ง ก็ชวนให้อัปโหลดรูปแทนการโชว์ขีด", () => {
+    const summary = bodySummary({ ...base, entryCount: 0, weightKg: null });
+    expect(summary.tone).toBe("neutral");
+    expect(summary.detail).toContain("OCR");
   });
 });

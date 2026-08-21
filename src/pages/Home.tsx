@@ -2,6 +2,7 @@ import { Activity, AlertTriangle, Brain, CalendarCheck, Clock3, Cross, Flag, Fla
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
 import { MetricCard } from "../components/MetricCard";
+import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
 import { PhaseStrip } from "../components/PhaseStrip";
 import { TodayQuickCard } from "../components/TodayQuickCard";
@@ -11,6 +12,7 @@ import { buildTrainingContext, type TrainingContext } from "../utils/context";
 import { evaluateRun, type RunEvaluation } from "../utils/evaluate";
 import { km, minutes, pace, percent, raceTime, sessionLabel, shortDate, workoutSegments } from "../utils/format";
 import { classifySession, isSteadyAerobic, painLevel } from "../utils/session";
+import { homeReadinessSummary } from "../utils/summary";
 import { thaiText } from "../utils/thaiText";
 
 /* ─────────────────────────────────────────────
@@ -398,6 +400,17 @@ export function Home({ data }: { data: DashboardData }) {
   const avgHrv7 = average(data.daily.slice(-8, -1).map((d) => d.hrv_avg_ms));
   const hrvTone: "neutral" | "good" | "warn" = latestHrv == null ? "neutral" : latestHrv >= (avgHrv7 ?? latestHrv) * 0.95 ? "good" : "warn";
 
+  const readinessSummary = homeReadinessSummary({
+    status: thaiText(todayReadiness?.readiness_status, "") || null,
+    recommendation: thaiText(todayReadiness?.recommendation, "") || null,
+    plannedSession: thaiText(todayReadiness?.planned_session, "") || null,
+    recoveryPercent: todayReadiness?.recovery_percent ?? null,
+    sleepMinutes: todayReadiness?.sleep_minutes ?? null,
+    hrvMs: latestHrv ?? null,
+    loadRatio,
+    tone,
+  });
+
   const coachAdvice = (() => {
     const advice: { tone: "good" | "warn" | "hot"; text: string }[] = [];
     if (todayReadiness?.recovery_percent != null && todayReadiness.recovery_percent < 60) advice.push({ tone: "hot", text: `Recovery ${todayReadiness.recovery_percent}% ต่ำ — ทำได้แค่ recovery easy` });
@@ -452,23 +465,18 @@ export function Home({ data }: { data: DashboardData }) {
         </div>
       </div>
 
-      {/* ── Readiness hero ── */}
-      <div className={`readiness-hero ${tone}`}>
-        <div className="readiness-hero-copy">
-          <span className="readiness-status-badge">{thaiText(todayReadiness?.readiness_status, "ไม่มีข้อมูล")}</span>
-          <p className="readiness-session">{thaiText(todayReadiness?.planned_session, "ยังไม่มีแผนวันนี้")}</p>
-          <p className="readiness-rec">{thaiText(todayReadiness?.recommendation)}</p>
+      {/* ── Readiness ── ใช้แถบสรุปตัวเดียวกับหน้าอื่น โดยเก็บวงแหวนไว้เป็น aside */}
+      <PageSummary
+        summary={readinessSummary}
+        aside={<ReadinessRing score={todayReadiness?.recovery_percent} tone={tone} />}
+        actions={
           <div className="chip-row">
             <span>รองเท้า: {thaiText(todayReadiness?.recommended_shoe)}</span>
-            <span>โหลด: {todayReadiness?.load_ratio?.toFixed(2) ?? "-"}</span>
             <span>ชีพจรพัก: {todayReadiness?.resting_hr_bpm ?? "-"} bpm</span>
             {todayReadiness?.tags?.map((tag) => <span key={tag}>{thaiText(tag)}</span>)}
           </div>
-        </div>
-        <div className="readiness-hero-ring">
-          <ReadinessRing score={todayReadiness?.recovery_percent} tone={tone} />
-        </div>
-      </div>
+        }
+      />
 
       {/* ── Gate verdict + phase strip ── */}
       <div className="content-grid">
