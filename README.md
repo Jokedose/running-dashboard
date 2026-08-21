@@ -15,12 +15,11 @@ Personal running dashboard for tracking 10K training — built with Vite + React
 | **Calendar** | Training plan schedule + session status |
 | **Race** | Race readiness score, 10K projection chart, strengths/risks |
 | **Zone 2** | Zone 2 analysis — drift, decoupling, sweet spot |
-| **Weekly** | Weekly summary — total km, session quality, planned vs actual |
+| **Reports** | Weekly and monthly rollups, plus an energy tab — net training kcal, TDEE, intake target, burn vs actual weight |
 | **Trends** | Long-term trend charts — pace, HR, Z2% |
 | **Load** | Training load — acute/chronic ratio, HR strain |
 | **Injury** | Active injury status (source of truth: `injury_status` table) + pain history from run logs |
 | **Strength** | Plan adherence (this week, streak, 8-week planned vs done) + kettlebell routine and exercise reference |
-| **Energy** | Weekly training energy (net kcal), TDEE, intake target, and burn vs actual weight |
 | **Gear** | Shoe mileage tracker |
 | **Body** | Body composition — weight, fat %, muscle mass (OCR intake) |
 | **Activities** | Run logs — distance, pace, HR, Z2%, drift |

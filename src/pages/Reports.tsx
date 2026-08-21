@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Activity, AlertTriangle, CalendarDays, CalendarRange, CheckCircle2, Clock3, Mountain, X } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
+import { EnergyReport } from "../components/EnergyReport";
 import { MetricCard } from "../components/MetricCard";
 import { PageSummary } from "../components/PageSummary";
 import { Panel } from "../components/Panel";
@@ -489,19 +490,40 @@ function MonthlyView({ data }: { data: DashboardData }) {
   );
 }
 
+type ReportMode = "week" | "month" | "energy";
+
+const MODE_TABS: { key: ReportMode; label: string }[] = [
+  { key: "week", label: "รายสัปดาห์" },
+  { key: "month", label: "รายเดือน" },
+  // พลังงานเป็นข้อมูลราย ISO week เหมือนแท็บแรก — อยู่หน้าเดียวกันแล้วเทียบ
+  // "สัปดาห์นี้วิ่งเท่าไร" กับ "เผาไปเท่าไร" ได้โดยไม่ต้องสลับหน้า
+  { key: "energy", label: "พลังงาน" },
+];
+
 export function Reports({ data }: { data: DashboardData }) {
-  const [mode, setMode] = useState<"week" | "month">("week");
+  // ลิงก์เก่า #/energy เคยเป็นหน้าเดี่ยว — คนที่กดมาคาดหวังเห็นพลังงาน ไม่ใช่รายสัปดาห์
+  const [mode, setMode] = useState<ReportMode>(() =>
+    window.location.hash.replace("#/", "") === "energy" ? "energy" : "week",
+  );
   return (
     <section className="page-stack">
       <div className="cal-view-toggle" role="tablist" aria-label="สลับมุมมองรายงาน">
-        <button className={`cal-btn${mode === "week" ? " cal-btn-active" : ""}`} onClick={() => setMode("week")} type="button" role="tab" aria-selected={mode === "week"}>
-          รายสัปดาห์
-        </button>
-        <button className={`cal-btn${mode === "month" ? " cal-btn-active" : ""}`} onClick={() => setMode("month")} type="button" role="tab" aria-selected={mode === "month"}>
-          รายเดือน
-        </button>
+        {MODE_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            className={`cal-btn${mode === tab.key ? " cal-btn-active" : ""}`}
+            onClick={() => setMode(tab.key)}
+            type="button"
+            role="tab"
+            aria-selected={mode === tab.key}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
-      {mode === "week" ? <WeeklyView data={data} /> : <MonthlyView data={data} />}
+      {mode === "week" && <WeeklyView data={data} />}
+      {mode === "month" && <MonthlyView data={data} />}
+      {mode === "energy" && <EnergyReport data={data} />}
     </section>
   );
 }

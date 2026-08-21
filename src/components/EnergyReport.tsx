@@ -8,10 +8,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "../components/ChartKit";
-import { MetricCard } from "../components/MetricCard";
-import { PageSummary } from "../components/PageSummary";
-import { Panel } from "../components/Panel";
+import { ChartGradientDefs, ChartTooltip, chartAxis, chartColors, chartGrid, chartMargin } from "./ChartKit";
+import { MetricCard } from "./MetricCard";
+import { PageSummary } from "./PageSummary";
+import { Panel } from "./Panel";
 import type { DashboardData } from "../types";
 import { shortIsoWeek } from "../utils/calendarDates";
 import { latest } from "../utils/data";
@@ -39,7 +39,7 @@ function sourceTone(source: string | null): "good" | "warn" | "hot" | "neutral" 
   return "neutral";
 }
 
-export function Energy({ data }: { data: DashboardData }) {
+export function EnergyReport({ data }: { data: DashboardData }) {
   const weeks = data.energy;
   const current = latestEnergyWeek(weeks);
   const rows = energyChartRows(weeks, WEEKS_IN_VIEW);
@@ -55,7 +55,7 @@ export function Energy({ data }: { data: DashboardData }) {
 
   if (!weeks.length) {
     return (
-      <section className="page-stack">
+      <>
         <Panel
           title="ยังไม่มีข้อมูลพลังงาน"
           subtitle="ยังไม่มีสัปดาห์ไหนใน energy_weekly ถูก sync ขึ้นมา"
@@ -66,7 +66,7 @@ export function Energy({ data }: { data: DashboardData }) {
             {" "}ไม่ใช่ว่าไม่มีการซ้อม ลองสั่ง sync ฝั่ง running-results อีกรอบแล้วกลับมาดูใหม่
           </p>
         </Panel>
-      </section>
+      </>
     );
   }
 
@@ -82,7 +82,7 @@ export function Energy({ data }: { data: DashboardData }) {
   });
 
   return (
-    <section className="page-stack">
+    <>
       <PageSummary summary={pageSummary} />
       {mixedSources && (
         <Panel title="⚠️ ช่วงที่แสดงอยู่ปนแหล่ง kcal สองแบบ" className="warn">
@@ -271,6 +271,6 @@ export function Energy({ data }: { data: DashboardData }) {
           </ul>
         </Panel>
       </div>
-    </section>
+    </>
   );
 }

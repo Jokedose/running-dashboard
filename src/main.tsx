@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Session } from "@supabase/supabase-js";
 import { Box, CircularProgress, CssBaseline, ThemeProvider } from "@mui/material";
-import { Activity, CalendarRange, Cross, Dumbbell, Flame, Gauge, HeartPulse, Home as HomeIcon, ShieldCheck, Trophy, TrendingUp, User } from "lucide-react";
+import { Activity, CalendarRange, Cross, Dumbbell, Gauge, HeartPulse, Home as HomeIcon, ShieldCheck, Trophy, TrendingUp, User } from "lucide-react";
 import { EmptyState } from "./components/EmptyState";
 import { Layout } from "./components/Layout";
 import { Login } from "./components/Login";
@@ -45,7 +45,6 @@ const navItems: NavItem[] = [
   { key: "load", label: "Load", icon: HeartPulse },
   { key: "injury", label: "Injury", icon: Cross },
   { key: "strength", label: "Strength", icon: Dumbbell },
-  { key: "energy", label: "Energy", icon: Flame },
   { key: "profile", label: "Profile", icon: User },
   { key: "activities", label: "Activities", icon: ShieldCheck },
 ];
@@ -61,7 +60,6 @@ const Profile = lazy(() => import("./pages/Profile").then((module) => ({ default
 const Load = lazy(() => import("./pages/Load").then((module) => ({ default: module.Load })));
 const Injury = lazy(() => import("./pages/Injury").then((module) => ({ default: module.Injury })));
 const Strength = lazy(() => import("./pages/Strength").then((module) => ({ default: module.Strength })));
-const Energy = lazy(() => import("./pages/Energy").then((module) => ({ default: module.Energy })));
 
 function LoadingScreen({ label }: { label: string }) {
   return (
@@ -130,8 +128,8 @@ function App() {
         ["training_phases", phases.error],
         ["training_load_daily", trainingLoad.error],
         ["intensity_distribution_weekly", intensity.error],
-        // energy_weekly ยังไม่มีในฐานจนกว่า running-results#88 (migration 013) จะ merge
-        // — จึงต้องอยู่ฝั่ง soft error เท่านั้น ไม่งั้นทั้งแอปดับเพราะตารางที่ยังไม่เกิด
+        // soft error เท่านั้น: ฐานที่ยังไม่ได้ apply migration 013 ต้องเปิดแอปได้อยู่
+        // แค่แท็บพลังงานว่าง ไม่ใช่ทั้งแดชบอร์ดดับ
         ["energy_weekly", energy.error],
       ].filter((entry) => Boolean(entry[1]));
       if (softErrors.length) console.warn("Optional dashboard data failed to load", softErrors.map(([table, error]) => ({ table, error })));
@@ -245,7 +243,6 @@ function App() {
     if (route === "load") return <Load data={data} />;
     if (route === "injury") return <Injury data={data} />;
     if (route === "strength") return <Strength data={data} />;
-    if (route === "energy") return <Energy data={data} />;
     if (route === "profile") return <Profile data={data} onSaved={fetchData} />;
     if (route === "activities") return <Activities data={data} />;
     return <Home data={data} />;
