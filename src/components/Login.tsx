@@ -20,9 +20,7 @@ export function Login() {
       setMessage("เข้าสู่ระบบไม่สำเร็จ ตรวจอีเมล/รหัสผ่าน หรือเพิ่มผู้ใช้ใน Supabase ก่อน");
       return;
     }
-    // single-device: revoke session ของเครื่องอื่น (เก็บเฉพาะ session ปัจจุบัน)
-    // เครื่องเก่าจะถูกเตะออกตอน auth guard เรียก getUser() รอบถัดไป
-    await supabase.auth.signOut({ scope: "others" });
+    // เข้าได้หลายเครื่องพร้อมกัน — ไม่ revoke session ของเครื่องอื่น
     setBusy(false);
   }
 
