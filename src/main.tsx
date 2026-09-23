@@ -168,11 +168,11 @@ function App() {
 
     supabase.auth.getSession().then(async ({ data: sessionData }) => {
       // validate session กับ server ทุกครั้งที่ refresh (getSession อ่านแค่ localStorage)
-      // ถ้า session ถูก revoke (เช่น login เครื่องอื่น) → เตะออกทันทีตอน refresh
+      // ถ้า session ถูก revoke/หมดอายุ → ล้างเฉพาะเครื่องนี้ (scope local ไม่แตะเครื่องอื่น)
       if (sessionData.session) {
         const { error } = await supabase.auth.getUser();
         if (error) {
-          await supabase.auth.signOut();
+          await supabase.auth.signOut({ scope: "local" });
           setSession(null);
           setLoading(false);
           return;
@@ -200,7 +200,7 @@ function App() {
 
     async function checkUser() {
       const { error } = await supabase.auth.getUser();
-      if (error) await supabase.auth.signOut();
+      if (error) await supabase.auth.signOut({ scope: "local" });
     }
 
     const interval = setInterval(checkUser, 15 * 60 * 1000);
@@ -256,7 +256,7 @@ function App() {
   }
 
   return (
-    <Layout session={session} route={route} navItems={navItems} onLogout={() => supabase.auth.signOut()}>
+    <Layout session={session} route={route} navItems={navItems} onLogout={() => supabase.auth.signOut({ scope: "local" })}>
       <Suspense fallback={<div className="empty-state">กำลังโหลดหน้า...</div>}>{page}</Suspense>
     </Layout>
   );
