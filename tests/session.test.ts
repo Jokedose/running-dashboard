@@ -13,6 +13,16 @@ describe("classifySession", () => {
     expect(kind).toBe("long");
   });
 
+  test("an RTR run/walk that mentions the race is recovery, not a race", () => {
+    // Real run_logs.session_type value for 2026-07-17 (3.43 km run/walk).
+    expect(
+      classifySession(
+        "**RTR run/walk 4:1 — Go/No-Go gate ตัวจริงก่อนแข่ง 10K (19 ก.ค.)** เดิมวางแผน 15 ก.ค. → เลื่อน 16 ก.ค. (ฝน) → ทำจริงวันนี้ 17 ก.ค."
+      )
+    ).toBe("recovery");
+    expect(classifySession("Race — **ทำจริงแล้ว**")).toBe("race");
+  });
+
   test("classifies other real session_type rows correctly", () => {
     expect(classifySession("**Easy + strides — Gate ครั้งที่ 2 (ตัวตัดสิน)**")).toBe("strides");
     expect(
