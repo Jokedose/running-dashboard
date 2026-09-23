@@ -19,7 +19,10 @@ function classifyFromText(t: string): SessionKind {
   if (t.includes("race-sim") || t.includes("race simulation") || t.includes("calibration") || t.includes("test")) return "test";
   if (t.includes("vo2") || t.includes("interval")) return "vo2";
   if (t.includes("tempo") || t.includes("threshold") || t.includes("steady") || t.includes("race-pace") || t.includes("race pace")) return "tempo";
-  if (t.includes("recovery") || t.includes("ฟื้น")) return "recovery";
+  // RTR (return-to-run) run/walk is recovery work; without this, a row like
+  // "RTR run/walk 4:1 — Go/No-Go gate ตัวจริงก่อนแข่ง 10K" fell through to the
+  // full-text scan and was classified as a race because it mentions "แข่ง".
+  if (t.includes("recovery") || t.includes("ฟื้น") || /\brtr\b/.test(t)) return "recovery";
   if (t.includes("long") || t.includes("ยาว")) return "long";
   if (t.includes("easy") || t.includes("เบา")) return "easy";
   if (t.includes("race") || t.includes("แข่ง")) return "race";
